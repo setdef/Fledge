@@ -1534,7 +1534,8 @@ jobs:
   # on every platform, Windows on ARM64 and musl Linux included;
   # examples/markdown_preview, Markdown Preview, a windowed and a console
   # program in an app a person would use, which opens Markdown files,
-  # with its installers; and
+  # with its installers; examples/lectern, Lectern, a console app that
+  # reads Markdown in a terminal with pure-Ruby gems; and
   # test/fixtures/native_app, whose gems must be compiled: redcarpet,
   # a C gem published only as source, ferro-idna, a Rust gem (rb-sys and
   # magnus) from its git tag, but not on Windows, where magnus 0.9.3 does
@@ -1655,14 +1656,14 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
-      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Drop, markdown_preview, and native_app for ${{ matrix.platform }}
+      - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Drop, markdown_preview, lectern, and native_app for ${{ matrix.platform }}
         env:
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle", source: Parity.gem_app(ARGV.fetch(1)))' "$RUNNER_TEMP/parity-bundle" "${{ matrix.platform }}"
-          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
-          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview)
+          apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview examples/lectern test/fixtures/native_app test/fixtures/bundled_with/exe/bundled_with)
+          [ "${{ matrix.platform }}" != aarch64-mingw-ucrt ] || apps=(examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https "$RUNNER_TEMP/parity-bundle" test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview examples/lectern)
           for app in "${apps[@]}"; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
@@ -1901,6 +1902,18 @@ jobs:
           bundle install
           bundle exec ruby examples/markdown_preview/bin/md2html examples/markdown_preview/welcome.md > dist/markdown_preview.expected
 
+      # What Lectern prints for its own README under bundle exec, as a
+      # pipe gets it and with --color=always, which the built app must
+      # print too. Its gems are pure Ruby, so this runs on every platform.
+      - name: Run Lectern with bundle exec
+        env:
+          BUNDLE_GEMFILE: ${{ github.workspace }}/examples/lectern/Gemfile
+          BUNDLE_PATH: ${{ runner.temp }}/lectern-bundle
+        run: |
+          bundle install
+          bundle exec ruby examples/lectern/main.rb examples/lectern/README.md > dist/lectern.expected
+          bundle exec ruby examples/lectern/main.rb --color=always examples/lectern/README.md > dist/lectern-color.expected
+
       # The builder app Delivery runs fledge build --from inside
       # (doc/contributors/design/desktop-apps.md, "Building from a built
       # app"), on one platform of each operating system.
@@ -2067,7 +2080,7 @@ jobs:
           .github/scripts/alpine-packages.sh apps
           git config --global --add safe.directory /fledge
           ruby -e 'require "./tasks/parity"; Parity.gem_probe(ARGV.fetch(0), name: "ParityBundle")' /tmp/parity-bundle
-          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview test/fixtures/ffi_libc; do
+          for app in examples/hello test/fixtures/parity test/fixtures/console test/fixtures/https /tmp/parity-bundle test/fixtures/my_cool_app test/fixtures/windowed_app test/fixtures/programs examples/file_drop examples/markdown_preview examples/lectern test/fixtures/ffi_libc; do
             ruby -I lib exe/fledge build -o dist "$app"
           done
           (cd test/fixtures/my_cool_app && bundle install)
@@ -2075,6 +2088,9 @@ jobs:
           cat dist/my_cool_app.expected
           BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle install
           BUNDLE_GEMFILE="$PWD/examples/markdown_preview/Gemfile" bundle exec ruby examples/markdown_preview/bin/md2html examples/markdown_preview/welcome.md > dist/markdown_preview.expected
+          BUNDLE_GEMFILE="$PWD/examples/lectern/Gemfile" bundle install
+          BUNDLE_GEMFILE="$PWD/examples/lectern/Gemfile" bundle exec ruby examples/lectern/main.rb examples/lectern/README.md > dist/lectern.expected
+          BUNDLE_GEMFILE="$PWD/examples/lectern/Gemfile" bundle exec ruby examples/lectern/main.rb --color=always examples/lectern/README.md > dist/lectern-color.expected
           (cd test/fixtures/ffi_libc && bundle install)
           (cd test/fixtures/ffi_libc && bundle exec ruby main.rb) > dist/ffi_libc.expected
           cat dist/ffi_libc.expected
@@ -2258,6 +2274,7 @@ jobs:
           sparse-checkout: |
             .github/scripts
             runtime/licenses.yml
+            examples/lectern/README.md
           sparse-checkout-cone-mode: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -2294,6 +2311,15 @@ jobs:
       # (.github/scripts/deliver-server.sh).
       - name: Run Drop, a file drop on the network, as someone with no Ruby would
         run: .github/scripts/deliver-server.sh "$RUNNER_TEMP/delivered/Drop-${{ matrix.platform }}.tar.gz"
+
+      # Lectern, a Markdown reader, in an empty environment: it prints
+      # what bundle exec printed for its README, plain to a pipe and
+      # colored on request, reads the standard input, and ends with
+      # sysexits.h's statuses (.github/scripts/deliver-lectern.sh).
+      - name: Run Lectern, a Markdown reader, as someone with no Ruby would
+        run: >-
+          .github/scripts/deliver-lectern.sh "$RUNNER_TEMP/delivered/Lectern-${{ matrix.platform }}.tar.gz"
+          examples/lectern/README.md "$RUNNER_TEMP/delivered/lectern.expected" "$RUNNER_TEMP/delivered/lectern-color.expected"
 
       # An app whose Gemfile.lock names a Bundler the runtime's
       # Ruby does not ship runs with it, as bundle exec did where it was
@@ -2739,6 +2765,7 @@ jobs:
             .github/scripts
             runtime/sources.yml
             examples/markdown_preview/welcome.md
+            examples/lectern/README.md
           sparse-checkout-cone-mode: false
 
       - name: Read the pinned images
@@ -2749,7 +2776,7 @@ jobs:
           name: apps-${{ matrix.platform }}
           path: delivered
 
-      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, Drop, and markdown_preview on Alpine with no Ruby installed
+      - name: Run hello, my_cool_app, ffi_libc, the console and HTTPS probes, windowed_app, programs, Drop, markdown_preview, and lectern on Alpine with no Ruby installed
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
@@ -2767,6 +2794,7 @@ jobs:
           .github/scripts/deliver-markdown.sh "$d/Markdown Preview-$PLATFORM.tar.gz" examples/markdown_preview/welcome.md "$d/markdown_preview.expected"
           .github/scripts/deliver-https.sh "$d/Https-$PLATFORM.tar.gz" /https --store-may-change
           .github/scripts/deliver-server.sh "$d/Drop-$PLATFORM.tar.gz"
+          .github/scripts/deliver-lectern.sh "$d/Lectern-$PLATFORM.tar.gz" examples/lectern/README.md "$d/lectern.expected" "$d/lectern-color.expected"
           SH
           server="$RUNNER_TEMP/https-server"
           .github/scripts/https-server.sh start "$server"
@@ -2796,11 +2824,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # The scripts, and the Markdown file Markdown Preview's step
-          # previews, as a person would open one of their own.
+          # The scripts, and the Markdown files Markdown Preview's and
+          # Lectern's steps read, as a person would open one of their own.
           sparse-checkout: |
             .github/scripts
             examples/markdown_preview/welcome.md
+            examples/lectern/README.md
           sparse-checkout-cone-mode: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -2852,6 +2881,17 @@ jobs:
       - name: Run Drop.exe, a file drop on the network, as someone with no Ruby would
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-server.ps1 -Archive "$env:RUNNER_TEMP/delivered/Drop-$env:PLATFORM.zip"
+
+      # Lectern, a Markdown reader: it prints what bundle exec printed
+      # for its README, plain to a file and colored on request, reads the
+      # standard input, and ends with sysexits.h's statuses
+      # (.github/scripts/deliver-lectern.ps1).
+      - name: Run Lectern.exe, a Markdown reader, as someone with no Ruby would
+        shell: pwsh
+        run: >-
+          pwsh -NoProfile -File .github/scripts/deliver-lectern.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/Lectern-$env:PLATFORM.zip" -Sample examples/lectern/README.md
+          -Plain "$env:RUNNER_TEMP/delivered/lectern.expected" -Colored "$env:RUNNER_TEMP/delivered/lectern-color.expected"
 
       # ADR 081 (doc/contributors/design/parity.md, "Console checks"):
       # the console probe in a console of its own, ended by

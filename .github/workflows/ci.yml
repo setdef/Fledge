@@ -139,6 +139,7 @@ jobs:
       # the same pins the same way. Its cache is keyed by mise.toml's hash.
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
 
       # Bundler keeps its files outside the checkout, where RuboCop and
@@ -263,6 +264,7 @@ jobs:
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         if: steps.kind.outputs.pins-only == 'true'
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -330,6 +332,7 @@ jobs:
       # only Ruby, and no bundle.
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -405,7 +408,7 @@ jobs:
         run: ruby .github/scripts/download_cache_key.rb
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: runtime-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
@@ -469,7 +472,7 @@ jobs:
           retention-days: 14
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: runtime-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
@@ -512,6 +515,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ${{ matrix.mise }}
 
@@ -569,7 +573,7 @@ jobs:
         run: ruby tasks/runtime_builder.rb "${{ matrix.platform }}"
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: ${{ !cancelled() && steps.gradle-cache.outputs.cache-primary-key != '' && matrix.platform == 'android' && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        if: ${{ github.ref == 'refs/heads/trunk' && !cancelled() && steps.gradle-cache.outputs.cache-primary-key != '' && matrix.platform == 'android' && steps.gradle-cache.outputs.cache-hit != 'true' }}
         with:
           path: |
             ~/.gradle/caches/modules-2
@@ -589,7 +593,7 @@ jobs:
         run: ruby .github/scripts/download_cache_key.rb
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: runtime-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
@@ -646,6 +650,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby rust
 
@@ -694,7 +699,7 @@ jobs:
         run: ruby .github/scripts/download_cache_key.rb
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('mobile-parity-downloads-ios-files-{0}', steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('mobile-parity-downloads-ios-files-{0}', steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: mobile-parity-downloads-ios-files-${{ steps.downloads-key.outputs.files }}
@@ -740,6 +745,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby rust
 
@@ -813,7 +819,7 @@ jobs:
         run: ruby .github/scripts/download_cache_key.rb
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('mobile-parity-downloads-ios-files-{0}', steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('mobile-parity-downloads-ios-files-{0}', steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: mobile-parity-downloads-ios-files-${{ steps.downloads-key.outputs.files }}
@@ -863,6 +869,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby rust
 
@@ -951,7 +958,7 @@ jobs:
       # that refuses a runner is asked for less each time
       # (doc/contributors/design/phone-projects.md, "Gradle's downloads in CI").
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: ${{ !cancelled() && steps.gradle-cache.outputs.cache-primary-key != '' && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        if: ${{ github.ref == 'refs/heads/trunk' && !cancelled() && steps.gradle-cache.outputs.cache-primary-key != '' && steps.gradle-cache.outputs.cache-hit != 'true' }}
         with:
           path: |
             ~/.gradle/caches/modules-2
@@ -1077,6 +1084,7 @@ jobs:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ${{ matrix.mise }}
           add_shims_to_path: false
@@ -1142,7 +1150,7 @@ jobs:
           ruby tasks/mobile_parity.rb android-bundle "dist/Mobile App-android/build/outputs/bundle/release/Mobile App-release.aab"
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: ${{ !cancelled() && steps.gradle-cache.outputs.cache-primary-key != '' && steps.gradle-cache.outputs.cache-hit != 'true' }}
+        if: ${{ github.ref == 'refs/heads/trunk' && !cancelled() && steps.gradle-cache.outputs.cache-primary-key != '' && steps.gradle-cache.outputs.cache-hit != 'true' }}
         with:
           path: |
             ~/.gradle/caches/modules-2
@@ -1184,6 +1192,7 @@ jobs:
       # mise.toml's pin, as on a contributor's machine.
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -1381,6 +1390,7 @@ jobs:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ${{ matrix.mise }}
           add_shims_to_path: false
@@ -1564,6 +1574,7 @@ jobs:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ${{ matrix.mise }}
           add_shims_to_path: ${{ runner.os != 'Windows' }}
@@ -2628,6 +2639,7 @@ jobs:
       # fledge build in the image, so mise installs only Ruby.
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -3032,6 +3044,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -3120,6 +3133,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -3162,7 +3176,7 @@ jobs:
         run: ruby .github/scripts/download_cache_key.rb
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('upstream-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('upstream-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: upstream-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
@@ -3191,6 +3205,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -3248,6 +3263,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -3306,6 +3322,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 

@@ -157,6 +157,35 @@ class WorkflowCachesTest < Minitest::Test
     end
   end
 
+  # A run restores only what its own branch or trunk saved, so what the
+  # proof of a pin move on pin-move, a release's runs on release-next, or
+  # a pull request saves is read by no run of trunk and only fills the
+  # repository's 10 GB (doc/contributors/design/runtimes.md, "Caches only
+  # trunk saves"; issue 90).
+  ON_TRUNK = "github.ref == 'refs/heads/trunk'"
+
+  def test_a_step_that_saves_a_cache_runs_only_on_trunk
+    saves = workflow_steps.select { |_, step| step["uses"].to_s.start_with?("actions/cache/save@") }
+
+    assert_operator saves.size, :>=, 12
+    saves.each { |where, step| assert_includes step["if"].to_s, ON_TRUNK, "#{where} saves a cache on a branch trunk cannot read it from" }
+  end
+
+  def test_mise_action_saves_its_cache_only_on_trunk
+    mises = workflow_steps.select { |_, step| step["uses"].to_s.start_with?("jdx/mise-action@") && step.dig("with", "cache").to_s != "false" }
+
+    assert_operator mises.size, :>=, 30
+    mises.each { |where, step| assert_equal "${{ #{ON_TRUNK} }}", step.dig("with", "cache_save"), "#{where} saves mise's tools on a branch trunk cannot read them from" }
+  end
+
+  private def workflow_steps
+    workflows.flat_map do |name, workflow|
+      workflow.fetch("jobs").flat_map do |id, job|
+        job.fetch("steps", []).map { |step| ["#{name} #{id}", step] }
+      end
+    end
+  end
+
   # mise-action's key hashes every mise config file the checkout holds,
   # so a sparse checkout that takes only mise.toml keys the same tools
   # apart from ci.yml's, and keeps a second copy of them.

@@ -147,6 +147,7 @@ jobs:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ${{ matrix.mise || 'ruby' }}
           add_shims_to_path: ${{ runner.os != 'Windows' }}
@@ -201,7 +202,7 @@ jobs:
           fi
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('ruby-spec-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('ruby-spec-downloads-{0}-files-{1}', matrix.platform, steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: ruby-spec-downloads-${{ matrix.platform }}-files-${{ steps.downloads-key.outputs.files }}
@@ -254,6 +255,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -281,7 +283,7 @@ jobs:
         run: ruby .github/scripts/download_cache_key.rb
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('ruby-spec-downloads-ios-files-{0}', steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('ruby-spec-downloads-ios-files-{0}', steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: ruby-spec-downloads-ios-files-${{ steps.downloads-key.outputs.files }}
@@ -338,6 +340,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -383,7 +386,7 @@ jobs:
         run: ruby .github/scripts/download_cache_key.rb
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('ruby-spec-downloads-android-files-{0}', steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('ruby-spec-downloads-android-files-{0}', steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: ruby-spec-downloads-android-files-${{ steps.downloads-key.outputs.files }}

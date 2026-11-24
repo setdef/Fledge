@@ -88,6 +88,7 @@ jobs:
 
       - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
         with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
           version: 2026.10.11
           install_args: ruby
 
@@ -132,7 +133,7 @@ jobs:
         run: ruby .github/scripts/download_cache_key.rb
 
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-proof-downloads-x86_64-linux-files-{0}', steps.downloads-key.outputs.files)
+        if: github.ref == 'refs/heads/trunk' && steps.downloads-key.outputs.files != '' && steps.downloads.outputs.cache-matched-key != format('runtime-proof-downloads-x86_64-linux-files-{0}', steps.downloads-key.outputs.files)
         with:
           path: ~/.cache/fledge/downloads
           key: runtime-proof-downloads-x86_64-linux-files-${{ steps.downloads-key.outputs.files }}

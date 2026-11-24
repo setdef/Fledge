@@ -385,7 +385,7 @@ class MobileParity
     end
 
     # Starts +app+ after clearing logcat, and returns what it logged
-    # (Logged) up to its status and after, until the log settles, then
+    # (Logged) up to its status (App#finished?) and after, until the log settles, then
     # stops it, since Ruby boots once per process, looking every
     # +interval+ seconds. It fails, reporting both streams, when the app
     # has not finished in +timeout+ seconds, or when its process has
@@ -402,7 +402,7 @@ class MobileParity
       adb("shell", "am", "start", "-W", "-n", "#{app.identifier}/#{ACTIVITY}")
       pid = nil
       deadline = Time.now + timeout
-      until MobileParity.status(logged(app).entries)
+      until app.finished?(logged(app).entries)
         pid ||= process(app)
         ended = pid && !running?(pid) && !MobileParity.status(logged(app).entries)
         if ended || Time.now > deadline

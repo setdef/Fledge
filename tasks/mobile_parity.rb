@@ -56,16 +56,27 @@ require_relative "parity"
 #   ruby tasks/mobile_parity.rb android
 #   ruby tasks/mobile_parity.rb android-check APK
 #   ruby tasks/mobile_parity.rb android-bundle AAB
+#
+# APPS=PATH,... in the environment builds and runs only the apps of
+# those paths, such as APPS=examples/basket, to prove one app alone.
 class MobileParity
   ROOT = Parity::ROOT
 
   # An app the check builds and runs: its project, the name and
   # identifier its fledge.yml gives it, the line it must print, or nil
-  # for the parity probe, whose report is compared instead, and the
-  # phones it runs on (default: both).
-  class App < Data.define(:path, :name, :identifier, :prints, :phones)
-    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android])
+  # for the parity probe, whose report is compared instead, the phones
+  # it runs on (default: both), and whether it stays open, as a real app
+  # does, so that its line, not its program's end, finishes its run
+  # (default: no).
+  class App < Data.define(:path, :name, :identifier, :prints, :phones, :stays_open)
+    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], stays_open: false)
       super
+    end
+
+    # Whether what the app logged, +entries+, finishes its run: its
+    # status, or for an app that stays open, its line.
+    def finished?(entries)
+      !MobileParity.status(entries).nil? || (stays_open && entries.any? { |entry| entry.match?(prints) })
     end
   end
 
@@ -116,9 +127,11 @@ class MobileParity
   class Logged < Data.define(:entries, :output)
   end
 
-  # The apps of APPS that run on +phone+.
-  def self.apps(phone)
-    APPS.select { |app| app.phones.include?(phone) }
+  # The apps of APPS that run on +phone+, of those whose paths +only+
+  # lists, comma-separated, when it is given.
+  def self.apps(phone, only: ENV.fetch("APPS", nil))
+    paths = only&.split(",")&.map(&:strip)
+    APPS.select { |app| app.phones.include?(phone) && (paths.nil? || paths.include?(app.path)) }
   end
 
   # Writes each app's project for +phone+ into +out+ with fledge build,
@@ -323,7 +336,8 @@ class MobileParity
   end
 
   # Checks what +app+ logged on the device named +device+, a Logged:
-  # that it exited with status 0 and printed its line, or, for the parity
+  # that it exited with status 0 and printed its line, or that an app
+  # that stays open printed its line and has not ended, or, for the parity
   # probe, that every difference its report shows, read from its standard
   # output alone, from ruby main.rb's and from the environment its host
   # logged, is justified. A failure reports both streams. Returns
@@ -331,7 +345,11 @@ class MobileParity
   def check(app, logged, device)
     entries = logged.entries
     status = MobileParity.status(entries)
-    raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}" unless status&.zero?
+    if app.stays_open
+      raise "#{app.name} on #{device} ended, with status #{status}:\n#{entries.last(40).join("\n")}" if status
+    elsif !status&.zero?
+      raise "#{app.name} on #{device} exited with status #{status}:\n#{entries.last(40).join("\n")}"
+    end
     return compare(MobileParity.report(logged.output), device, environment: Environment.read(entries)) unless app.prints
 
     line = entries.find { |entry| entry.match?(app.prints) }

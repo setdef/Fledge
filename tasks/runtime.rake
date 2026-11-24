@@ -28,8 +28,9 @@ namespace :runtime do
     abort "❌ #{e.message}"
   end
 
-  # The first step of a release (AGENTS.md, Releasing): with the
-  # release commit pushed and its CI green, this downloads the runtimes
+  # The pin commit of a release (doc/contributors/design/releases.md,
+  # "The pins"): with the release commit pushed and its CI green, this
+  # downloads the runtimes
   # that CI run built (by default HEAD's newest run of ci.yml, on a push
   # or a dispatch, in which every job passed, the run release.yml
   # publishes from,

@@ -112,7 +112,7 @@ Every public class must begin with a **Context-Problem-Solution** narrative.
 *   **No YARD:** Do not use `@param`, `@return`, or other YARD tags. Use standard RDoc formats.
 *   **Directives:** Use `:nodoc:` for private or internal methods that should not appear in the API docs.
 *   **Headings:** Use `===` for section headers like `=== Examples`.
-*   **SPDX in Ruby:** Wrap SPDX headers in `#--` / `#++` so they stay out of the rendered docs (per AGENTS.md).
+*   **SPDX in Ruby:** Wrap SPDX headers in `#--` / `#++` so they stay out of the rendered docs.
 *   **Examples are MIT-0:** Readers copy examples into their own apps, whatever their license. Wrap each example in an SPDX snippet licensed `MIT-0`, hidden from the rendered docs the same way:
 
 <!-- SPDX-SnippetBegin -->
@@ -135,7 +135,11 @@ Every public class must begin with a **Context-Problem-Solution** narrative.
 ```
 <!-- SPDX-SnippetEnd -->
 
-## 5. Checklist for Agents
+## 5. README.md and README.rdoc
+
+The two READMEs are one story told twice: `README.md` for people who read it on GitHub, `README.rdoc` for the gem's description. Before you edit either, read both in full, start to finish, not a section found by `grep`. An edit changes what the whole page says, so rewrite the paragraphs it touches until the page reads as one piece, and keep the two files true to each other and to the code. Appending a sentence or a section that the rest of the page does not know about is how those files grew unreadable; do not do it.
+
+## 6. Checklist for Agents
 
 Before finalizing documentation, ask:
 1.  Did I explain the *problem* this code solves?

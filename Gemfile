@@ -30,7 +30,7 @@ gem "rdoc", "~> 8.1"
 gem "json_schemer", "~> 2.5", group: :development
 
 # Takes the desktop input lock around local runs that can take focus or
-# the pointer, such as a phone simulator (AGENTS.md, Commands). Pinned to
+# the pointer, such as a phone simulator. Pinned to
 # a tag, and Gemfile.lock records its commit; nothing Fledge ships loads it.
 gem "desktop_input_lock", git: "https://github.com/setdef/DesktopInputLock.git",
   tag: "v0.1.0", group: :development

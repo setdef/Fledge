@@ -147,6 +147,19 @@ module Fledge
     }.freeze
 
     class << self
+      # Loads the framework +name+ into the process, as dlopen does the
+      # file of its path in the system's Frameworks folder, which defines
+      # its classes and protocols for the Objective-C runtime: a process
+      # whose own code names none of UIKit's does not have it loaded, and
+      # +objc_getClass+ finds no UIResponder in it. Returns whether the
+      # framework loaded.
+      def load_framework(name)
+        Fiddle.dlopen("/System/Library/Frameworks/#{name}.framework/#{name}")
+        true
+      rescue Fiddle::DLError
+        false
+      end
+
       # The Objective-C class named +name+, as the Ruby class whose
       # instances wrap its objects, or nil when there is none.
       def class_named(name)
@@ -708,5 +721,8 @@ module Fledge
         ObjectSpace.undefine_finalizer(self)
       end
     end
+
+    # UIKit, whose classes Ruby names before any code of the app does.
+    load_framework("UIKit")
   end
 end

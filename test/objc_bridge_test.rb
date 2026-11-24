@@ -102,6 +102,11 @@ class ObjCBridgeTest < Minitest::Test
     assert_match(/no protocol FledgeNoSuchProtocol/, error.message)
   end
 
+  def test_a_framework_is_loaded_by_name_and_a_missing_one_is_not
+    assert objc.load_framework("CoreFoundation")
+    refute objc.load_framework("FledgeNoSuchFramework")
+  end
+
   def test_an_exception_in_a_method_objective_c_called_is_printed_not_raised
     greeter = FledgeBridgeTestGreeter.new
     _, err = capture_subprocess_io { assert_equal 0, greeter.objc_send("boom") }

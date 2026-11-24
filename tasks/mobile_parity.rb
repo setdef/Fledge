@@ -41,7 +41,7 @@ require_relative "parity"
 # on iOS and a native library of its own on Android; a script that requires json and csv, a bundled
 # gem, parses with prism, a bundled gem whose extension compiles its own
 # libprism (doc/contributors/design/phone-runtimes.md, "Bundled gems' extensions"), and
-# reaches rubygems.org over HTTPS
+# reaches a server of the check's own over HTTPS
 # (test/fixtures/mobile_hello); on Android, an app that runs the command
 # of a gem its lockfile locks, and no runtime has, by its name
 # (test/fixtures/mobile_commands); and the parity probe (test/fixtures/parity), whose report is compared
@@ -64,20 +64,22 @@ class MobileParity
 
   # An app the check builds and runs: its project, the name and
   # identifier its fledge.yml gives it, the line it must print, or nil
-  # for the parity probe, whose report is compared instead, and the
-  # phones it runs on (default: both).
-  class App < Data.define(:path, :name, :identifier, :prints, :phones)
-    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android])
+  # for the parity probe, whose report is compared instead, the phones
+  # it runs on (default: both), and whether it asks the check's HTTPS
+  # server (HTTPS; default: no).
+  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https)
+    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false)
       super
     end
   end
 
   # What test/fixtures/mobile_hello prints, when the runtime keeps csv a
   # gem, keeps prism a gem whose extension parses, and can reach a server
-  # over HTTPS with the CA certificates it carries; and, on Android, when
+  # of the check's over HTTPS with the CA certificates it carries, and
+  # not with an empty trust store (HTTPS); and, on Android, when
   # YJIT, once the app enables it, writes machine code and runs it, where
   # iOS's Ruby has no YJIT.
-  HELLO_LIBRARIES = '\["csv","\d+\.\d+\.\d+"\], prism \d+\.\d+\.\d+ parses 1 \+ 2 as \+, over HTTPS: 200'
+  HELLO_LIBRARIES = '\["csv","\d+\.\d+\.\d+"\], prism \d+\.\d+\.\d+ parses 1 \+ 2 as \+, over HTTPS: certificate verify failed with an empty trust store, 200 with the runtime\'s CA certificates'
   HELLO = /\AHello from Ruby 4\.1\.0 on (?:arm64-darwin: #{HELLO_LIBRARIES}, no YJIT|(?:aarch64|x86_64)-linux-android: #{HELLO_LIBRARIES}, YJIT on: fib\(20\) is 6765 in [1-9]\d* bytes of machine code)\z/o
 
   # The apps, each built with fledge build for each phone.
@@ -98,7 +100,7 @@ class MobileParity
       prints: /\AFfiPhone: ffi 1\.17\.4 finds strlen of hello 5 and sorts \[1, 2, 3\] with a Ruby block, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/ffi_library_phone", name: "FfiLibraryPhone", identifier: "com.setdef.fledge.FfiLibraryPhone",
       prints: %r{\AFfiLibraryPhone: llhttp-ffi 0\.5\.1 parses GET /hello, and scrypt 3\.1\.0's key matches RFC 7914, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z}),
-    App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO),
+    App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO, https: true),
     App.new(path: "test/fixtures/mobile_commands", name: "MobileCommands", identifier: "com.setdef.fledge.MobileCommands",
       prints: /\AMobileCommands runs thor by name \(Thor 1\.5\.0\), from a shell \(Thor 1\.5\.0\), and with ruby -S \(Thor 1\.5\.0\), with Bundler's thor 1\.5\.0, on (?:aarch64|x86_64)-linux-android\z/,
       phones: %w[android]),
@@ -133,6 +135,7 @@ class MobileParity
   # The runtime is one this checkout built, which its pins do not name,
   # so the build is told so (FLEDGE_RUNTIME_DIR_UNCHECKED).
   def self.projects(phone, runtimes:, out:, apps: self.apps(phone), env: {})
+    HTTPS.prepare if apps.any?(&:https)
     fledge = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), File.join(ROOT, "exe", "fledge")]
     apps.to_h do |app|
       own = { "FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes), "FLEDGE_RUNTIME_DIR_UNCHECKED" => "1" }
@@ -141,6 +144,7 @@ class MobileParity
       raise "fledge build #{phone} #{app.path} failed:\n#{printed}#{logged}" unless status.success?
 
       project = File.expand_path(printed.strip, ROOT)
+      HTTPS.trust(phone, project) if app.https
       Environment.record(phone, project) unless app.prints
       [app, project]
     end
@@ -376,6 +380,7 @@ class MobileParity
   end
 end
 
+require_relative "mobile_parity/https"
 require_relative "mobile_parity/ios"
 require_relative "mobile_parity/android"
 

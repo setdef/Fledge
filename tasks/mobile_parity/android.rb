@@ -290,15 +290,21 @@ class MobileParity
     def call
       adb("logcat", "-G", "16M")
       parity = MobileParity.new(target:, work: @work, out: @out)
-      MobileParity.apps("android").flat_map do |app|
-        adb("install", "-r", File.join(APKS, "#{app.identifier}.apk"))
-        from_apk = check_launch(app, parity, "from its debug APK")
-        # The bundle's APKs are signed with another key than the debug
-        # APK, which Android refuses to install over it.
-        adb("uninstall", app.identifier)
-        Android.bundletool("install-apks", "--apks=#{File.join(APKS, "#{app.identifier}.apks")}")
-        [from_apk, check_launch(app, parity, "from its release bundle")]
-      end.all?
+      apps = MobileParity.apps("android")
+      HTTPS.serving(apps) do |url|
+        # The app asks the server at HTTPS::PORT on the emulator's own
+        # loopback, which adb carries to the computer's.
+        adb("reverse", "tcp:#{HTTPS::PORT}", "tcp:#{HTTPS.port(url)}") if url
+        apps.flat_map do |app|
+          adb("install", "-r", File.join(APKS, "#{app.identifier}.apk"))
+          from_apk = check_launch(app, parity, "from its debug APK")
+          # The bundle's APKs are signed with another key than the debug
+          # APK, which Android refuses to install over it.
+          adb("uninstall", app.identifier)
+          Android.bundletool("install-apks", "--apks=#{File.join(APKS, "#{app.identifier}.apks")}")
+          [from_apk, check_launch(app, parity, "from its release bundle")]
+        end.all?
+      end
     end
 
     # How many times the check launches the parity probe, at most, for a

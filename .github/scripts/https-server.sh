@@ -5,13 +5,16 @@
 # this computer, so that the check needs no network and no server
 # anyone else runs:
 #
+#   .github/scripts/https-server.sh prepare FOLDER
 #   .github/scripts/https-server.sh start FOLDER
 #   .github/scripts/https-server.sh stop FOLDER
 #
-# start makes a certificate authority for this run alone, valid for two
-# days, and a certificate it signs for 127.0.0.1, then runs openssl
-# s_server -HTTP with it on a free port and returns once the server
-# accepts. FOLDER then holds ca.pem, the authority's certificate, which
+# prepare makes a certificate authority for this run alone, valid for
+# two days, and a certificate it signs for 127.0.0.1, which a check
+# that must put the authority in an app before the app is built needs
+# first. start makes them too, unless FOLDER already holds them from
+# prepare, then runs openssl s_server -HTTP with them on a free port
+# and returns once the server accepts. FOLDER then holds ca.pem, the authority's certificate, which
 # a check puts where the app's Ruby looks or nowhere, and url, the
 # address to give the probe. The private keys never leave FOLDER. stop
 # ends the server. Only the openssl command is needed, OpenSSL's or the
@@ -22,20 +25,21 @@
 set -eu
 command=${1:-}
 folder=${2:-}
-[ -n "$folder" ] || { echo "usage: https-server.sh start|stop FOLDER" >&2; exit 2; }
+[ -n "$folder" ] || { echo "usage: https-server.sh prepare|start|stop FOLDER" >&2; exit 2; }
 
 case $command in
-  start) ;;
+  prepare|start) ;;
   stop)
     [ ! -s "$folder/pid" ] || kill "$(cat "$folder/pid")" 2>/dev/null || true
     rm -f "$folder/pid"
     exit 0
     ;;
-  *) echo "usage: https-server.sh start|stop FOLDER" >&2; exit 2 ;;
+  *) echo "usage: https-server.sh prepare|start|stop FOLDER" >&2; exit 2 ;;
 esac
 
 mkdir -p "$folder"
 cd "$folder"
+generate() {
 # Subjects and extensions come from configuration files rather than
 # -subj and -addext, which the LibreSSL of older macOS lacks.
 cat >ca.cnf <<'CNF'
@@ -70,6 +74,9 @@ openssl x509 -req -in server.csr -CA ca.pem -CAkey ca.key -set_serial 2 -days 2 
 # The name OpenSSL looks the authority up by in a folder of hashed
 # names, such as the /etc/ssl/certs update-ca-certificates writes.
 openssl x509 -hash -noout -in ca.pem >./hash
+}
+[ -s server.pem ] || generate
+[ "$command" = start ] || exit 0
 
 # s_server -HTTP sends a file of FOLDER as it is, so the response says
 # its length: -www sends a page with none and closes the connection,

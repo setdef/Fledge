@@ -115,7 +115,10 @@ class MobileParity
       end
       apps = projects.to_h { |app, project| [app, build_app(app, project)] }
       parity = MobileParity.new(target: TARGET, work: @work, out: @out)
-      FAMILIES.map { |family| on_simulator(family, apps) { |app, logged, device| parity.check(app, logged, device) } }.all?
+      HTTPS.serving(apps.keys) do |url|
+        @https_url = url
+        FAMILIES.map { |family| on_simulator(family, apps) { |app, logged, device| parity.check(app, logged, device) } }.all?
+      end
     end
 
     # The app built from +project+ for the Simulator, unsigned, with
@@ -207,7 +210,10 @@ class MobileParity
     # finished in +timeout+ seconds, and reports both streams.
     private def launch(udid, app, timeout)
       since = (Time.now - 2).strftime("%Y-%m-%d %H:%M:%S")
-      launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier)
+      # simctl gives an app the variables of its own environment that
+      # begin SIMCTL_CHILD_, without the prefix.
+      env = app.https ? { "SIMCTL_CHILD_#{HTTPS::VARIABLE}" => @https_url } : {}
+      launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier, env:)
       pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
       deadline = Time.now + timeout
       until MobileParity.status(messages(udid, since, pid, app).entries)
@@ -250,8 +256,8 @@ class MobileParity
       ].join("\n")
     end
 
-    private def capture(*command)
-      out, status = Open3.capture2(*command)
+    private def capture(*command, env: {})
+      out, status = Open3.capture2(env, *command)
       raise "#{command.join(' ')} failed" unless status.success?
 
       out

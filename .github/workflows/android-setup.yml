@@ -4,11 +4,11 @@
 # The Android setup, from nothing, on a Linux runner: what CONTRIBUTING.md,
 # "Android on Linux", has a person type, MISE_ENV=android with
 # tasks/setup.rb, which installs every tool mise.android.toml pins (a JDK,
-# the NDK, CMake, platform-tools, a platform, two build-tools, the
-# emulator, two system images: about 5 GB, from Adoptium, Google, and
-# Kitware), then bin/android-sdk, which lays the SDK out of them. No other
+# the NDK, platform-tools, a platform, two build-tools, the
+# emulator, two system images: about 5 GB, from Adoptium and Google),
+# then bin/android-sdk, which lays the SDK out of them. No other
 # job runs either with MISE_ENV=android: CI's Android jobs use the runner
-# image's own JDK, CMake, and SDK, so a change to the setup, or a pinned
+# image's own JDK and SDK, so a change to the setup, or a pinned
 # download that went away, would break the documented way to build the
 # Android runtime unseen (issue 14).
 #

@@ -17,6 +17,8 @@
 #                                                       ask the source of
 #                                                       (Linux, Windows)
 #
+# and, once, the gem built from the tag, fledge-VERSION.gem, so that
+# Fledge can be installed from the release when RubyGems.org is down;
 # and a SHA256SUMS over all of them, which is the tagged commit's
 # lib/fledge/SHA256SUMS. fledge build at that version downloads its
 # runtimes from this release, by the names Fledge::Runtimes gives them,
@@ -216,6 +218,24 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+      # The .gem of the tagged commit, attached to the release beside the
+      # runtimes, so that a developer can install Fledge from it when
+      # RubyGems.org is down. It is no runtime asset, so it is kept apart
+      # from them and from their pins, which cannot name the file that
+      # holds them; the tag it was built from is what vouches for it.
+      - name: Build the gem from the tag
+        run: |
+          mkdir gem
+          gem build fledge.gemspec --output "gem/fledge-$(ruby -Ilib -rfledge/version -e 'print Fledge::VERSION').gem"
+          ls -l gem
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-gem
+          path: gem
+          if-no-files-found: error
+          retention-days: 3
+
   # The one job that writes: on a pushed tag, or a dry run asked to
   # publish. It checks the assets it received against the pins once more
   # and creates the release with them.
@@ -234,8 +254,18 @@ jobs:
           name: release-assets
           path: release
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-gem
+          path: gem
+
       - name: Check the assets against the pins they came with
         run: (cd release && sha256sum --strict -c SHA256SUMS)
+
+      - name: Check the gem is this version
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: test "$(ls gem)" = "fledge-$VERSION.gem"
 
       - name: Create the release with its assets attached
         env:
@@ -246,7 +276,7 @@ jobs:
           case "$VERSION" in *[!0-9.]*) prerelease=(--prerelease) ;; esac
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" --title "Fledge $TAG" \
             --notes "Runtimes for fledge build at $TAG, one per platform, each to build that platform's apps on a computer of that platform, with its SPDX SBOM and NOTICES; and, for Linux and Windows, the source the runtime's licenses ask for: its LGPL libraries', AppImage's runtime's, and NSIS's. What Fledge puts into each platform's app and installer, and what its licenses ask of you: doc/licensing.md at $TAG. What changed: CHANGELOG.md." \
-            release/fledge-runtime-* release/SHA256SUMS
+            release/fledge-runtime-* release/SHA256SUMS "gem/fledge-$VERSION.gem"
 
   installed:
     name: Installed from the tag

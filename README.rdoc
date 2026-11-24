@@ -20,6 +20,10 @@ on its preview, 4.1.0-preview1. Add it to your project's +Gemfile+:
 
   gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.17.0", group: :development
 
+Each release also carries the <tt>.gem</tt> built from its tag, attached to
+it as <tt>fledge-X.Y.Z.gem</tt>, which <tt>gem install</tt> takes from a
+file if a registry or git host is down.
+
 === Your First App
 
 In a folder named +greet+, a two-line +main.rb+ prints a greeting as JSON,

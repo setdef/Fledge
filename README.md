@@ -117,7 +117,7 @@ gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.17.0", group: :d
 ```
 <!-- SPDX-SnippetEnd -->
 
-Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.17.0`. [Bundler](https://bundler.io/) installs Fledge from a git tag, and the [releases page](https://github.com/setdef/Fledge/releases) lists every tag.
+Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.17.0`. [Bundler](https://bundler.io/) installs Fledge from a git tag, and the [releases page](https://github.com/setdef/Fledge/releases) lists every tag. Each release also carries the `.gem` built from its tag, attached to it as `fledge-X.Y.Z.gem`, which `gem install` takes from a file if a registry or git host is down.
 
 Each app you build from this `Gemfile` carries Fledge too, as it carries your other development gems. Bundler installs a gem from git as its whole repository, so Fledge adds about 3 MB to the archive your users download, and 8 MB once they unpack it. You can't leave it out with Bundler's `without` setting, because `without development` would leave Fledge out of your bundle as well. To build apps without Fledge in them, put the same line in a `Gemfile` in a folder outside your project, run `bundle install` there, and from that folder, build your project by its path:
 

@@ -61,3 +61,7 @@ puts "Hello from Ruby #{RUBY_VERSION} on #{RUBY_PLATFORM}: " \
   "#{JSON.generate(CSV.parse_line("csv,#{Gem.loaded_specs.fetch('csv').version}"))}, " \
   "prism #{Gem.loaded_specs.fetch('prism').version} parses 1 + 2 as #{Prism.parse('1 + 2').value.statements.body.first.name}, " \
   "over HTTPS: #{untrusted} with an empty trust store, #{status} with the runtime's CA certificates, #{jit}"
+
+# A NUL byte in what an app prints reaches the log whole, not cutting the
+# entry short (runtime/mobile/output.c, log_line).
+puts "NUL: before\0after"

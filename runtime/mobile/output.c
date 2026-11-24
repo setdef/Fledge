@@ -14,7 +14,8 @@
  * pipe, and a thread of its own reads the other end line by line and
  * writes each line to the log: standard error's as errors, so a
  * developer reading the log sees which is which. A line longer than an
- * entry holds goes as several entries in a row (fledge_log_chunk).
+ * entry holds goes as several entries in a row (fledge_log_chunk), and a
+ * NUL byte goes as 0xC0 0x80 (log_line).
  *
  * When the log itself copies each entry to standard error for a
  * developer tool (fledge_log_echoes), the tool already reads the
@@ -65,7 +66,7 @@ fledge_log_chunk(const char *text, size_t length)
 
 /* Writes the line of length bytes to the log, in entries that fit. */
 static void
-log_line(int error, const char *line, size_t length)
+log_entries(int error, const char *line, size_t length)
 {
     size_t offset = 0;
 
@@ -74,6 +75,40 @@ log_line(int error, const char *line, size_t length)
         fledge_log_write(error, line + offset, chunk);
         offset += chunk;
     } while (offset < length);
+}
+
+/*
+ * Writes the line of length bytes to the log. Each entry is a C string
+ * to both logs (__android_log_print's "%.*s" and os_log's stop at a NUL
+ * whatever the length), so a NUL byte in the line would cut the entry
+ * short and lose the rest. It goes as the two bytes 0xC0 0x80, "modified
+ * UTF-8", as CPython's Android and iOS streams write it
+ * (Lib/_android_support.py and Lib/_apple_support.py: "Encode null bytes
+ * using modified UTF-8 to avoid them truncating the message") and as
+ * Android's JNI writes it, so the entry holds the whole line and a
+ * reader finds each NUL where it was.
+ */
+static void
+log_line(int error, const char *line, size_t length)
+{
+    if (memchr(line, '\0', length) != NULL) {
+        char *escaped = malloc(length * 2);
+        if (escaped != NULL) {
+            size_t size = 0;
+            for (size_t index = 0; index < length; index++) {
+                if (line[index] == '\0') {
+                    escaped[size++] = (char)0xC0;
+                    escaped[size++] = (char)0x80;
+                } else {
+                    escaped[size++] = line[index];
+                }
+            }
+            log_entries(error, escaped, size);
+            free(escaped);
+            return;
+        }
+    }
+    log_entries(error, line, length);
 }
 
 /*

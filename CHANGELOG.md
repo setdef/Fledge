@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Android and iOS, a NUL byte in an app's output no longer cuts the log entry short: the whole line reaches the log, the NUL as the two bytes `0xC0 0x80`, as CPython's Android and iOS streams write it.
 - A `.tar.gz` app records owner id 0 and group id 0 with no names, not the numeric ids and names of the account that built it.
 - A build with Bundler's `only` setting (`BUNDLE_ONLY`, `bundle config only`) ships only those groups' gems, and the app's `.bundle/config` now carries `BUNDLE_ONLY` too, so the app sets up the groups it shipped instead of stopping at a missing gem.
 - When `Gemfile.lock` has an empty `CHECKSUMS` entry for a gem that `vendor/cache` has no file of, such as the default gem a preview Ruby ships ahead of every gem server, `fledge build` says to pin the gem to a released version, not to hash a file that does not exist.

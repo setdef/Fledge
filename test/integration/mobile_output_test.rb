@@ -25,7 +25,10 @@ class MobileOutputTest < Minitest::Test
   # then prints: a short line, an empty one, one of 2,500 bytes, one of
   # 999 ASCII bytes and 2-byte characters straddling the cut, one whose
   # cut would end an entry in whitespace, which the unified log trims
-  # from an entry's end, and a line to standard error; then it ends with exit(), which flushes every
+  # from an entry's end, a line to standard error, and lines holding NUL
+  # bytes, which both logs would cut short at the first, so each goes as
+  # the two bytes 0xC0 0x80, as CPython's streams write it, even where
+  # that cuts an entry; then it ends with exit(), which flushes every
   # stdio stream while the forwarding threads wait on their pipes, as an
   # app's would.
   PROGRAM = <<~C
@@ -61,6 +64,13 @@ class MobileOutputTest < Minitest::Test
         strcpy(spaced + 998, "  \\tc");
         printf("hello\\n\\n%s\\n%s\\n%s\\n", long_line, straddling, spaced);
         fputs("oops\\n", stderr);
+        fwrite("p\\0q\\n\\0\\n", 1, 6, stdout);
+        char nuls[1100];
+        memset(nuls, 'n', 999);
+        nuls[999] = '\\0';
+        nuls[1000] = '\\0';
+        nuls[1001] = '\\n';
+        fwrite(nuls, 1, 1002, stdout);
         fflush(stdout);
         sleep(1);
         exit(0);
@@ -85,7 +95,21 @@ class MobileOutputTest < Minitest::Test
       entries = File.read(log, encoding: "UTF-8").lines.map(&:chomp)
       assert_equal "E oops", entries.find { |entry| entry.start_with?("E ") }
       out = entries.select { |entry| entry.start_with?("O ") }.map { |entry| entry.delete_prefix("O ") }
-      assert_equal ["hello", "", "x" * 1000, "x" * 1000, "x" * 500, "a" * 999, "éé", "b" * 998, "  \tc"], out
+      assert_equal [
+        "hello",
+        "",
+        "x" * 1000,
+        "x" * 1000,
+        "x" * 500,
+        "a" * 999,
+        "éé",
+        "b" * 998,
+        "  \tc",
+        "p\xC0\x80q",
+        "\xC0\x80",
+        "n" * 999,
+        "\xC0\x80\xC0\x80",
+], out
     end
   end
 

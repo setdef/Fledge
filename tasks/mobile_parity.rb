@@ -65,12 +65,21 @@ class MobileParity
   # An app the check builds and runs: its project, the name and
   # identifier its fledge.yml gives it, the line it must print, or nil
   # for the parity probe, whose report is compared instead, the phones
-  # it runs on (default: both), and whether it asks the check's HTTPS
-  # server (HTTPS; default: no).
-  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https)
-    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false)
+  # it runs on (default: both), whether it asks the check's HTTPS
+  # server (HTTPS; default: no), and a second line it must print, if any
+  # (+also+).
+  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also)
+    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil)
       super
     end
+  end
+
+  # What a log entry holds, as the string the app printed: the embedding
+  # API writes a NUL byte as 0xC0 0x80, since both logs cut an entry at a
+  # NUL (runtime/mobile/output.c, log_line), which a log entry's reader
+  # turns back so that its text is valid UTF-8.
+  def self.printed(message)
+    message.b.gsub("\xC0\x80".b, "\0".b).force_encoding(Encoding::UTF_8)
   end
 
   # What test/fixtures/mobile_hello prints, when the runtime keeps csv a
@@ -100,7 +109,8 @@ class MobileParity
       prints: /\AFfiPhone: ffi 1\.17\.4 finds strlen of hello 5 and sorts \[1, 2, 3\] with a Ruby block, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z/),
     App.new(path: "test/fixtures/ffi_library_phone", name: "FfiLibraryPhone", identifier: "com.setdef.fledge.FfiLibraryPhone",
       prints: %r{\AFfiLibraryPhone: llhttp-ffi 0\.5\.1 parses GET /hello, and scrypt 3\.1\.0's key matches RFC 7914, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android)\z}),
-    App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO, https: true),
+    App.new(path: "test/fixtures/mobile_hello", name: "MobileHello", identifier: "com.setdef.fledge.MobileHello", prints: HELLO, https: true,
+      also: /\ANUL: before\0after\z/),
     App.new(path: "test/fixtures/mobile_commands", name: "MobileCommands", identifier: "com.setdef.fledge.MobileCommands",
       prints: /\AMobileCommands runs thor by name \(Thor 1\.5\.0\), from a shell \(Thor 1\.5\.0\), and with ruby -S \(Thor 1\.5\.0\), with Bundler's thor 1\.5\.0, on (?:aarch64|x86_64)-linux-android\z/,
       phones: %w[android]),
@@ -345,6 +355,10 @@ class MobileParity
 
     line = entries.find { |entry| entry.match?(app.prints) }
     raise "#{app.name} on #{device} printed no line matching #{app.prints.source}:\n#{entries.join("\n")}" unless line
+
+    if app.also && entries.none? { |entry| entry.match?(app.also) }
+      raise "#{app.name} on #{device} printed no line matching #{app.also.inspect}:\n#{entries.map(&:inspect).join("\n")}"
+    end
 
     @out.puts "#{app.name} on #{device}: #{line}"
     true

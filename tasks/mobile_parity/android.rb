@@ -387,9 +387,9 @@ class MobileParity
     # log").
     def self.messages(log, tag, standard_error: true)
       entry = %r{\A([VDIWEF])/#{Regexp.escape(tag)} *: ?(.*)\z}
-      log.each_line(chomp: true).filter_map do |line|
+      log.b.each_line(chomp: true).filter_map do |line|
         priority, message = line.match(entry)&.captures
-        message if priority && (standard_error || priority != "W")
+        MobileParity.printed(message) if priority && (standard_error || priority != "W")
       end
     end
 

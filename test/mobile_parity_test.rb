@@ -712,4 +712,17 @@ class MobileParityTest < Minitest::Test
     assert_equal ["1)", "", "  indented", "core: Class#initialize is not defined FAILED", "RubySpec exited with status 1"],
       MobileParity::Android.messages(log, tag, standard_error: false)
   end
+
+  # The embedding API writes a NUL byte an app prints as 0xC0 0x80, so
+  # that the log keeps the rest of the line (runtime/mobile/output.c); a
+  # reader of the log, which then holds bytes that are not valid UTF-8,
+  # gives the line as the app printed it.
+  def test_the_logcat_reader_turns_the_logs_form_of_a_nul_byte_back
+    tag = "com.setdef.fledge.Hello"
+    log = "I/#{tag}: NUL: before\xC0\x80after\nI/#{tag}: \xC3\xA9\n"
+
+    assert_equal ["NUL: before\0after", "\u00e9"], MobileParity::Android.messages(log, tag)
+    assert_equal "NUL: before\0after", MobileParity.printed("NUL: before\xC0\x80after".b)
+    assert_equal "e\u0301 \u00c0", MobileParity.printed("e\u0301 \u00c0")
+  end
 end

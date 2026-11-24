@@ -23,7 +23,7 @@ class VisualCRuntimeTest < Minitest::Test
   end
 
   def teardown
-    FileUtils.rm_rf(@system32)
+    FileUtils.rm_rf(@system32) if @system32
   end
 
   def runtime(names)

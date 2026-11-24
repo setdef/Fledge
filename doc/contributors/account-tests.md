@@ -14,7 +14,7 @@ This is your working checklist: every test that only your Apple, Microsoft, Goog
 2. Run it. Compare what you see with **Passing**. When it differs, keep the output: it is the finding. Send agents that output, and never a key, password, or token (the walk-through's outputs hold none).
 3. Tell an agent the result, or edit **Status** yourself. An agent then records it where the finding belongs (`doc/contributors/design/signing.md`, Plan 003, the README's line on what is untested) and updates this page in the same commit.
 
-**You decide which of these block 1.0.0.** Every entry says "not decided", because you have said you may choose later (decisions, 2026-11-08), and until you do, no entry is a requirement: you said on question issue #64 that none is a blocker until there is a 0.X.Y release candidate you can test with. When you have tested on it, change an entry's "Blocks 1.0.0?" to yes or no; agents then change the "1.0" story in Plan 003 and `doc/contributors/releasing-1.0.md` to match.
+**You decide which of these block 1.0.0.** Every entry says "not decided", because the choice is made later (decisions, 2026-11-08), and until it is, no entry is a requirement: none is a blocker until there is a 0.X.Y release candidate to test with. When you have tested on it, change an entry's "Blocks 1.0.0?" to yes or no; agents then change the "1.0" story in Plan 003 and `doc/contributors/releasing-1.0.md` to match.
 
 **Dot Popper and the stores.** Dot Popper should wait for Lota 0.3.0 before going to a store. That applies to IOS-2, IOS-3, AND-1, AND-2, and WIN-5 below if you submit Dot Popper itself. Fledge's own example apps can stand in for the tests that prove Fledge's part, since a store's review of the packaging does not depend on the game.
 
@@ -140,7 +140,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 
 #### IOS-2: TestFlight installs the build on a device
 
-- **Proves:** a build that passed IOS-1 installs and runs on a phone or tablet through Apple's own channel, not Xcode's Run. Your iPad Pro and iPhone 12 mini already ran Fledge apps with a free Personal Team (proven, not in this list).
+- **Proves:** a build that passed IOS-1 installs and runs on a phone or tablet through Apple's own channel, not Xcode's Run. An iPad and an iPhone already ran Fledge apps with a free Personal Team (proven, not in this list).
 - **Needs:** IOS-1 passed, and a device signed in to TestFlight.
 - **Steps:** App Store Connect's TestFlight page for the build; `doc/phones.md` has no steps for it.
 - **Passing:** the app installs from TestFlight and runs as it did from Xcode.
@@ -181,7 +181,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 - **Proves:** Play accepts the signed `.aab` that `./gradlew bundleRelease` makes, including the 16 KB alignment and the stored `fledge.zip` that CI checks with bundletool (`doc/contributors/design/phone-projects.md`, "The Android App Bundle check").
 - **Needs:** a Google Play Console developer account, and an upload key made with `keytool`.
 - **Steps:** `doc/phones.md`, "Google Play". Upload to an internal testing track.
-- **Passing:** Play accepts the bundle with no error, and a device installs the app from the track and runs it. Your OnePlus Nord N30 5G is a device whose arm64-v8a libraries already ran Fledge's APKs, every phone example's debug APK among them on 2026-11-21 (proven, not in this list; `doc/contributors/device-test.md`, section 8).
+- **Passing:** Play accepts the bundle with no error, and a device installs the app from the track and runs it. An arm64-v8a phone already ran Fledge's APKs, every phone example's debug APK among them on 2026-11-21 (proven, not in this list; `doc/contributors/device-test.md`, section 8).
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
 
@@ -247,4 +247,4 @@ These need no account, but they need a person at a real desktop or device. Agent
 
 ## Not in this list: already proven
 
-A game on your iPad Pro and iPhone 12 mini with a free Personal Team, and on your OnePlus Nord N30 5G (`doc/contributors/device-test.md`, Plan 003). Every phone example, built from `trunk` at `88205410`, on your Nord N30 5G with Android 14 on 2026-11-21, with the C++ crossing check of `test/integration/mobile_extension_symbols_test.rb`, and on your iPhone 12 mini with iOS 27.0 the same night, signed with your Personal Team, `test/fixtures/ffi_library_phone` among them, so a device's code signing and library validation load the frameworks Fledge makes of a gem's libraries for ffi (`device-test.md`, section 8). Five of the iPhone's apps ran under `com.setdef.fledge.Hello`, since Xcode on your Mac had no account signed in to make their own App IDs; once you sign in, Run makes them. A game on a real Windows 11 PC: you installed, played, reinstalled, and uninstalled Dot Popper 0.8.1, built with Fledge v0.5.0, on 2026-11-05 (setdef/dot_popper, `doc/playtests/2026-11-05-windows.md`); Windows 11 is the oldest Windows Fledge names (`doc/contributors/design/releases.md`, "Platform floors"), so no test on Windows 10 is wanted. The playtest of `test/fixtures/sdl_phone` in `device-test.md` needs no paid account.
+A game on an iPad and an iPhone with a free Personal Team, and on an arm64-v8a Android phone (`doc/contributors/device-test.md`, Plan 003). Every phone example, built from `trunk` at `88205410`, on an arm64-v8a phone with Android 14 on 2026-11-21, with the C++ crossing check of `test/integration/mobile_extension_symbols_test.rb`, and on an iPhone with iOS 27.0 the same night, signed with a Personal Team, `test/fixtures/ffi_library_phone` among them, so a device's code signing and library validation load the frameworks Fledge makes of a gem's libraries for ffi (`device-test.md`, section 8). Five of the iPhone's apps ran under `com.setdef.fledge.Hello`, since Xcode on that Mac had no account signed in to make their own App IDs; with an account signed in, Run makes them. A game on a real Windows 11 PC: Dot Popper 0.8.1 was installed, played, reinstalled, and uninstalled, built with Fledge v0.5.0, on 2026-11-05 (setdef/dot_popper, `doc/playtests/2026-11-05-windows.md`); Windows 11 is the oldest Windows Fledge names (`doc/contributors/design/releases.md`, "Platform floors"), so no test on Windows 10 is wanted. The playtest of `test/fixtures/sdl_phone` in `device-test.md` needs no paid account.

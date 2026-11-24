@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-> Findings of 2026-11-24 on a way to close the C locale difference that `2026-11-13-c-locale.md` and `2026-11-24-c-locale-elsewhere.md` did not weigh: set a UTF-8 locale in the environment before Ruby boots, in place of coercing it inside the process. Requested: written by an agent and not reviewed line by line. They add measurements for question #72; they decide nothing.
+> Findings of 2026-11-24 on a way to close the C locale difference that `2026-11-13-c-locale.md` and `2026-11-24-c-locale-elsewhere.md` did not weigh: set a UTF-8 locale in the environment before Ruby boots, in place of coercing it inside the process. Requested: written by an agent and not reviewed line by line. They add measurements for question #115; they decide nothing.
 
 # The C locale: setting the environment instead of coercing
 

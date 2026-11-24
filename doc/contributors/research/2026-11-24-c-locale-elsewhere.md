@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # The C locale elsewhere: what packagers and Rubies do
 
-Fledge's launcher makes Ruby use UTF-8 where `ruby main.rb` would use US-ASCII (`doc/differences_from_ruby.md`, "The locale"). Question #72 asks whether to keep that difference. This note reads how others meet the same start: a program that runs with no `LANG` or `LC_*`, or with `LANG=C`, as a double-click, a service manager, or a phone gives it.
+Fledge's launcher makes Ruby use UTF-8 where `ruby main.rb` would use US-ASCII (`doc/differences_from_ruby.md`, "The locale"). Question #115 asks whether to keep that difference. This note reads how others meet the same start: a program that runs with no `LANG` or `LC_*`, or with `LANG=C`, as a double-click, a service manager, or a phone gives it.
 
 Every file below was read through GitHub's API on 2026-11-24, at the commit named beside it. Nothing was run: these are readings of source, not measurements. Where a search found nothing, the note says "no hit", which shows only that the search found nothing, and not that the code has none. Redmine (`bugs.ruby-lang.org`), Python's documentation site, and graalvm.org could not be fetched; what a note below says of them comes from a file in a repository, or from `2026-11-13-c-locale.md`.
 

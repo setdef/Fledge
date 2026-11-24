@@ -61,7 +61,7 @@ Sources read: `runtime/launcher/unix.c` (header comment, `find_app_folder`, `bui
 - **Linux** (`linux.c`): `realpath("/proc/self/exe")`. The comment: the kernel's link names the file the process runs "whatever argv[0] says, whether the launcher was found on PATH, run through a symlink, or run by a relative path." I did not run this: this computer is a Mac.
 - **Windows** (`windows.c` lines 237 to 252, `own_path`): `GetModuleFileNameW(NULL, ...)`; no `GetFinalPathNameByHandle`, no reparse-point handling anywhere in the file (grep for `GetFinalPathName`, `REPARSE`, `symlink` finds nothing). I searched for whether `GetModuleFileName` returns a symlink's own path or its target; the Microsoft page (`learn.microsoft.com/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamew`, via a search result) does not say. **(guess)**: it returns the path the process was started through, the link. I could not test on Windows.
 
-Runs on this Mac, `examples/hello` built with the current build, unpacked in the scratchpad (`/private/tmp/claude-501/-Users-kerrick-Developer-fledge/d6d0d1bf-ad31-416a-b16b-83cf355da34c/scratchpad/x`, `exp1.sh`, `exp2.sh`, `exp3.sh`):
+Runs on this Mac, `examples/hello` built with the current build, unpacked in the scratchpad (a scratch folder outside the checkout, `exp1.sh`, `exp2.sh`, `exp3.sh`):
 
 | Case | Style it imitates | Result |
 | --- | --- | --- |

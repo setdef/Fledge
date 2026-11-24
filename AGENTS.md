@@ -21,7 +21,7 @@ The repository keeps no running account of the project's state (decisions, 2026-
 - `CONTRIBUTING.md`: setup, the tests, checking a change before and after its push, and reading CI.
 - `doc/contributors/decisions.md`: the maintainer's words that shaped Fledge up to now. His replies on `question` issues are his words too, and stay on those issues.
 - The milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left, each issue written so that an agent can start from it. `doc/contributors/plan/003.md`, the plan of record, holds the stories and the direction behind them.
-- `doc/contributors/design/`: how each part works, and why. `architecture.md` is the overview and indexes the few ADRs; `releases.md` says how a release is made, and `license-audit.md` how the license policy is enforced.
+- `doc/contributors/design/`: how each part works, and why. `architecture.md` is the overview, indexes the few ADRs, and says when one is written and how it changes; `releases.md` says how a release is made, and `license-audit.md` how the license policy is enforced.
 - `doc/contributors/documentation_style.md`: how to write prose, RDoc, and the READMEs.
 
 ## Design precedence
@@ -46,7 +46,6 @@ The repository keeps no running account of the project's state (decisions, 2026-
 
 - Proceed through the plan of record without checking in with the maintainer. Decide what is the agents' to decide (Questions, below), record it, and go on. Come back only when truly blocked.
 - No change leaves a design document false, or a fact an ADR cites as proof (a test, an example, a path): correct it in the same change. Code that falls short of an ADR on purpose is a defect, which its design document states.
-- An ADR is rare: write one only when you can name the architecturally significant requirement the decision resolves and what it would cost to undo. Everything else goes in the design document for its subject.
 - Work trunk-based, as trunkbaseddevelopment.com describes (decisions, 2026-11-12): small commits pushed straight to `trunk`, no long-lived or sideways branches, never push-and-poll, and a red `trunk` reverted at once. CONTRIBUTING.md, "Before a push" and "After a push", says how.
 - Leave existing `spike/*`, `wip/*`, and `experiment/*` branches alone, and delete no branch.
 - A commit that fixes an issue ends its body with "Fixes #N". File a defect you find, or work the candidate needs, as an issue in the milestone: a title that states it as a plain sentence, and the evidence you hold (the command, its output, the conditions), not where the fix might be. Agents may comment on, edit, and close the project's issues.
@@ -76,7 +75,7 @@ The repository keeps no running account of the project's state (decisions, 2026-
 
 Everything in Fledge is *requested*: an agent built it with little or no review from the maintainer, as against *written* by his hand or *wrought* with his review of every change (decisions, 2026-11-02, later again). That holds for ADRs, plans, this file, the README, the code, the tests, and the workflows. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass. Every commit carries a `Provenance: requested` trailer.
 
-The maintainer's words are in two places. `doc/contributors/decisions.md` holds, verbatim and dated, his decisions from before questions moved to issues, only those that shape what Fledge is or does; it takes no copy of what he says on an issue, and corrections, wording changes, and asides go into the document they touch. His reply on a `question` issue is the record of that answer, and stays there. A sentence he quotes with `>` is part of his words, kept inside the quotation exactly as he typed it, above his answer; an agent's own account of the context is kept apart from it and adds nothing to what he was shown. Everything else, this file included, was written by agents, who change it as long as it stays true to his words; an accepted ADR is never rewritten, only replaced or deleted.
+The maintainer's words are in two places. `doc/contributors/decisions.md` holds, verbatim and dated, his decisions from before questions moved to issues, only those that shape what Fledge is or does; it takes no copy of what he says on an issue, and corrections, wording changes, and asides go into the document they touch. His reply on a `question` issue is the record of that answer, and stays there. A sentence he quotes with `>` is part of his words, kept inside the quotation exactly as he typed it, above his answer; an agent's own account of the context is kept apart from it and adds nothing to what he was shown. Everything else, this file included, was written by agents, who change it as long as it stays true to his words.
 
 ## Questions
 

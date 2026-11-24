@@ -51,7 +51,7 @@ Two more rules shape every part. Code is a liability (decisions, 2026-10-28): Fl
 
 ## Architecture Decision Records
 
-An ADR in `doc/contributors/adr/` records one decision that changed what Fledge is, and would cost much to undo: its context, the options weighed, the choice, and what it costs. Such decisions are rare: Fledge has the seven below. Every other choice, with its reasons, the options weighed, and its prior art, is recorded in the design document for its subject. Numbers are never reused, so the list has gaps.
+An ADR in `doc/contributors/adr/` records one decision that changed what Fledge is, and would cost much to undo: its context, the options weighed, the choice, and what it costs. Such decisions are rare: Fledge has the seven below. Write one only when you can name the architecturally significant requirement the decision resolves and what it would cost to undo. Every other choice, with its reasons, the options weighed, and its prior art, is recorded in the design document for its subject. An accepted ADR is never rewritten, only replaced by a new one or deleted once it no longer passes. Numbers are never reused, so the list has gaps.
 
 Dated records, such as finished plans and research notes, cite ADRs by number and section as they stood on their dates; git keeps those versions. Everything else cites only an ADR that `doc/contributors/adr/` holds, and `test/adr_citations_test.rb` fails on any other, so deleting an ADR moves each of its citations to the design-document section that took its reasons.
 

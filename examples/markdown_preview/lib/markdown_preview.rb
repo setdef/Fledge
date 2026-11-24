@@ -15,7 +15,7 @@ require_relative "markdown_preview/page"
 # double-click on a Markdown file starts, and bin/md2html, which a
 # terminal runs.
 module MarkdownPreview
-  # The HTML of +markdown+, read as GitHub's Markdown.
+  # The HTML of +markdown+, read as GitHub-Flavored Markdown, the dialect kramdown's GFM parser reads.
   def self.to_html(markdown)
     Kramdown::Document.new(markdown, input: "GFM").to_html
   end

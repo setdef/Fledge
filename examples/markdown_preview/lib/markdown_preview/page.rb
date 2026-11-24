@@ -13,16 +13,16 @@ module MarkdownPreview
   # written.
   module Page
     # The page's style: a column of text as wide as a book's, code on a
-    # grey ground, and tables ruled, as on GitHub.
+    # tinted ground, and tables ruled.
     STYLE = <<~CSS
-      body { font: 16px/1.5 system-ui, sans-serif; max-width: 46em; margin: 2em auto; padding: 0 1em; color: #1f2328; }
-      pre, code { font-family: ui-monospace, monospace; background: #f6f8fa; border-radius: 4px; }
+      body { font: 16px/1.5 system-ui, sans-serif; max-width: 46em; margin: 2em auto; padding: 0 1em; color: #2b2a33; }
+      pre, code { font-family: ui-monospace, monospace; background: #efeef4; border-radius: 4px; }
       pre { padding: 1em; overflow: auto; }
       code { padding: 0.1em 0.3em; }
       pre code { padding: 0; }
       table { border-collapse: collapse; }
-      th, td { border: 1px solid #d1d9e0; padding: 0.3em 0.8em; }
-      blockquote { margin-left: 0; padding-left: 1em; border-left: 4px solid #d1d9e0; color: #59636e; }
+      th, td { border: 1px solid #c9c6d6; padding: 0.3em 0.8em; }
+      blockquote { margin-left: 0; padding-left: 1em; border-left: 4px solid #c9c6d6; color: #615d75; }
       img { max-width: 100%; }
     CSS
 

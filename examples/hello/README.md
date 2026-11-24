@@ -39,7 +39,7 @@ The line names `RUBY_VERSION` and `RUBY_PLATFORM`, so yours names your Ruby and 
 
 ## Build it with Fledge
 
-Install Fledge as the README's [Installation](../../README.md#installation) says, in a `Gemfile` of a folder of its own outside this one, such as `~/fledge`, and run `bundle install` there. Hello has no `Gemfile` to add Fledge to, so from that folder, build Hello by its path. Here Fledge's repository is in `~/Fledge`, and the build is on a Mac with Apple silicon:
+Install Fledge as the README's [Installation](../../README.md#installation) says, in a `Gemfile` of a folder of its own outside this one, such as `~/fledge-builder`, and run `bundle install` there. Hello has no `Gemfile` to add Fledge to, so from that folder, build Hello by its path. Here Fledge's repository is in `~/Fledge`, and the build is on a Mac with Apple silicon:
 
 <!-- SPDX-SnippetBegin -->
 <!--

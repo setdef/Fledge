@@ -30,7 +30,22 @@ $ bundle exec ruby main.rb
 ```
 <!-- SPDX-SnippetEnd -->
 
-Drop prints where it keeps the files, an address for each of this computer's private addresses, and the password, which is new each time it starts. Open the address on another device, sign in with any user name and that password, and send a file. Press Ctrl-C to stop.
+Drop prints where it keeps the files, an address for each of this computer's private addresses, and the password, which is new each time it starts. Open the address on another device, sign in with any user name and that password, and send a file. Press Ctrl-C to stop. With `-o 127.0.0.1`, which keeps Drop to this computer, it prints one address:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```console
+$ bundle exec ruby main.rb -o 127.0.0.1
+Drop is sharing /Users/you/Drop
+On a phone or computer on this network, open
+  http://127.0.0.1:4567/
+and sign in with the password 4kmwappb (any user name).
+Press Ctrl-C to stop.
+```
+<!-- SPDX-SnippetEnd -->
 
 Drop takes Sinatra's options: `-p PORT` for another port than 4567, Sinatra's, and `-o 127.0.0.1` to keep it to this computer.
 
@@ -39,7 +54,7 @@ Drop takes Sinatra's options: `-p PORT` for another port than 4567, Sinatra's, a
 
 ## Build it with Fledge
 
-Install Fledge as the README's [Installation](../../README.md#installation) says, in a `Gemfile` of a folder of its own outside this one, such as `~/fledge`, and run `bundle install` there. Then, from that folder, build Drop by its path. Here Fledge's repository is in `~/Fledge`, and the build is on a Mac with Apple silicon, with Xcode's command line tools for the compiler:
+Install Fledge as the README's [Installation](../../README.md#installation) says, in a `Gemfile` of a folder of its own outside this one, such as `~/fledge-builder`, and run `bundle install` there. Then, from that folder, build Drop by its path. Here Fledge's repository is in `~/Fledge`, and the build is on a Mac with Apple silicon, with Xcode's command line tools for the compiler:
 
 <!-- SPDX-SnippetBegin -->
 <!--

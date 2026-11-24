@@ -57,7 +57,7 @@ timer.clock   # => "24:59 left"
 
 ## Build it with Fledge
 
-Install Fledge as the README's [Installation](../../README.md#installation) says, in a `Gemfile` of a folder of its own outside this one, such as `~/fledge`, and run `bundle install` there. Then, from that folder, build Focus Timer by its path. Here Fledge's repository is in `~/Fledge`, and the build is on a Mac with Apple silicon:
+Install Fledge as the README's [Installation](../../README.md#installation) says, in a `Gemfile` of a folder of its own outside this one, such as `~/fledge-builder`, and run `bundle install` there. Then, from that folder, build Focus Timer by its path. Here Fledge's repository is in `~/Fledge`, and the build is on a Mac with Apple silicon:
 
 <!-- SPDX-SnippetBegin -->
 <!--

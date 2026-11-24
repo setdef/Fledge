@@ -85,7 +85,72 @@ class BuildCopTest < Minitest::Test
 
     assert_equal :revert, step.action
     assert_equal [commit("d"), 4], [step.commit, step.run]
-    assert_includes step.reason, "parent passed"
+    assert_includes step.reason, "of its parent"
+  end
+
+  # D's job failed twice and its parent C passed in a run of C on its
+  # bisect branch, which was run after trunk went red: the batch is at
+  # fault, and the revert is safe.
+  def test_a_revert_names_the_parents_run_that_passed
+    step = cop(ci_run("a", 1, "success"), ci_run("f", 2, "failure"), ci_run("c", 3, "success", branch: "bisect/c"), second_failure("d", 4))
+
+    assert_equal :revert, step.action
+    assert_includes step.reason, "run 3"
+  end
+
+  # B is the first bad commit and A, its parent, passed in trunk's green
+  # run, hours before the failure: a failure that outlasts a rerun, as a
+  # rate limit does, fails every run alike, so A is run again before B
+  # takes the blame.
+  def test_runs_the_parent_again_before_a_revert_when_only_trunks_old_run_vouches_for_it
+    step = cop(ci_run("e", 1, "success"), ci_run("f", 2, "failure"), second_failure("f", 4))
+
+    assert_equal :bisect, step.action
+    assert_equal commit("e"), step.commit
+    assert_includes step.reason, "parent"
+  end
+
+  def test_waits_for_the_run_of_the_parent_that_it_started
+    step = cop(ci_run("e", 1, "success"), ci_run("f", 2, "failure"), second_failure("f", 4), ci_run("e", 5, nil, branch: "bisect/e"))
+
+    assert_equal :wait, step.action
+    assert_includes step.reason, commit("e")
+  end
+
+  def test_reverts_when_the_parent_passes_when_run_again
+    step = cop(ci_run("e", 1, "success"), ci_run("f", 2, "failure"), second_failure("f", 4), ci_run("e", 5, "success", branch: "bisect/e"))
+
+    assert_equal :revert, step.action
+    assert_equal [commit("f"), 4], [step.commit, step.run]
+    assert_includes step.reason, "run 5"
+  end
+
+  # The parent fails the job too, so the cause is outside the batch:
+  # nothing is reverted, and the run that shows it is named.
+  def test_reverts_nothing_when_the_parent_fails_the_job_too
+    parent = ci_run("e", 5, "failure", branch: "bisect/e").merge("html_url" => "https://github.com/setdef/Fledge/actions/runs/5")
+    step = cop(ci_run("e", 1, "success"), ci_run("f", 2, "failure"), second_failure("f", 4), parent)
+
+    assert_equal :stuck, step.action
+    assert_includes step.reason, "https://github.com/setdef/Fledge/actions/runs/5"
+    assert_includes step.reason, "outside"
+  end
+
+  def test_a_cancelled_run_of_the_parent_is_started_again
+    step = cop(ci_run("e", 1, "success"), ci_run("f", 2, "failure"), second_failure("f", 4), ci_run("e", 5, "cancelled", branch: "bisect/e", jobs: []))
+
+    assert_equal [:bisect, commit("e")], [step.action, step.commit]
+  end
+
+  def test_reverts_nothing_when_the_run_of_the_parent_does_not_tell
+    untold = ci_run("e", 5, "failure", branch: "bisect/e", jobs: [job(FAILED, "skipped")])
+    step = cop(ci_run("e", 1, "success"), ci_run("f", 2, "failure"), second_failure("f", 4), untold)
+
+    assert_equal [:rerun, 5], [step.action, step.run]
+
+    step = cop(ci_run("e", 1, "success"), ci_run("f", 2, "failure"), second_failure("f", 4), untold.merge("run_attempt" => 2))
+
+    assert_equal :stuck, step.action
   end
 
   # A second attempt in which only another job failed again is no
@@ -144,6 +209,27 @@ class BuildCopTest < Minitest::Test
     assert_includes step.reason, "run 3"
   end
 
+  # A run that finished green has nothing to run again: GitHub refuses
+  # to run the failed jobs of a run that has none.
+  def test_a_middle_commits_green_run_without_the_job_is_left_for_a_person
+    untold = ci_run("c", 3, "success", branch: "bisect/c", jobs: [job("Gate", "success")])
+    step = cop(ci_run("a", 1, "success"), ci_run("f", 2, "failure"), untold)
+
+    assert_equal :stuck, step.action
+    assert_includes step.reason, "run 3"
+  end
+
+  # A pin commit's short run passes the gate and skips the rest, so it
+  # says nothing of the jobs a full run runs, and the batch it follows
+  # may hold an earlier red.
+  def test_a_short_run_that_skipped_jobs_is_not_a_green_run
+    short = ci_run("e", 4, "success", jobs: [job("Gate", "success"), job(FAILED, "skipped")])
+    step = cop(ci_run("a", 1, "success"), short, ci_run("f", 2, "failure"))
+
+    assert_equal :bisect, step.action
+    assert_equal commit("c"), step.commit
+  end
+
   # A run that is red only for jobs cancelled, such as one no runner
   # took, is runnerless.yml's.
   def test_nothing_to_do_for_a_run_red_only_for_cancelled_jobs
@@ -174,6 +260,12 @@ class BuildCopTest < Minitest::Test
   end
 
   private def commit(name) = name * 40
+
+  # The second attempt of +name+'s run on its bisect branch, in which
+  # +FAILED+ failed again.
+  private def second_failure(name, id)
+    ci_run(name, id, "failure", branch: "bisect/#{name}", attempt: 2, jobs: [job(FAILED, "failure", attempt: 2)])
+  end
 
   # A run of +name+'s commit: +conclusion+ nil for one still running.
   private def ci_run(name, id, conclusion, branch: "trunk", attempt: 1, event: "push", jobs: nil)

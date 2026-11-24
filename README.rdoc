@@ -7,6 +7,10 @@ setup program, a Linux AppImage, or a command they install with Homebrew or
 winget. For iPhone, iPad, and Android, Fledge writes the Xcode or Gradle
 project you build the app from.
 
+You write your app in Ruby, with whatever front end your framework
+uses, on every platform, phones included, and never the native code a
+platform needs: Fledge supplies every line of it.
+
 Your code runs as it does when you type <tt>ruby main.rb</tt> or
 <tt>bundle exec</tt>, with the same requires, globals, and standard
 library, and the gem versions in your +Gemfile.lock+, compiled gems

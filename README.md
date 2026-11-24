@@ -10,6 +10,8 @@ Ship a Ruby app to people who don't have Ruby.
 
 You wrote a Ruby program for people who have never installed Ruby and never will. Fledge turns it into an app they download and open like any other: a Mac app on a disk image, a Windows setup program, a Linux [AppImage](https://appimage.org/), or a command they install with [Homebrew](https://brew.sh/) or [winget](https://learn.microsoft.com/windows/package-manager/winget/). For iPhone, iPad, and Android, Fledge writes the [Xcode](https://developer.apple.com/xcode/) or [Gradle](https://gradle.org/) project you build the app from.
 
+You write your app in Ruby, with whatever front end your framework uses, on every platform, phones included, and never the native code a platform needs: Fledge supplies every line of it.
+
 Your code runs as it does when you type `ruby main.rb` or [`bundle exec`](https://bundler.io/), with the same requires, globals, and standard library, and the gem versions in your `Gemfile.lock`, compiled gems included. If your users happen to have Ruby, your app ignores it, and its settings.
 
 **Quick links:** [Guides](#documentation) • [Examples](examples) • [Changelog](CHANGELOG.md) • [Releases](https://github.com/setdef/Fledge/releases) • [Issues](https://github.com/setdef/Fledge/issues)

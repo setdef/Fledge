@@ -20,6 +20,7 @@ DEPENDENCIES
   lota (= 0.8.0)
 
 CHECKSUMS
+  bundler (4.1.0.beta2) sha256=ffd80c244e3c080cbc403b194e7b386668c69275561f81b7a801f08772a6e2d6
   lota (0.8.0) sha256=d09ec4ac7db98bebd12a26b235bad4ed7d13dd6b158b65899dd7e5d579ed23b3
   lota (0.8.0-aarch64-linux-gnu) sha256=72d73704b55040533d645f9fa72004f99a25e19d35af7faf3fdec2570c32d572
   lota (0.8.0-aarch64-mingw-ucrt) sha256=136f1d7f5942e2887d8aeaef17dfdbbb6bd23618000411bd6dcbecc88e649d63

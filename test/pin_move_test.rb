@@ -934,14 +934,32 @@ class PinMoveTest < Minitest::Test
   # files above, only a file runtime/upstreams.yml gives the move (also),
   # or says names the version as a fact about that version (named), may.
   def test_a_movable_pin_is_named_only_where_the_move_rewrites_it
-    named = movable_parts.flat_map do |name, entry, version|
-      words = Array(entry["names"] || name).map(&:downcase)
-      left = RECORDS + entry.fetch("also", {}).keys + entry.fetch("named", [])
-      found = IO.popen(["git", "-C", ROOT, "grep", "-n", "-I", "-w", "-F", "-e", version, "--", ".", *left.map { |path| ":!#{path}" }], &:read)
-      found.lines.select { |line| words.any? { |word| line.downcase.include?(word) } }.map { |line| "#{name} #{version}: #{line[0, 150]}" }
-    end
+    named = movable_parts.flat_map { |name, entry, version| named_where_a_move_leaves_it(name, entry, version) }
 
     assert_empty named, "a movable pin's version is named where a move leaves it"
+  end
+
+  # That test reads the tree it runs in, and a move runs it on the tree
+  # it moved, where the pin holds the new version. A file that names
+  # that version for another purpose, by chance (mise.rust.toml's LLVM,
+  # for bindgen's libclang, when llvm-readobj moved to that release, and
+  # runtimes.md's table of zlib's newest release, when zlib's pin moved
+  # to it), failed the move's proof, with no person there to list it. So
+  # those files are listed, and this holds the two versions that failed.
+  def test_a_pin_may_move_to_a_version_the_checkout_names_for_itself
+    entries = YAML.safe_load_file(File.join(ROOT, "runtime/upstreams.yml")).fetch("watched")
+    { "llvm-readobj" => "23.1.6", "zlib" => "1.4" }.each do |name, version|
+      assert_empty named_where_a_move_leaves_it(name, entries.fetch(name), version), "#{name} #{version}"
+    end
+  end
+
+  # The lines outside the files a move rewrites that name +version+
+  # beside one of the names of the pin +name+, described by +entry+.
+  def named_where_a_move_leaves_it(name, entry, version)
+    words = Array(entry["names"] || name).map(&:downcase)
+    left = RECORDS + entry.fetch("also", {}).keys + entry.fetch("named", [])
+    found = IO.popen(["git", "-C", ROOT, "grep", "-n", "-I", "-w", "-F", "-e", version, "--", ".", *left.map { |path| ":!#{path}" }], &:read)
+    found.lines.select { |line| words.any? { |word| line.downcase.include?(word) } }.map { |line| "#{name} #{version}: #{line[0, 150]}" }
   end
 
   def test_the_fetch_hashes_a_download_without_keeping_it

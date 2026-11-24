@@ -100,8 +100,9 @@
 #   the records of what changed (CHANGELOG.md, the research and plans
 #   kept as they were on their day), and the files of named.
 # named: files that name the version for itself and not as the pin: a
-#   fact about that release, a source cited at it, a test's own data, or
-#   another build's copy of the same input (mise.toml's MSYS2 zlib). A
+#   fact about that release, a source cited at it, a test's own data,
+#   another build's copy of the same input (mise.toml's MSYS2 zlib), or
+#   the same release used for another purpose (mise.rust.toml's LLVM). A
 #   move leaves them as they are, and they stay true.
 #
 # A version that Ruby's Gem::Version calls a prerelease (one with a
@@ -309,6 +310,7 @@ watched:
     names: [llvm-readobj, LLVM]
     member: path
     licenses: [llvm-readobj]
+    named: [doc/contributors/design/gems.md, mise.rust.toml, test/contributor_tools_test.rb]
     linked:
       url: https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-{version}/llvm/utils/release/build_llvm_release.bat
       zlib-llvm-readobj: '^set zlib_version=(?<version>\S+)'
@@ -354,7 +356,7 @@ watched:
     tag: '\Av(?<version>\d+\.\d+(?:\.\d+)*)\z'
     line: 1
     licenses: [zlib-musl]
-    named: [mise.toml]
+    named: [doc/contributors/design/runtimes.md, mise.toml]
   # curl's page of Mozilla's CA certificates, which links every dated
   # extract it has published.
   ca-certificates:

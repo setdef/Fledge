@@ -61,6 +61,19 @@ JNI.loop
 
 Both bridges use `fiddle`: if your app has a `Gemfile`, add `gem "fiddle"` to it. [`examples/basket`](../examples/basket) is a shopping list drawn this way on both phones, its screen for each in a file of its own. The bridges cannot yet pass a struct such as `CGRect`, make an Objective-C block, or subclass a Java class such as `View`; lay a screen out with Auto Layout's anchors on iOS, and implement listeners' interfaces on Android. Touch the widgets only from the main thread, as in any phone app: a Ruby thread of your own posts its work there.
 
+## Test your app on a Simulator or emulator
+
+Test your app's logic with Minitest or RSpec on your own computer, as any Ruby. The code that drives a phone's widgets runs only inside the app, so test it there: write a test program that runs your suite, such as `test/phone.rb`, and run it in the app with `fledge test`:
+
+```sh
+bundle exec fledge test ios test/phone.rb
+bundle exec fledge test android test/phone.rb
+```
+
+`fledge test` builds the app as `fledge build` does, with your test program in place of its own, builds it with Xcode for the Simulator or with Gradle as a debug APK, runs it on the one booted Simulator or the emulator or phone `adb` answers for, and prints what your program prints. It exits with your program's exit status, as `ruby test/phone.rb` would, so a failing suite fails a CI step. Boot a Simulator first (`open -a Simulator`), or start an emulator, and name one of several with `--device`, a Simulator's UDID or an `adb` serial number. The project goes to `dist/test`, beside your own, and the app it installs has your app's identifier, so it replaces your app on that Simulator or emulator.
+
+Your test program runs as your app's would: in an app of `kind: windowed`, on the main thread, where it can make the phone's widgets and check them. Let it end when the suite is done, as Minitest's `autorun` does; a program that hands the main thread to UIKit or Android never reports a status. Each phone's system log carries the output, and Android's can drop a line when an app logs thousands at once, but never the status line `fledge test` reads the result from. [`examples/basket/test`](../examples/basket/test) tests Basket's list and its screen this way.
+
 ## Gems with extensions
 
 Fledge compiles a gem's C, C++, or Rust extension for the phone: with Xcode on iOS, and with the [Android NDK](https://developer.android.com/ndk) on Android. Set `ANDROID_NDK_ROOT`, or install the NDK in the SDK's `ndk/` folder.

@@ -27,6 +27,7 @@ class CLITest < Minitest::Test
   USAGE = "Usage: fledge build [OPTIONS] [PATH]\n" \
     "       fledge build --from APP [OPTIONS] [PATH]\n" \
     "       fledge build ios|android [OPTIONS] [PATH]\n" \
+    "       fledge test ios|android [OPTIONS] PROGRAM\n" \
     "       fledge --help\n" \
     "       fledge --version\n" \
     "Try 'fledge --help'.\n"
@@ -114,7 +115,7 @@ class CLITest < Minitest::Test
   end
 
   def test_the_short_usage_is_the_help_headers_synopsis
-    assert_equal "Usage: fledge build [OPTIONS] [PATH]\n       fledge build --from APP [OPTIONS] [PATH]\n       fledge build ios|android [OPTIONS] [PATH]\n       fledge --help\n" \
+    assert_equal "Usage: fledge build [OPTIONS] [PATH]\n       fledge build --from APP [OPTIONS] [PATH]\n       fledge build ios|android [OPTIONS] [PATH]\n       fledge test ios|android [OPTIONS] PROGRAM\n       fledge --help\n" \
       "       fledge --version\n",
       Fledge::CLI.new(help_path: EXE).usage
   end
@@ -188,7 +189,7 @@ class CLITest < Minitest::Test
   end
 
   def test_the_command_table_names_every_command
-    assert_equal ["build"], Fledge::CLI::COMMANDS.keys
+    assert_equal %w[build test], Fledge::CLI::COMMANDS.keys
     assert_predicate Fledge::CLI::COMMANDS, :frozen?
   end
 

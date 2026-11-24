@@ -15,6 +15,7 @@
 #     fledge build [OPTIONS] [PATH]
 #     fledge build --from APP [OPTIONS] [PATH]
 #     fledge build ios|android [OPTIONS] [PATH]
+#     fledge test ios|android [OPTIONS] PROGRAM
 #     fledge --help
 #     fledge --version
 #
@@ -155,9 +156,30 @@
 #                        ios and android, is read as one, and so is
 #                        each platform's word a later release adds;
 #                        write ./NAME for a folder of that name.
+#     test ios PROGRAM   Run the test program PROGRAM, such as
+#     test android PROGRAM
+#                        test/phone.rb, inside the phone's app, where
+#                        the phone's own widgets are: write the app's
+#                        project as build ios or build android does,
+#                        with PROGRAM in place of the app's program,
+#                        build it for the Simulator with xcodebuild, or
+#                        its debug APK with Gradle, install it on the
+#                        one booted Simulator, or the emulator or phone
+#                        adb answers for, or on --device, and run it.
+#                        Prints what PROGRAM prints, from the system
+#                        log, and exits with
+#                        its exit status once the app logs it, as
+#                        ruby PROGRAM would; 1 when the app could not
+#                        be built or run. PROGRAM is yours, such as
+#                        Minitest's or RSpec's runner, and runs as
+#                        the app's program does.
 #
 # OPTIONS
-#     -o, --out DIR      Write builds to DIR (default: dist)
+#     -o, --out DIR      Write builds to DIR (default: dist, and
+#                        dist/test for test)
+#     -d, --device ID    The Simulator, by its UDID, or the Android
+#                        emulator or phone, by its adb serial number,
+#                        that test runs on; test only
 #     --from APP         Build from the app in the folder APP (see
 #                        build --from); not for a phone
 #     --sign IDENTITY    Sign the app with your own identity: on

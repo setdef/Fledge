@@ -724,11 +724,12 @@ jobs:
   # that the apps and the tests, each about a quarter of an hour or more
   # on the iOS chain that is the full run's longest path, run at once and
   # not one after the other (doc/contributors/design/releases.md, "The
-  # full run's longest path"), in three legs, so that no step runs near
+  # full run's longest path"), in four legs, so that no step runs near
   # its limit ("The iOS integration tests' legs", there): the two tests
   # that build an app with Xcode and run it on a Simulator of its own for
-  # about six minutes each, one leg apiece, and every other test in the
-  # third. Each leg has the iOS runtime, the
+  # about six minutes each, one leg apiece, fledge test's, which builds
+  # and runs three, in a third, and every other test in the fourth.
+  # Each leg has the iOS runtime, the
   # pinned Xcode, XcodeGen, CMake, and Rust's iOS targets that runs
   # them: test/integration/mobile_extensions_build_test.rb's iOS tests,
   # the iOS runtime's in test/integration/mobile_default_gems_test.rb, the
@@ -738,7 +739,9 @@ jobs:
   # tests of test/integration/mobile_separation_names_test.rb, which read
   # names with the pinned Xcode's nm from objects that carry bitcode, and
   # the iOS app of test/integration/mobile_ffi_extconf_test.rb, a library
-  # for ffi an extconf.rb builds, as sassc's builds libsass.
+  # for ffi an extconf.rb builds, as sassc's builds libsass, and
+  # test/integration/phone_test_command_test.rb, which runs fledge test
+  # three times on a Simulator of its own, in a leg of its own.
   # FLEDGE_REQUIRE_IOS fails a test that would skip for want of any of
   # these, so a green job means every one of them ran.
   mobile-tests-ios:
@@ -758,6 +761,8 @@ jobs:
             tests: test/integration/mobile_built_files_test.rb
           - leg: ffi extconf
             tests: test/integration/mobile_ffi_extconf_test.rb
+          - leg: fledge test
+            tests: test/integration/phone_test_command_test.rb
           - leg: the rest
             tests: test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_separation_names_test.rb
     steps:
@@ -871,8 +876,9 @@ jobs:
   # need no device once, before the emulator starts, and
   # test/integration/mobile_extension_symbols_test.rb,
   # test/integration/mobile_linked_symbols_test.rb,
-  # test/integration/mobile_built_files_test.rb, and
-  # test/integration/mobile_ffi_extconf_test.rb, whose apps Gradle
+  # test/integration/mobile_built_files_test.rb,
+  # test/integration/mobile_ffi_extconf_test.rb, and
+  # test/integration/phone_test_command_test.rb, whose apps Gradle
   # builds, on each emulator.
   # FLEDGE_REQUIRE_ANDROID fails a test that would skip for want of any
   # of these, so a green job means every one of them ran.
@@ -1046,7 +1052,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: |
             ruby tasks/mobile_parity.rb android
-            bundle exec rake test:integration TEST=test/integration/mobile_extension_symbols_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_built_files_test.rb,test/integration/mobile_ffi_extconf_test.rb
+            bundle exec rake test:integration TEST=test/integration/mobile_extension_symbols_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_built_files_test.rb,test/integration/mobile_ffi_extconf_test.rb,test/integration/phone_test_command_test.rb
 
       # A passing check keeps a logcat only of a parity probe launched
       # again for a report the log cut short (MobileParity::Android#check_launch).

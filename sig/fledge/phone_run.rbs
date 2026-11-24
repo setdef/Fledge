@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class PhoneRun
+    interface _Device
+      def name: () -> String
+
+      def logged: () -> Logged
+
+      def running?: () -> bool
+
+      def stop: () -> void
+    end
+
+    class Line < Data
+      attr_reader text: String
+      attr_reader error: bool
+
+      def self.new: (text: String, error: bool) -> instance
+    end
+
+    class Logged < Data
+      attr_reader lines: Array[Line]
+      attr_reader status: Integer?
+
+      def self.new: (lines: Array[Line], status: Integer?) -> instance
+    end
+
+    EXITED: String
+
+    @out: CLI::_Output
+    @err: CLI::_Output
+    @interval: Integer
+    @sleeper: ^(Integer) -> void
+
+    def self.status: (String name, String text) -> Integer?
+
+    def initialize: (out: CLI::_Output, err: CLI::_Output, ?interval: Integer, ?sleeper: ^(Integer) -> void) -> void
+
+    def follow: (_Device device) -> Integer
+
+    private def finish: (_Device device, Logged logged, Integer shown) -> Integer
+
+    private def show: (Array[Line] lines, Integer shown) -> Integer
+  end
+end

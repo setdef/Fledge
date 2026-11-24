@@ -68,6 +68,9 @@ module Basket
       # The navigation controller the screen's views are in.
       attr_reader :controller
 
+      # The text field a person types an item in.
+      attr_reader :field
+
       # The screen of +list+, a List.
       def initialize(list)
         @list = list

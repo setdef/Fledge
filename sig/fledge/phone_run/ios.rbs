@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class PhoneRun
+    class IOS
+      INSTALL: String
+      ALIVE: ^(Integer) -> bool
+
+      @name: String
+      @identifier: String
+      @udid: String
+      @alive: ^(Integer) -> bool
+      @clock: ^() -> Time
+      @pid: Integer
+      @since: String
+
+      def self.build: (String project, String name) -> String
+
+      def self.booted: (String listed) -> String
+
+      def self.read: (String ndjson, Integer pid, String name) -> Logged
+
+      private def self.entry: (String row) -> [Integer, String, String, String]?
+
+      attr_reader name: String
+
+      def initialize: (name: String, identifier: String, udid: String, ?alive: ^(Integer) -> bool, ?clock: ^() -> Time) -> void
+
+      def launch: (String bundle) -> void
+
+      def logged: () -> Logged
+
+      def running?: () -> bool
+
+      def stop: () -> void
+
+      private def simctl: (*String arguments) -> String
+    end
+  end
+end

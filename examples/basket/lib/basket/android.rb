@@ -41,6 +41,9 @@ module Basket
       # The activity whose screen this is.
       attr_reader :activity
 
+      # The text field a person types an item in.
+      attr_reader :field
+
       # Draws +list+, a List, on +activity+.
       def initialize(activity, list)
         @activity = activity

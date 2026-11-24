@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# The app whose test programs fledge test runs inside it, one that
+# passes and one that fails (test/integration/phone_test_command_test.rb).
+# It draws nothing of its own, so its Ruby runs on a thread of its own,
+# where Basket's runs on the main thread.
+name: PhoneTests
+identifier: com.setdef.fledge.PhoneTests

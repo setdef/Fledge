@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class PhoneRun
+    class Android
+      INSTALL: String
+      ACTIVITY: String
+      LINE: Regexp
+      NUL: String
+
+      @name: String
+      @identifier: String
+      @adb: Array[String]
+      @pid: String?
+
+      def self.build: (String project) -> String
+
+      def self.read: (String log, String tag, String name) -> Logged
+
+      def self.adb: (String? sdk) -> String
+
+      attr_reader name: String
+
+      def initialize: (name: String, identifier: String, adb: String, ?serial: String?) -> void
+
+      def launch: (String apk) -> void
+
+      def logged: () -> Logged
+
+      def running?: () -> bool
+
+      def stop: () -> void
+
+      private def adb: (*String arguments) -> String
+    end
+  end
+end

@@ -7,6 +7,7 @@
 
 require_relative "version"
 require_relative "cli/build"
+require_relative "cli/test"
 
 module Fledge
   # Runs the +fledge+ command line.
@@ -55,7 +56,7 @@ module Fledge
     # The commands +fledge+ runs, by name. Each is a class whose +new+
     # takes <tt>out:</tt> and <tt>err:</tt> and whose +call+ takes the
     # arguments after the command's name and returns an exit status.
-    COMMANDS = { "build" => Build }.freeze
+    COMMANDS = { "build" => Build, "test" => Test }.freeze
 
     # Creates a command line.
     #

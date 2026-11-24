@@ -598,6 +598,18 @@ class MobileParityTest < Minitest::Test
     end
   end
 
+  # Basket prints that it added the item a person typed and removed it,
+  # each a line the check requires, so that an app that shows its list
+  # and does nothing a person asks of it fails.
+  def test_every_other_line_an_app_must_print_is_required
+    app = MobileParity::APPS.find { |each| each.name == "Basket" }
+    parity = MobileParity.new(target: "x86_64-linux-android", work: Dir.tmpdir, out: StringIO.new)
+    both = ["Basket shows 0 items", "Basket added Milk", "Basket removed Milk"]
+    assert parity.check(app, MobileParity::Logged.new(entries: both, output: []), "an emulator")
+    error = assert_raises(RuntimeError) { parity.check(app, MobileParity::Logged.new(entries: both.first(2), output: []), "an emulator") }
+    assert_match(/no line matching .*Basket removed Milk/, error.message)
+  end
+
   # APPS=PATH,... picks the apps a run builds, to prove one alone.
   def test_only_the_apps_named_run_when_some_are
     assert_equal ["Hello"], MobileParity.apps("ios", only: "examples/hello").map(&:name)

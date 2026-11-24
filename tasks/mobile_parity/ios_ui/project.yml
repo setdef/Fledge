@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+#
+# XcodeGen's description of the mobile parity check's UI test
+# (tasks/mobile_parity/ios.rb, IOS#ui_tests): a UI testing bundle,
+# ListUITests/ListTest.m, that drives an app the check built and
+# launched, by its bundle identifier, so it names no target application
+# of its own.
+name: ListUITests
+options:
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  ListUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: ListUITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: org.setdef.fledge.ListUITests
+        ARCHS: arm64
+        CLANG_ENABLE_MODULES: YES
+        CLANG_ENABLE_OBJC_ARC: YES
+schemes:
+  ListUITests:
+    build:
+      targets:
+        ListUITests: [test]
+    test:
+      targets:
+        - ListUITests

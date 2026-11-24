@@ -69,14 +69,13 @@ class MobileParity
   # identifier its fledge.yml gives it, the line it must print, or nil
   # for the parity probe, whose report is compared instead, the phones
   # it runs on (default: both), whether it asks the check's HTTPS
-  # server (HTTPS; default: no), a second line it must print, if any
-  # (+also+), whether it stays open, as a real app does, so that its
-  # line, not its program's end, finishes its run (default: no), and an
-  # item a person adds once it shows its list (+adds+): the Android
-  # check types it into the app's field, presses Enter, and long-presses
-  # its row to remove it, and the
-  # iOS check puts it in the list's file before the launch, so that each
-  # app draws a row, not only an empty list.
+  # server (HTTPS; default: no), the other lines it must print, if any,
+  # a pattern or several (+also+), whether it stays open, as a real app
+  # does, so that its line, not its program's end, finishes its run
+  # (default: no), and an item a person adds once it shows its list, and
+  # then removes (+adds+): the Android check types it into the app's
+  # field, presses Enter, and long-presses its row, and the iOS check's
+  # UI test types it, presses Return, and swipes its row away.
   class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open, :adds)
     def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil, stays_open: false, adds: nil)
       super
@@ -134,7 +133,8 @@ class MobileParity
       phones: %w[android]),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
     App.new(path: "examples/basket", name: "Basket", identifier: "com.setdef.fledge.Basket",
-      prints: /\ABasket shows \d+ items?\z/, stays_open: true, adds: "Milk"),
+      prints: /\ABasket shows \d+ items?\z/, stays_open: true, adds: "Milk",
+      also: [/\ABasket added Milk\z/, /\ABasket removed Milk\z/]),
   ].freeze
 
   # The line the host app of every project fledge build writes logs when
@@ -381,8 +381,10 @@ class MobileParity
     line = entries.find { |entry| entry.match?(app.prints) }
     raise "#{app.name} on #{device} printed no line matching #{app.prints.source}:\n#{entries.join("\n")}" unless line
 
-    if app.also && entries.none? { |entry| entry.match?(app.also) }
-      raise "#{app.name} on #{device} printed no line matching #{app.also.inspect}:\n#{entries.map(&:inspect).join("\n")}"
+    Array(app.also).each do |also|
+      next if entries.any? { |entry| entry.match?(also) }
+
+      raise "#{app.name} on #{device} printed no line matching #{also.inspect}:\n#{entries.map(&:inspect).join("\n")}"
     end
 
     @out.puts "#{app.name} on #{device}: #{line}"

@@ -32,6 +32,12 @@ class MobileParity
     # RubySpec::JUSTIFIED name it.
     TARGET = "arm64-ios-simulator"
 
+    # The UI test that types an app's item and presses Return, then
+    # swipes its row away (ios_ui/ListUITests/ListTest.m): simctl gives
+    # an app no keys or touches, and XCTest, Apple's own UI testing,
+    # gives them as a person would.
+    UI_TESTS = File.join(__dir__, "ios_ui")
+
     # The C functions Apple requires a reason for in an app's privacy
     # manifest, by the category the manifest names them under, from
     # "Describing use of required reason API" (developer.apple.com, read
@@ -114,6 +120,7 @@ class MobileParity
         check_privacy(device, File.join(device, app.name))
       end
       apps = projects.to_h { |app, project| [app, build_app(app, project)] }
+      @ui_tests = build_ui_tests if apps.keys.any?(&:adds)
       parity = MobileParity.new(target: TARGET, work: @work, out: @out)
       HTTPS.serving(apps.keys) do |url|
         @https_url = url
@@ -213,7 +220,6 @@ class MobileParity
       # simctl gives an app the variables of its own environment that
       # begin SIMCTL_CHILD_, without the prefix.
       env = app.https ? { "SIMCTL_CHILD_#{HTTPS::VARIABLE}" => @https_url } : {}
-      seed(udid, app) if app.adds
       launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier, env:)
       pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
       deadline = Time.now + timeout
@@ -225,18 +231,43 @@ class MobileParity
 
         sleep 5
       end
+      add_and_delete(udid, app) if app.adds
       MobileParity.settled(interval: 5) { messages(udid, since, pid, app) }
         .tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
     end
 
-    # Puts the item +app+ adds in the list's file in the app's own
-    # Documents folder, as the app wrote it after a person added the
-    # item, so that its screen draws a row. The Simulator has no input
-    # to type with that a script can send.
-    private def seed(udid, app)
-      container = capture("xcrun", "simctl", "get_app_container", udid, app.identifier, "data").strip
-      FileUtils.mkdir_p(File.join(container, "Documents"))
-      File.write(File.join(container, "Documents", "basket.json"), JSON.generate([app.adds]))
+    # The UI test (UI_TESTS), its Xcode project written by XcodeGen and
+    # built for the Simulator once, for every app that adds an item and
+    # every simulator: the folder xcodebuild built it in.
+    private def build_ui_tests
+      project = File.join(@work, "ui-tests")
+      FileUtils.rm_rf(project)
+      FileUtils.cp_r(UI_TESTS, project)
+      system("xcodegen", "generate", "--quiet", "--spec", File.join(project, "project.yml"), "--project", project, exception: true)
+      derived = File.join(@work, "derived-ui-tests")
+      log = File.join(@work, "xcodebuild-ui-tests.log")
+      built = system("xcodebuild", "-project", File.join(project, "ListUITests.xcodeproj"), "-scheme", "ListUITests",
+        "-destination", "generic/platform=iOS Simulator", "-derivedDataPath", derived, "build-for-testing",
+        out: log, err: [:child, :out])
+      raise "xcodebuild failed for the UI test:\n#{File.readlines(log).last(60).join}" unless built
+
+      derived
+    end
+
+    # Does what a person does once +app+ shows its list on the simulator
+    # +udid+, with the UI test (UI_TESTS): types the item the app adds
+    # into its field, presses Return, waits for its row, and swipes the
+    # row left to delete it. Fails with the test's own words when the app
+    # does not do as a person expects, and prints what the test did.
+    private def add_and_delete(udid, app)
+      log = File.join(@work, "ui-test-#{udid}-#{app.identifier}.log")
+      env = { "TEST_RUNNER_FLEDGE_APP" => app.identifier, "TEST_RUNNER_FLEDGE_ITEM" => app.adds }
+      passed = system(env, "xcodebuild", "-project", File.join(@work, "ui-tests", "ListUITests.xcodeproj"), "-scheme", "ListUITests",
+        "-destination", "id=#{udid}", "-derivedDataPath", @ui_tests, "test-without-building", out: log, err: [:child, :out])
+      lines = File.readlines(log)
+      raise "#{app.name}'s UI test failed:\n#{lines.grep(/error|fail/i).last(20).join}\n#{lines.last(40).join}" unless passed
+
+      lines.grep(/\] (?:Typed|Tapped|Swiped) /).each { |line| @out.puts "#{app.name}: #{line[/(?:Typed|Tapped|Swiped) .*/]}" }
     end
 
     # The messages the process +pid+ logged in the app's subsystem since

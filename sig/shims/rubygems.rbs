@@ -2,7 +2,13 @@
 # SPDX-License-Identifier: MIT
 
 module Gem
+  class Requirement
+    def as_list: () -> Array[String]
+  end
+
   class BasicSpecification
+    attr_accessor loaded_from: String
+
     def full_name: () -> String
 
     def require_paths: () -> Array[String]
@@ -10,6 +16,8 @@ module Gem
 
   class Specification
     def self.load: (String file) -> Gem::Specification?
+
+    def self.from_yaml: (String yaml) -> Gem::Specification
 
     attr_accessor name: String
     attr_accessor version: Gem::Version
@@ -35,6 +43,8 @@ module Gem
   end
 
   class Dependency
+    def requirement: () -> Requirement
+
     def name: () -> String
 
     def type: () -> Symbol

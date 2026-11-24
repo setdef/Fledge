@@ -20,7 +20,7 @@ class AppTest < Minitest::Test
     FileUtils.rm_rf(@dir)
   end
 
-  def at(path, home: File.join(@dir, "home")) = Fledge::App.at(path, home:)
+  def at(path, home: File.join(@dir, "home")) = Fledge::App.at(path, home:, evaluation: IN_PROCESS_EVALUATION)
 
   def write(path, content = "")
     full = File.join(@dir, path)

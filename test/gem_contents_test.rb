@@ -25,6 +25,7 @@ class GemContentsTest < Minitest::Test
     Fledge::MacSigning::ENTITLEMENTS,
     Fledge::MobileProject::TEMPLATES,
     Fledge::NativeBuild::BINDGEN,
+    Fledge::Bundle::Evaluation::GEMFILE_DATA,
     File.join(ROOT, "lib", "fledge", "config.schema.json"),
   ].freeze
 
@@ -70,6 +71,7 @@ class GemContentsTest < Minitest::Test
     end
 
     assert_equal [
+      %(lib/fledge/bundle/evaluation.rb: GEMFILE_DATA = File.join(File.dirname(__FILE__), "gemfile_data.rb")),
       %(lib/fledge/linkage.rb: WINDOWS_DLLS = File.join(File.dirname(__FILE__), "linkage", "windows.yml")),
       %(lib/fledge/mac_signing.rb: ENTITLEMENTS = File.join(File.dirname(__FILE__), "templates", "macos", "entitlements.plist")),
       %(lib/fledge/mobile_project.rb: TEMPLATES = File.join(File.dirname(__FILE__), "templates")),

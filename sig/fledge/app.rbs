@@ -15,7 +15,7 @@ module Fledge
 
     def self.new: (root: String, name: String, gemfile: String?, config: Config, programs: Array[App::Program]) -> instance
 
-    def self.at: (String path, ?home: String) -> App
+    def self.at: (String path, ?home: String, ?evaluation: Bundle::_Evaluation) -> App
 
     private def self.listed: (String path, String full, String root, Config config, Gem::Specification? gemspec, String? gemfile) -> App
 
@@ -29,7 +29,7 @@ module Fledge
 
     private def self.same_folder?: (String one, String other) -> bool
 
-    private def self.gemspec_in: (String root) -> Gem::Specification?
+    private def self.gemspec_in: (String root, Bundle::_Evaluation evaluation) -> Gem::Specification?
 
     private def self.default_entry: (String path, String folder, String root, Gem::Specification? gemspec) -> String
 

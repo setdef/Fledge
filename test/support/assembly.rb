@@ -30,7 +30,7 @@ module AssemblyHelpers
 
   def assemble(dir, app_root, platform: LINUX, runtime: FakeRuntime.write(dir, platform), app_files: {}, files: [])
     out = File.join(dir, "dist")
-    Fledge::Assembly.new(app: Fledge::App.at(app_root), platform:, runtime:, out:, app_files:, files:).call
+    Fledge::Assembly.new(app: Fledge::App.at(app_root, evaluation: IN_PROCESS_EVALUATION), platform:, runtime:, out:, app_files:, files:).call
   end
 
   # What a build left in +dir+'s dist folder, but the cache directory

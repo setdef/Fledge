@@ -18,9 +18,9 @@ module Fledge
     # gemspec finds what the Gemfile defined (Bundler::Dsl#eval_gemfile,
     # whose +gemspec+ line calls Bundler.load_gemspec). The Gemfile and
     # gemspec are evaluated in a Ruby of its own, with none of the
-    # developer's Ruby settings (NativeBuild::SCRUBBED), since the
-    # process that asks may have loaded those files already, reading the
-    # Gemfile. Fledge::Bundle takes it as a collaborator, so a test of
+    # developer's Ruby settings (NativeBuild::SCRUBBED), so that it
+    # sees what loads afresh, with nothing the process that asks has
+    # loaded. Fledge::Bundle takes it as a collaborator, so a test of
     # something else can pass one that starts no Ruby.
     class GemspecLoads
       # What that Ruby runs, with the Gemfile's path and the gemspec's as

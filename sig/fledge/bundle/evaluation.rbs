@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class Bundle
+    class Evaluation
+      GEMFILE_DATA: String
+      SCRIPT: String
+
+      def definition: (String gemfile) -> Hash[String, data]
+
+      def gemspec: (String gemfile, String path) -> String?
+
+      private def run: (String gemfile, String command, ?String? path) -> data
+    end
+  end
+end

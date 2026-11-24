@@ -13,6 +13,9 @@ module Bundler
   class BundlerError < StandardError
   end
 
+  class GemfileError < BundlerError
+  end
+
   class Settings
     def temporary: [T] (Hash[Symbol, bool | Array[String]] update) { () -> T } -> T
 
@@ -27,7 +30,17 @@ module Bundler
   class Dsl
     def initialize: () -> void
 
-    def eval_gemfile: (String gemfile) -> void
+    def eval_gemfile: (String gemfile, ?String contents) -> void
+
+    def lockfile: (String file) -> void
+
+    def lockfile_path: () -> String?
+
+    def group: (*Symbol groups, ?optional: bool) { () -> void } -> void
+
+    def dependencies: () -> Array[Dependency]
+
+    def dependencies=: (Array[Dependency] dependencies) -> Array[Dependency]
 
     def to_definition: (Pathname lockfile, Hash[Symbol, bool] unlock) -> Definition
   end
@@ -70,7 +83,27 @@ module Bundler
     def dependencies: () -> Array[Gem::Dependency]
   end
 
+  class SourceList
+    def global_rubygems_source: () -> Source::Rubygems
+
+    def non_global_rubygems_sources: () -> Array[Source::Rubygems]
+
+    def path_sources: () -> Array[Source::Path]
+
+    def git_sources: () -> Array[Source::Git]
+
+    def plugin_sources: () -> Array[Source]
+
+    def add_rubygems_source: (Hash[String, Array[String]] options) -> Source::Rubygems
+
+    def add_path_source: (Hash[String, Object?] options) -> Source::Path
+
+    def add_git_source: (Hash[String, Object?] options) -> Source::Git
+  end
+
   class Dependency < Gem::Dependency
+    def initialize: (String name, Array[String] version, Hash[String, Object?] options) -> void
+
     def groups: () -> Array[Symbol]
 
     def platforms: () -> Array[Symbol]
@@ -83,7 +116,11 @@ module Bundler
   end
 
   class RubyVersion
-    def initialize: (Array[String] versions, String? patchlevel, String engine, String engine_version) -> void
+    def initialize: (Array[String] versions, String? patchlevel, String? engine, String | Array[String] engine_version) -> void
+
+    def engine: () -> String
+
+    def engine_versions: () -> Array[String]
 
     def diff: (RubyVersion other) -> Array[Symbol | String]?
 
@@ -99,6 +136,10 @@ module Bundler
   class Source
     class Rubygems < Source
       def remotes: () -> Array[URI::Generic]
+
+      def remote_cooldowns: () -> Hash[URI::Generic, Integer]
+
+      def add_remote: (String uri) -> void
 
       class Remote
         def initialize: (URI::Generic | String uri) -> void

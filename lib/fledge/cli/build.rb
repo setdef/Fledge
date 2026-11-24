@@ -90,7 +90,14 @@ module Fledge
       #                 project's gemspec loads (default:
       #                 Fledge::Bundle::GemspecLoads, which starts a Ruby
       #                 to see).
-      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION, pins: Runtimes::PINS, gemspec_loads: Bundle::GemspecLoads.new)
+      # [evaluation] What evaluates a project's Gemfile, which is Ruby,
+      #              and answers what it says as data (default:
+      #              Fledge::Bundle::Evaluation, which starts a Ruby of
+      #              its own, so that the Gemfile's code never runs in
+      #              this process).
+      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION, pins: Runtimes::PINS,
+        gemspec_loads: Bundle::GemspecLoads.new, evaluation: Bundle::Evaluation.new
+      )
         @out = out
         @err = err
         @env = env
@@ -98,6 +105,7 @@ module Fledge
         @ruby = ruby
         @pins = pins
         @gemspec_loads = gemspec_loads
+        @evaluation = evaluation
       end
 
       # Runs the command with the arguments after +build+, and returns
@@ -119,7 +127,7 @@ module Fledge
         options = Options.parse(argv)
         host = Platform.local(@host)
         from = options.from&.then { |path| BuiltApp.at(path, platform: host, runtimes: Runtimes.new(env: @env, log: @err, pins: @pins)) }
-        app = App.at(options.path)
+        app = App.at(options.path, evaluation: @evaluation)
         phone = MobilePlatform.find(options.phone.to_s)
         signing = phone ? nil : signing(options, host)
         if from then build_from(from.adopt(app), from, host, options.out, signing)
@@ -250,7 +258,7 @@ module Fledge
         cache = File.dirname(runtimes.cache)
         fetcher = GemFetcher.new(cache: File.join(cache, "gems"), project: app.root, log: @err)
         checkouts = GitCheckout.new(cache: File.join(cache, "git"), work:, log: @err)
-        AppGems.new(app:, bundle: Bundle.new(app, gemspec_loads: @gemspec_loads), fetcher:, checkouts:, compiler: compiler(runtimes, work), system32: VisualCRuntime.system32(@env))
+        AppGems.new(app:, bundle: Bundle.new(app, gemspec_loads: @gemspec_loads, evaluation: @evaluation), fetcher:, checkouts:, compiler: compiler(runtimes, work), system32: VisualCRuntime.system32(@env))
       end
 
       # Makes the build's work folder, where gems compile, in the

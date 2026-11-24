@@ -39,7 +39,7 @@ class BundleTest < Minitest::Test
   # that a test of something else starts no Ruby to see; the Ruby that
   # sees is tested in test/integration/gemspec_loads_test.rb.
   def bundle_at(root, gemspec_loads: NO_GEMSPEC_LOADS)
-    Fledge::Bundle.new(Fledge::App.at(root), gemspec_loads:)
+    Fledge::Bundle.new(Fledge::App.at(root, evaluation: IN_PROCESS_EVALUATION), gemspec_loads:, evaluation: IN_PROCESS_EVALUATION)
   end
 
   def gems(bundle, platform) = bundle.gems_for(platform, ruby_version: "4.0.9", patchlevel: "9", bundler: "4.0.20", arch: FakeRuntime::ARCH.fetch(platform.name))

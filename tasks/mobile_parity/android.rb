@@ -323,9 +323,12 @@ class MobileParity
     # whole one is compared once, whatever it shows, so a launch again
     # can never pass a difference. Each launch again is printed, so a
     # report cut short in every run shows in every job's log.
-    def check_launch(app, parity, how)
+    #
+    # +interval+ is the seconds between the launch's reads of the log
+    # (launch), which a test passes short.
+    def check_launch(app, parity, how, interval: 2)
       (1..ATTEMPTS).each do |attempt|
-        logged = launch(app)
+        logged = launch(app, interval:)
         return parity.check(app, logged, "#{device}, #{how}")
       rescue MobileParity::CutShort => e
         keep_log(app, attempt)

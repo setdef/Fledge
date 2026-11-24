@@ -596,7 +596,7 @@ class MobileParityTest < Minitest::Test
     Dir.mktmpdir do |work|
       emulator = Emulator.new(app, work:, finishes: 0, said: ['FLEDGE-PARITY {"ARGV":[]}'], dropped: 3)
 
-      failure = assert_raises(RuntimeError) { emulator.check_launch(app, Comparing.new(same: true, work:), "from its release bundle") }
+      failure = assert_raises(RuntimeError) { emulator.check_launch(app, Comparing.new(same: true, work:), "from its release bundle", interval: 0) }
 
       assert_match(/the probe's host logged no environment/, failure.message)
       assert_includes File.read(File.join(work, "logcat-#{app.identifier}.txt")), "Start proc #{Emulator::PID}:#{app.identifier}"
@@ -639,7 +639,7 @@ class MobileParityTest < Minitest::Test
       emulator = Emulator.new(app, work:, finishes: 0, launched: [CUT, WHOLE], dropped: 3, out:)
       parity = Comparing.new(same: true, work:)
 
-      assert emulator.check_launch(app, parity, "from its release bundle")
+      assert emulator.check_launch(app, parity, "from its release bundle", interval: 0)
       assert_equal 2, emulator.launches
       assert_equal [[{ "ARGV" => [], "long" => "tail" }, { "PATH" => "/system/bin", "HOME" => "/data/user/0/com.setdef.fledge.Parity/files" }]],
         parity.compared
@@ -657,7 +657,7 @@ class MobileParityTest < Minitest::Test
       emulator = Emulator.new(app, work:, finishes: 0, launched: [WHOLE, WHOLE])
       parity = Comparing.new(same: false, work:)
 
-      refute emulator.check_launch(app, parity, "from its debug APK")
+      refute emulator.check_launch(app, parity, "from its debug APK", interval: 0)
       assert_equal 1, emulator.launches
       assert_equal 1, parity.compared.size
     end
@@ -671,7 +671,7 @@ class MobileParityTest < Minitest::Test
       emulator = Emulator.new(app, work:, finishes: 0, launched: [CUT])
       parity = Comparing.new(same: true, work:)
 
-      failure = assert_raises(MobileParity::CutShort) { emulator.check_launch(app, parity, "from its debug APK") }
+      failure = assert_raises(MobileParity::CutShort) { emulator.check_launch(app, parity, "from its debug APK", interval: 0) }
 
       assert_match(/the probe's report ends before it is whole/, failure.message)
       assert_equal MobileParity::Android::ATTEMPTS, emulator.launches

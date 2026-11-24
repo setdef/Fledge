@@ -38,6 +38,18 @@ class BuildCopScriptTest < Minitest::Test
     exit 0
   SH
 
+  # None of the computer's own git configuration (a CI runner has no
+  # identity, and git on Windows converts line endings), and an identity
+  # for the commits git itself makes, such as a revert.
+  GIT_ENV = {
+    "GIT_CONFIG_GLOBAL" => "/dev/null",
+    "GIT_CONFIG_SYSTEM" => "/dev/null",
+    "GIT_AUTHOR_NAME" => "t",
+    "GIT_AUTHOR_EMAIL" => "t@example.com",
+    "GIT_COMMITTER_NAME" => "t",
+    "GIT_COMMITTER_EMAIL" => "t@example.com",
+  }.freeze
+
   WITH_DISPATCH = "name: CI\non:\n  push:\n    branches: [trunk]\n  workflow_dispatch:\n"
   WITHOUT_DISPATCH = "name: CI\non:\n  push:\n    branches: [trunk]\n"
 
@@ -215,15 +227,7 @@ class BuildCopScriptTest < Minitest::Test
   private def cop(commit, action, env: {})
     File.write(File.join(@work, "tasks", "build_cop.rb"),
       "puts \"action=#{action}\", \"commit=#{commit}\", \"run=1\", \"reason=a test\"\n")
-    env = {
-"PATH" => "#{File.join(@dir, 'bin')}:#{ENV.fetch('PATH')}",
-"GIT_CONFIG_GLOBAL" => "/dev/null",
-"GIT_CONFIG_SYSTEM" => "/dev/null",
-"GIT_AUTHOR_NAME" => "t",
-"GIT_AUTHOR_EMAIL" => "t@example.com",
-"GIT_COMMITTER_NAME" => "t",
-"GIT_COMMITTER_EMAIL" => "t@example.com",
-}.merge(env)
+    env = GIT_ENV.merge("PATH" => "#{File.join(@dir, 'bin')}:#{ENV.fetch('PATH')}").merge(env)
     Open3.capture2e(env, "bash", SCRIPT, chdir: @work)
   end
 
@@ -242,7 +246,7 @@ class BuildCopScriptTest < Minitest::Test
   end
 
   private def git(dir, *args)
-    out, status = Open3.capture2e({ "GIT_CONFIG_GLOBAL" => "/dev/null" }, "git", *args, chdir: dir)
+    out, status = Open3.capture2e(GIT_ENV, "git", *args, chdir: dir)
     raise "git #{args.join(' ')}: #{out}" unless status.success?
 
     out

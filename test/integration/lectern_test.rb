@@ -44,14 +44,43 @@ class LecternIntegrationTest < Minitest::Test
     | a    | 1    |
   MARKDOWN
 
+  # The example's own bundle, as a person's shell gives it. The test runs
+  # under bundle exec, whose Bundler, restarted at the version this
+  # repository's lockfile names, sets BUNDLER_VERSION, and
+  # Bundler.with_unbundled_env keeps that variable while it removes
+  # BUNDLE_PATH, where that Bundler is installed. A bundle command
+  # started with it would run whichever Bundler the Ruby has, with
+  # BUNDLER_VERSION turning off its switch to the one Lectern's lockfile
+  # names (Bundler::SelfManager#autoswitching_applies?), and bundle
+  # install would write that Bundler into the lockfile: the gate in CI
+  # rewrote BUNDLED WITH from 4.0.20 to Ruby 4.1.0-preview1's 4.1.0.beta2
+  # and dropped Bundler's checksum.
+  BUNDLE = { "BUNDLE_GEMFILE" => GEMFILE, "BUNDLER_VERSION" => nil }.freeze
+
+  # Installs Lectern's bundle once, and fails if that changed the Bundler
+  # its Gemfile.lock names, or that Bundler's checksum, as a person's
+  # bundle install leaves them. (On Windows, a person's bundle install
+  # adds the computer's platform to PLATFORMS, and so does this one.)
   def self.install
     @installed ||= begin
+      lockfile = File.join(EXAMPLE, "Gemfile.lock")
+      locked = lockfile_bundler(lockfile)
       Bundler.with_unbundled_env do
-        out, status = Open3.capture2e({ "BUNDLE_GEMFILE" => GEMFILE }, RbConfig.ruby, "-S", "bundle", "install", "--quiet")
+        out, status = Open3.capture2e(BUNDLE, RbConfig.ruby, "-S", "bundle", "install", "--quiet")
         raise out unless status.success?
       end
+      now = lockfile_bundler(lockfile)
+      raise "bundle install changed the Bundler #{lockfile} names from #{locked} to #{now}" unless now == locked
+
       true
     end
+  end
+
+  # The BUNDLED WITH version of +lockfile+, and its checksum line for
+  # Bundler.
+  def self.lockfile_bundler(lockfile)
+    text = File.read(lockfile)
+    [text[/^BUNDLED WITH\r?\n\s+(\S+)/, 1], text[/^  bundler \(.*$/]&.chomp]
   end
 
   def setup
@@ -62,7 +91,7 @@ class LecternIntegrationTest < Minitest::Test
   # subprocess whose output is a pipe.
   def lectern(*, stdin: "", env: {})
     Bundler.with_unbundled_env do
-      Open3.capture3({ "BUNDLE_GEMFILE" => GEMFILE }.merge(env), RbConfig.ruby, "-S", "bundle", "exec", "ruby", File.join(EXAMPLE, "main.rb"),
+      Open3.capture3(BUNDLE.merge(env), RbConfig.ruby, "-S", "bundle", "exec", "ruby", File.join(EXAMPLE, "main.rb"),
         *, stdin_data: stdin)
     end
   end
@@ -226,7 +255,7 @@ class LecternIntegrationTest < Minitest::Test
       File.write(path, markdown)
       output = +""
       Bundler.with_unbundled_env do
-        PTY.spawn({ "BUNDLE_GEMFILE" => GEMFILE, "NO_COLOR" => nil }.merge(env), *command, path) do |reader, writer, pid|
+        PTY.spawn(BUNDLE.merge("NO_COLOR" => nil).merge(env), *command, path) do |reader, writer, pid|
           reader.winsize = [24, 80]
           begin
             reader.each_char do |char|

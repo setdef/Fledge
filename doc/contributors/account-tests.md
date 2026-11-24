@@ -14,7 +14,7 @@ This is your working checklist: every test that only your Apple, Microsoft, Goog
 2. Run it. Compare what you see with **Passing**. When it differs, keep the output: it is the finding. Send agents that output, and never a key, password, or token (the walk-through's outputs hold none).
 3. Tell an agent the result, or edit **Status** yourself. An agent then records it where the finding belongs (`doc/contributors/design/signing.md`, Plan 003, the README's line on what is untested) and updates this page in the same commit.
 
-**You decide which of these block 1.0.0.** Every entry says "not decided", because you have said you may choose later (decisions, 2026-11-08), and until you do, no entry is a requirement. To decide, change an entry's "Blocks 1.0.0?" to yes or no; agents then change the "1.0" story in Plan 003 and `doc/contributors/releasing-1.0.md` to match, and answer question issue #64.
+**You decide which of these block 1.0.0.** Every entry says "not decided", because you have said you may choose later (decisions, 2026-11-08), and until you do, no entry is a requirement: you said on question issue #64 that none is a blocker until there is a 0.X.Y release candidate you can test with. When you have tested on it, change an entry's "Blocks 1.0.0?" to yes or no; agents then change the "1.0" story in Plan 003 and `doc/contributors/releasing-1.0.md` to match.
 
 **Dot Popper and the stores.** Dot Popper should wait for Lota 0.3.0 before going to a store. That applies to IOS-2, IOS-3, AND-1, AND-2, and WIN-5 below if you submit Dot Popper itself. Fledge's own example apps can stand in for the tests that prove Fledge's part, since a store's review of the packaging does not depend on the game.
 
@@ -218,7 +218,7 @@ Every recipe in `doc/package_managers.md` is proven with the manager's own tool 
 
 #### PKG-3: A Homebrew tap on GitHub installs on a clean Mac and Linux
 
-- **Proves:** `brew tap` from GitHub and any trust step it asks for. Homebrew's official casks need notarization, which makes that route depend on MAC-1 and MAC-2 (question issue #64).
+- **Proves:** `brew tap` from GitHub and any trust step it asks for. Homebrew's official casks need notarization, which makes that route depend on MAC-1 and MAC-2.
 - **Needs:** a GitHub repository for the tap.
 - **Steps:** `doc/package_managers.md`, the Homebrew section.
 - **Passing:** `brew install` from the public tap installs the app and runs it by its command.

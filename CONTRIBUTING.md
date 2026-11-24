@@ -14,7 +14,7 @@ Open an [issue](https://github.com/setdef/Fledge/issues). Describe the problem o
 
 Start with [AGENTS.md](AGENTS.md), which is binding, then read:
 
-- [`doc/contributors/decisions.md`](doc/contributors/decisions.md): the maintainer's own words, which are the only authority.
+- [`doc/contributors/decisions.md`](doc/contributors/decisions.md): the maintainer's own words up to now. His later answers are his replies on the `question` issues, which stay there.
 - The open issues of the milestone "1.0.0 release candidate" at [github.com/setdef/Fledge](https://github.com/setdef/Fledge/milestones): the work left before the candidate (`gh issue list --milestone "1.0.0 release candidate"`). [`doc/contributors/plan/`](doc/contributors/plan) holds the stories and the direction, with the current plan last.
 - [`doc/contributors/design/`](doc/contributors/design): how each part works, and why, with [`architecture.md`](doc/contributors/design/architecture.md) as the overview and [`releases.md`](doc/contributors/design/releases.md) for how a release is made.
 - [`doc/contributors/adr/`](doc/contributors/adr): the decisions behind each behavior.

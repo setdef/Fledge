@@ -62,8 +62,9 @@ class ReleaseCommit
   # change that can break a build (an entry that starts "Breaking", or a
   # removal) moves the middle number, and anything else the last; from
   # 1.0, a break moves the first, an addition or a deprecation the
-  # middle, and anything else the last. A release candidate, and 1.0.0
-  # itself, are a person's to name.
+  # middle, and anything else the last. 1.0.0 itself is a
+  # person's to name; a release candidate is an ordinary release that a
+  # person later calls the candidate.
   def next_version
     body = ReleaseCommit.unreleased(changelog)
     raise Error, "CHANGELOG.md has nothing under [Unreleased]: there is nothing to release" unless ReleaseCommit.pending?(changelog)

@@ -153,6 +153,13 @@ int fledge_executable_path(char *out, size_t size);
  * (documents.c). The paths live as long as the process.
  */
 int fledge_launch_documents(char ***paths);
+
+/*
+ * Writes into out, which holds size bytes, the line the launcher prints
+ * when Launch Services sends it no event within seconds, with
+ * ReceiveNextEvent's status, and returns snprintf's result (documents.c).
+ */
+int fledge_documents_give_up_message(char *out, size_t size, double seconds, int status);
 #endif
 
 #ifdef __linux__

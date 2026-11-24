@@ -36,12 +36,17 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-/* How long to wait for Launch Services' first event, in seconds. */
-static const EventTimeout first_event_timeout = 2.0;
+/*
+ * How long to wait for Launch Services' first event, in seconds. The wait
+ * ends when the event arrives, 120 to 250 ms after the program starts on
+ * an idle computer and more than two seconds on one under heavy load, so the bound only matters when no event comes.
+ */
+static const EventTimeout first_event_timeout = 15.0;
 
 struct documents {
     char **paths;
@@ -119,6 +124,16 @@ is_open_documents(EventRef event)
     return event_class == kCoreEventClass && event_id == kAEOpenDocuments;
 }
 
+int
+fledge_documents_give_up_message(char *out, size_t size, double seconds, int status)
+{
+    return snprintf(
+        out, size,
+        "fledge: Launch Services sent no event in %g seconds (status %d), so the program starts without the "
+        "documents it was opened with\n",
+        seconds, status);
+}
+
 /* Takes the launch's Open Documents event, if it is the first Apple event, into documents. */
 static void
 take_open_documents(struct documents *documents)
@@ -126,7 +141,13 @@ take_open_documents(struct documents *documents)
     EventTypeSpec apple_event = {kEventClassAppleEvent, kEventAppleEvent};
     EventRef event = NULL;
 
-    if (ReceiveNextEvent(1, &apple_event, first_event_timeout, false, &event) != noErr || event == NULL) return;
+    OSStatus status = ReceiveNextEvent(1, &apple_event, first_event_timeout, false, &event);
+    if (status != noErr || event == NULL) {
+        char message[256];
+        fledge_documents_give_up_message(message, sizeof message, first_event_timeout, (int)status);
+        fputs(message, stderr);
+        return;
+    }
     if (!is_open_documents(event)) return;
 
     AEEventHandlerUPP handler = NewAEEventHandlerUPP(collect);

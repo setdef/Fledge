@@ -1,0 +1,75 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# The build cop (doc/contributors/design/releases.md, "The build cop").
+# A full run of ci.yml on trunk covers a batch of pushes, and when one
+# goes red after a green one, any commit of the batch may be at fault.
+# This bisects the batch with full runs of single commits, started on
+# branches bisect/SHA, which only it writes; runs the failed jobs of the
+# first bad commit's run again, so that a flaky job blames nobody; and
+# when they fail again and its parent passed, reverts that commit on
+# trunk and starts a full run there to judge the revert
+# (.github/scripts/build-cop.sh, tasks/build_cop.rb).
+#
+# It keeps no state of its own: each run reads the runs as they are and
+# takes one step. It runs when a run of CI on trunk or on a bisect branch
+# ends, and every half hour, since GitHub does not say whether the end
+# of a run this workflow's token started, or ran again, starts a
+# workflow_run. Runs wait for one another, and a waiting one is replaced
+# by the next, which reads the same runs.
+#
+# Run it by hand to see what it would do: by default a dry run, which
+# changes nothing.
+
+name: Build cop
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [trunk, "bisect/**"]
+  schedule:
+    - cron: "11,41 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Say what it would do, and do nothing
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: build-cop
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  cop:
+    name: Find and revert the commit that turned trunk red
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.event != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      # Pushing bisect/* branches and a revert to trunk.
+      contents: write
+      # Reading runs and jobs, starting ci.yml, and running jobs again.
+      actions: write
+    steps:
+      # Every commit, for the revert; git pushes with this checkout's
+      # credentials.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: trunk
+          fetch-depth: 0
+
+      # The runner's own Ruby, which every GitHub-hosted Ubuntu image has:
+      # the task needs only Ruby's standard library.
+      - name: Take the next step
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_COP_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+        run: .github/scripts/build-cop.sh

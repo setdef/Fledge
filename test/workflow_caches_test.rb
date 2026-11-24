@@ -130,6 +130,33 @@ class WorkflowCachesTest < Minitest::Test
     end
   end
 
+  # A Gradle build that failed on a refused download has still fetched
+  # most of the set, and Gradle keeps what it fetched, so the job saves
+  # it, under a key of its own run that restore-keys reaches, and never
+  # under the exact key, which a complete set takes (doc/contributors/
+  # design/phone-projects.md, "Gradle's downloads in CI"). A save that
+  # waited for success left a trunk run after a pin move to fetch the
+  # whole classpath again, run after run, while Maven Central refused it
+  # (issue 88).
+  def test_a_gradle_set_is_saved_after_a_failed_build_under_a_key_of_its_own_run
+    saves = workflows.flat_map do |name, workflow|
+      workflow.fetch("jobs").flat_map do |id, job|
+        job.fetch("steps", []).select { |step| step.dig("with", "path").to_s.include?("modules-2") && step["uses"].start_with?("actions/cache/save@") }.map { |step| ["#{name} #{id}", step] }
+      end
+    end
+
+    assert_operator saves.size, :>=, 3
+    saves.each do |where, step|
+      assert_includes step["if"], "!cancelled()", "#{where} saves Gradle's set only when everything before it passed"
+      assert_includes step["if"], "cache-primary-key != ''", "#{where} saves a set when its restore step never ran"
+      assert_includes step["if"], "cache-hit != 'true'", where
+      key = step.dig("with", "key")
+
+      assert_includes key, "job.status == 'success' && steps.gradle-cache.outputs.cache-primary-key", "#{where} saves a complete set under the exact key only"
+      assert_includes key, "-partial-{1}-{2}', steps.gradle-cache.outputs.cache-primary-key, github.run_id, github.run_attempt", "#{where} saves a failed build's set under a key of its run"
+    end
+  end
+
   # mise-action's key hashes every mise config file the checkout holds,
   # so a sparse checkout that takes only mise.toml keys the same tools
   # apart from ci.yml's, and keeps a second copy of them.

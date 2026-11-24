@@ -89,7 +89,7 @@ class MobileParity
         next unless entry.is_a?(Hash) && entry["processID"] == pid
         next if !standard_error && entry["messageType"] == "Error"
 
-        (message = entry["eventMessage"]) && MobileParity.printed(message)
+        (message = entry["eventMessage"]) && MobileParity.printed(message, MobileParity::IOS_NUL)
       rescue JSON::ParserError
         nil
       end

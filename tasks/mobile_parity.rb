@@ -75,12 +75,15 @@ class MobileParity
   end
 
   # What a log entry holds, as the string the app printed: the embedding
-  # API writes a NUL byte as 0xC0 0x80, since both logs cut an entry at a
-  # NUL (runtime/mobile/output.c, log_line), which a log entry's reader
-  # turns back so that its text is valid UTF-8.
-  def self.printed(message)
-    message.b.gsub("\xC0\x80".b, "\0".b).force_encoding(Encoding::UTF_8)
+  # API writes a NUL byte as +form+, since both logs cut an entry at a
+  # NUL (runtime/mobile/output.c, NUL_FORM): 0xC0 0x80 on Android, U+2400
+  # on iOS, which a log entry's reader turns back.
+  def self.printed(message, form = ANDROID_NUL)
+    message.b.gsub(form.b, "\0".b).force_encoding(Encoding::UTF_8)
   end
+
+  ANDROID_NUL = "\xC0\x80"
+  IOS_NUL = "␀"
 
   # What test/fixtures/mobile_hello prints, when the runtime keeps csv a
   # gem, keeps prism a gem whose extension parses, and can reach a server

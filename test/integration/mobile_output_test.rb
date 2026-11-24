@@ -27,8 +27,9 @@ class MobileOutputTest < Minitest::Test
   # cut would end an entry in whitespace, which the unified log trims
   # from an entry's end, a line to standard error, and lines holding NUL
   # bytes, which both logs would cut short at the first, so each goes as
-  # the two bytes 0xC0 0x80, as CPython's streams write it, even where
-  # that cuts an entry; then it ends with exit(), which flushes every
+  # the two bytes 0xC0 0x80 as CPython's Android streams write it, or
+  # U+2400 on Apple's systems, whose os_log drops an entry of bytes that
+  # are no UTF-8, even where that cuts an entry; then it ends with exit(), which flushes every
   # stdio stream while the forwarding threads wait on their pipes, as an
   # app's would.
   PROGRAM = <<~C
@@ -95,6 +96,7 @@ class MobileOutputTest < Minitest::Test
       entries = File.read(log, encoding: "UTF-8").lines.map(&:chomp)
       assert_equal "E oops", entries.find { |entry| entry.start_with?("E ") }
       out = entries.select { |entry| entry.start_with?("O ") }.map { |entry| entry.delete_prefix("O ") }
+      nul = RUBY_PLATFORM.include?("darwin") ? "␀" : "\xC0\x80"
       assert_equal [
         "hello",
         "",
@@ -105,10 +107,10 @@ class MobileOutputTest < Minitest::Test
         "éé",
         "b" * 998,
         "  \tc",
-        "p\xC0\x80q",
-        "\xC0\x80",
+        "p#{nul}q",
+        nul,
         "n" * 999,
-        "\xC0\x80\xC0\x80",
+        nul * 2,
 ], out
     end
   end

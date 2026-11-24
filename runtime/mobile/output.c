@@ -15,7 +15,7 @@
  * writes each line to the log: standard error's as errors, so a
  * developer reading the log sees which is which. A line longer than an
  * entry holds goes as several entries in a row (fledge_log_chunk), and a
- * NUL byte goes as 0xC0 0x80 (log_line).
+ * NUL byte goes as a stand-in a log can carry (NUL_FORM).
  *
  * When the log itself copies each entry to standard error for a
  * developer tool (fledge_log_echoes), the tool already reads the
@@ -78,27 +78,38 @@ log_entries(int error, const char *line, size_t length)
 }
 
 /*
- * Writes the line of length bytes to the log. Each entry is a C string
- * to both logs (__android_log_print's "%.*s" and os_log's stop at a NUL
- * whatever the length), so a NUL byte in the line would cut the entry
- * short and lose the rest. It goes as the two bytes 0xC0 0x80, "modified
- * UTF-8", as CPython's Android and iOS streams write it
- * (Lib/_android_support.py and Lib/_apple_support.py: "Encode null bytes
- * using modified UTF-8 to avoid them truncating the message") and as
- * Android's JNI writes it, so the entry holds the whole line and a
- * reader finds each NUL where it was.
+ * What a NUL byte goes as. Each entry is a C string to both logs
+ * (__android_log_print's "%.*s" and os_log's stop at a NUL whatever the
+ * length), so a NUL byte in the line would cut the entry short and lose
+ * the rest. On Android it goes as the two bytes 0xC0 0x80, "modified
+ * UTF-8", as CPython's Android streams write it (Lib/_android_support.py:
+ * "Encode null bytes using modified UTF-8 to avoid them truncating the
+ * message") and as Android's JNI writes it; logcat carries them. os_log
+ * does not: an entry with bytes that are no UTF-8 is lost whole, shown as
+ * "<compose failure [illegible log arguments]>" (iOS 26.1 Simulator). So
+ * on Apple's systems it goes as U+2400, SYMBOL FOR NULL, which is valid
+ * UTF-8 and reads as what it stands for.
  */
+#ifdef __APPLE__
+#define NUL_FORM "\xE2\x90\x80"
+#else
+#define NUL_FORM "\xC0\x80"
+#endif
+
+/* Writes the line of length bytes to the log, each NUL as NUL_FORM. */
 static void
 log_line(int error, const char *line, size_t length)
 {
+    const size_t form = sizeof NUL_FORM - 1;
+
     if (memchr(line, '\0', length) != NULL) {
-        char *escaped = malloc(length * 2);
+        char *escaped = malloc(length * form);
         if (escaped != NULL) {
             size_t size = 0;
             for (size_t index = 0; index < length; index++) {
                 if (line[index] == '\0') {
-                    escaped[size++] = (char)0xC0;
-                    escaped[size++] = (char)0x80;
+                    memcpy(escaped + size, NUL_FORM, form);
+                    size += form;
                 } else {
                     escaped[size++] = line[index];
                 }

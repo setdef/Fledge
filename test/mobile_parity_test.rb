@@ -723,6 +723,7 @@ class MobileParityTest < Minitest::Test
 
     assert_equal ["NUL: before\0after", "\u00e9"], MobileParity::Android.messages(log, tag)
     assert_equal "NUL: before\0after", MobileParity.printed("NUL: before\xC0\x80after".b)
+    assert_equal "NUL: before\0after", MobileParity.printed("NUL: before␀after", MobileParity::IOS_NUL)
     assert_equal "e\u0301 \u00c0", MobileParity.printed("e\u0301 \u00c0")
   end
 end

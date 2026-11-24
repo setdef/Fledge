@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+#--
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
+#++
 
 # A suite with a failure, which fledge test must report, and exit 1 for,
 # as ruby test/fails.rb does.

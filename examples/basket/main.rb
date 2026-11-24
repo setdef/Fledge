@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+#--
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
+#++
 
 # Basket, a shopping list for iOS, iPadOS, and Android: type an item,
 # add it, and remove it once it is in the cart. Each phone draws it with

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+#--
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
+#++
 
 # Basket's screen, tested on the phone: these tests make the screen's
 # real widgets, UIKit's on iOS and Android's views on Android, so they

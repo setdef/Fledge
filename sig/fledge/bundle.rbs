@@ -13,14 +13,6 @@ module Fledge
       def call: (String path, gemfile: String) -> Array[[String, String]]
     end
 
-    type data = nil | String | Integer | Float | bool | Array[data] | Hash[String, data]
-
-    interface _Evaluation
-      def definition: (String gemfile) -> Hash[String, data]
-
-      def gemspec: (String gemfile, String path) -> String?
-    end
-
     @app: App
     @lockfile: String
     @gemfile: String
@@ -34,10 +26,8 @@ module Fledge
     @sources: Sources?
     @shipped_lockfile: String?
     @gemspec_loads: _GemspecLoads
-    @evaluation: _Evaluation
-    @gemfile_data: Hash[String, data]
 
-    def initialize: (App app, ?gemspec_loads: _GemspecLoads, ?evaluation: _Evaluation) -> void
+    def initialize: (App app, ?gemspec_loads: _GemspecLoads) -> void
 
     def build_args: (String name) -> Array[String]
 

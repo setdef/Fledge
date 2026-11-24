@@ -41,12 +41,12 @@ module GemAppBuild
     FakeProject.write(@dir, dependencies:, locked:, remote: @server.url("/"), **)
   end
 
-  def build(*argv, host: "x86_64-linux", evaluation: IN_PROCESS_EVALUATION)
+  def build(*argv, host: "x86_64-linux")
     out = StringIO.new
     err = StringIO.new
     env = { "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache") }
     command = Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new(host), pins: FakeRuntime.pins(@runtimes),
-      gemspec_loads: NO_GEMSPEC_LOADS, evaluation:)
+      gemspec_loads: NO_GEMSPEC_LOADS)
     status = Dir.chdir(@dir) { command.call(argv) }
     [out.string, err.string, status]
   end

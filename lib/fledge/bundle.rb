@@ -9,8 +9,6 @@ require "shellwords"
 require_relative "error"
 require_relative "git_gem"
 require_relative "locked_gem"
-require_relative "bundle/evaluation"
-require_relative "bundle/gemfile_data"
 require_relative "bundle/gemspec_loads"
 require_relative "bundle/selection"
 require_relative "bundle/sources"
@@ -29,8 +27,7 @@ module Fledge
   # <tt>bundle lock --add-platform</tt> and <tt>bundle cache
   # --all-platforms</tt> rely on.
   #
-  # This class reads the Gemfile, which a Ruby of its own evaluates
-  # (Fledge::Bundle::Evaluation), and its lockfile with Bundler itself,
+  # This class reads the Gemfile and its lockfile with Bundler itself,
   # refuses a lockfile the Gemfile has moved past (as Bundler refuses one
   # in frozen mode), and, for a platform, picks each gem the lockfile
   # locks for it as Bundler picks one at run time
@@ -111,10 +108,8 @@ module Fledge
     # lockfile is out of date. +gemspec_loads+, given a project gemspec's
     # path and the Gemfile's, answers the files evaluating it after the
     # Gemfile requires and loads (GemspecLoads, which starts a Ruby to
-    # see). +evaluation+ evaluates the Gemfile in a Ruby of its own and
-    # answers what it says as data (Evaluation, which starts a Ruby, and
-    # GemfileData), so that the Gemfile's code never runs in this process.
-    def initialize(app, gemspec_loads: GemspecLoads.new, evaluation: Evaluation.new)
+    # see).
+    def initialize(app, gemspec_loads: GemspecLoads.new)
       require "bundler"
       @app = app
       gemfile = File.join(app.root, app.gemfile.to_s)
@@ -131,7 +126,6 @@ module Fledge
       @shipped_lockfile = nil # : String?
       @gemfile = gemfile
       @gemspec_loads = gemspec_loads
-      @evaluation = evaluation
       @definition = definition(gemfile)
       @checksums = checksums(File.read(@lockfile))
     end
@@ -177,8 +171,8 @@ module Fledge
 
     private def definition(gemfile)
       at_project(gemfile) do
-        @gemfile_data = @evaluation.definition(gemfile)
-        dsl = GemfileData.dsl(@gemfile_data)
+        dsl = Bundler::Dsl.new
+        dsl.eval_gemfile(gemfile)
         # Frozen as the built app is, whatever the environment says: Bundler
         # adds the computer's own platform to a definition it may rewrite
         # (Bundler::Definition#initialize), and that platform is no more
@@ -486,7 +480,8 @@ module Fledge
     # lockfile (Bundler::Definition#validate_platforms!) and takes this.
     private def lockfile_with(target)
       at_project(@gemfile) do
-        dsl = GemfileData.dsl(@gemfile_data)
+        dsl = Bundler::Dsl.new
+        dsl.eval_gemfile(@gemfile)
         Bundler.settings.temporary(frozen: true) do
           dsl.to_definition(Pathname.new(@lockfile), {}).tap { |definition| definition.add_platform(target) }.to_lock
         end

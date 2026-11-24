@@ -6,8 +6,6 @@
 #++
 
 require "rubygems"
-require_relative "bundle/evaluation"
-require_relative "bundle/gemfile_data"
 require_relative "cache_tag"
 require_relative "config"
 require_relative "entry"
@@ -113,7 +111,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.at(path, home: Dir.home, evaluation: Bundle::Evaluation.new)
+    def self.at(path, home: Dir.home)
       full = File.expand_path(path)
       raise Error, "#{path} does not exist. Build the program you run, such as exe/my_app or main.rb." unless File.exist?(full)
 
@@ -124,7 +122,7 @@ module Fledge
           "Move the app into a folder of its own."
       end
 
-      gemspec = gemspec_in(root, evaluation)
+      gemspec = gemspec_in(root)
       config = Config.load(root)
       gemfile = gemfile_in(root, gemspec)
       return listed(path, full, root, config, gemspec, gemfile) if config.programs
@@ -214,10 +212,8 @@ module Fledge
     # <tt>bundle exec</tt> could not; with no Gemfile, a gemspec Bundler
     # cannot evaluate is none, as RubyGems takes it. While the Gemfile is
     # evaluated, BUNDLE_GEMFILE names it, as under <tt>bundle exec</tt>,
-    # so that its code finds the project as Bundler.root. A Gemfile is
-    # evaluated by +evaluation+, in a Ruby of its own
-    # (Fledge::Bundle::Evaluation), never in this process.
-    private_class_method def self.gemspec_in(root, evaluation) # :nodoc:
+    # so that its code finds the project as Bundler.root.
+    private_class_method def self.gemspec_in(root) # :nodoc:
       paths = Dir.glob("*.gemspec", base: root)
       return nil unless paths.size == 1
 
@@ -226,11 +222,17 @@ module Fledge
       gemfile = %w[Gemfile gems.rb].map { |name| File.join(root, name) }.find { |file| File.file?(file) }
       return Bundler.load_gemspec(path) unless gemfile
 
+      saved = ENV.fetch("BUNDLE_GEMFILE", nil)
       begin
-        yaml = evaluation.gemspec(gemfile, path) or return nil
-        Bundle::GemfileData.specification(yaml, path)
+        ENV["BUNDLE_GEMFILE"] = gemfile
+        Bundler.reset_settings_and_root!
+        Bundler::Dsl.new.eval_gemfile(gemfile)
+        Bundler.load_gemspec(path)
       rescue Bundler::BundlerError => e
         raise Error, "Bundler can't evaluate #{gemfile} and #{path}:\n#{e.message.rstrip}"
+      ensure
+        ENV["BUNDLE_GEMFILE"] = saved
+        Bundler.reset_settings_and_root!
       end
     rescue Bundler::BundlerError
       nil

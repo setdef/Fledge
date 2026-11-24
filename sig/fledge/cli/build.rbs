@@ -13,9 +13,8 @@ module Fledge
       @ruby: String
       @pins: String
       @gemspec_loads: Bundle::_GemspecLoads
-      @evaluation: Bundle::_Evaluation
 
-      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?host: Gem::Platform, ?ruby: String, ?pins: String, ?gemspec_loads: Bundle::_GemspecLoads, ?evaluation: Bundle::_Evaluation) -> void
+      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?host: Gem::Platform, ?ruby: String, ?pins: String, ?gemspec_loads: Bundle::_GemspecLoads) -> void
 
       def call: (Array[String]) -> Integer
 

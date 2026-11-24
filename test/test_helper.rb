@@ -264,29 +264,6 @@ end
 # real one.
 NO_GEMSPEC_LOADS = -> (_path, **) { [] }
 
-# What a unit test of something else gives Fledge::Bundle and Fledge::App
-# in place of Fledge::Bundle::Evaluation, which starts a Ruby: the same
-# description of the Gemfile (Fledge::Bundle::GemfileData), made in this
-# process, and carried as JSON as the Ruby of its own carries it.
-# test/integration/gemfile_evaluation_test.rb tests the real one.
-IN_PROCESS_EVALUATION = Class.new do
-  def definition(gemfile) = at_project(gemfile) { JSON.parse(JSON.generate(Fledge::Bundle::GemfileData.definition(gemfile))) }
-
-  def gemspec(gemfile, path) = at_project(gemfile) { Fledge::Bundle::GemfileData.gemspec(gemfile, path) }
-
-  # As the Ruby of its own is started, with BUNDLE_GEMFILE naming the
-  # Gemfile and Bundler's root there, where a developer runs bundle exec.
-  def at_project(gemfile)
-    saved = ENV.fetch("BUNDLE_GEMFILE", nil)
-    ENV["BUNDLE_GEMFILE"] = gemfile
-    Bundler.reset_settings_and_root!
-    yield
-  ensure
-    ENV["BUNDLE_GEMFILE"] = saved
-    Bundler.reset_settings_and_root!
-  end
-end.new
-
 # Writes a minimal app, a folder with a main.rb, and returns its path. Its
 # .git folder, which never ships, keeps a search for its project's root
 # from going above it.

@@ -20,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `fledge build` evaluates the project's `Gemfile` in a Ruby of its own, as `bundle exec` evaluates it in the app's process, so that what the Gemfile does (setting `ENV`, printing, requiring files) stays out of the build; a Gemfile source that only a Bundler plugin provides is refused.
 - `fledge build` warns when a compiled gem's gemspec lists extensions and its build left no shared library, as when an `extconf.rb` skips itself and exits 0 for a missing library, naming the gem; the app still builds, as under `bundle exec`.
 - `fledge build`'s refusal of a compiled file that needs several libraries nothing provides is one entry naming the gem and the file once, then the libraries, not one line for each, on every system.
 - An app's `notices/NOTICES.txt` is headed "The Fledge runtime in this app", not "Third-party software in this app", and says that the app's own code and gems are not listed.

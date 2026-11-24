@@ -57,7 +57,7 @@ module Fledge
   # folder with tar, which keeps the permissions and symlinks the runtime
   # was built with, as the platform names its archive
   # (Fledge::Platform#archive_extension). Each platform is built on its
-  # own computer (ADR 010), whose disk keeps what its archive needs. It
+  # own computer (ADR 101), whose disk keeps what its archive needs. It
   # refuses to let an added file replace one the runtime holds, replaces
   # a previous build of the same app and platform, and removes what it
   # wrote if the build fails.

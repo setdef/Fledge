@@ -57,7 +57,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 if ($PSVersionTable.PSEdition -eq 'Core') { Import-Module Appx -UseWindowsPowerShell -WarningAction SilentlyContinue }
 
 $appName = 'Hello Window'
-# Hello Window-PLATFORM.msix: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 100).
+# Hello Window-PLATFORM.msix: x64-mingw-ucrt, or aarch64-mingw-ucrt (ADR 102).
 $platform = [IO.Path]::GetFileNameWithoutExtension($Package) -replace "^$appName-", ''
 $architecture = if ($platform -eq 'aarch64-mingw-ucrt') { 'arm64' } else { 'x64' }
 

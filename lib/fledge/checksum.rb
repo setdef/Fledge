@@ -15,7 +15,7 @@ module Fledge
   # (a Scoop manifest, a Homebrew formula, a winget manifest, an AUR
   # +PKGBUILD+) names the archive by its address and its SHA-256, so a
   # developer who publishes one needs that hash for each archive.
-  # Each platform's app is built on its own computer (ADR 010), so one
+  # Each platform's app is built on its own computer (ADR 101), so one
   # list for a whole release, as GoReleaser's <tt>checksums.txt</tt>, would be
   # written once per computer under one name; a file per archive, as
   # cargo-dist writes and GoReleaser writes with +split+, never collides.

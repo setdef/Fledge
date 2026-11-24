@@ -8,7 +8,7 @@
 require_relative "test_helper"
 require "open3"
 
-# Fledge::AppImage on Linux, where AppImages are built (ADR 010): the
+# Fledge::AppImage on Linux, where AppImages are built (ADR 101): the
 # runtime, then the SquashFS that mksquashfs wrote of the app's folder
 # laid out as an AppDir, read back with unsquashfs. CI's Delivery runs a
 # real one, with FUSE and without (.github/scripts/deliver-appimage.sh).

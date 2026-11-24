@@ -7,7 +7,7 @@
 # SHA-256 differs fails the build. Change a pin on purpose, and run
 # Delivery (ci.yml) before trusting it.
 
-# Ruby 4.1.0-preview1 for each target (ADR 100;
+# Ruby 4.1.0-preview1 for each target (ADR 102;
 # doc/contributors/design/runtimes.md, "Sources and pins"), but Windows,
 # whose Ruby is a snapshot of Ruby's master of a month later, below.
 #
@@ -95,7 +95,7 @@ ruby:
           sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
           fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
           expires: "2027-06-15"
-    # RubyInstaller's build for Windows on ARM64 (ADR 100), of the same
+    # RubyInstaller's build for Windows on ARM64 (ADR 102), of the same
     # day and commit, signed with the same key.
     aarch64-mingw-ucrt:
       url: https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-arm.7z
@@ -367,7 +367,7 @@ replaceability:
     mirrors:
       - https://mirrors.kernel.org/gnu/gmp/gmp-6.2.1.tar.xz
 
-# What fledge build runs or copies (ADR 010), which a
+# What fledge build runs or copies (ADR 101), which a
 # runtime keeps in its tools/ folder and no app holds.
 #
 # Windows: rcedit, Electron's editor of a Windows program's resources

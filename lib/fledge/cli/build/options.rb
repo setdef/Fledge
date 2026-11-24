@@ -19,7 +19,7 @@ module Fledge
       # profile <tt>--notarize</tt> has Apple notarize a signed macOS app
       # with, the app <tt>--from</tt> builds from, and
       # the one PATH, with <tt>--</tt> ending the options. A desktop build
-      # is for the computer it runs on (ADR 010); a phone's, which no phone
+      # is for the computer it runs on (ADR 101); a phone's, which no phone
       # builds, is named first, as Briefcase's <tt>briefcase create
       # iOS</tt> and Flutter's <tt>flutter build ios</tt> name it (doc/contributors/design/phone-projects.md, "The operand").
       class Options < Data.define(:out, :path, :phone, :sign, :from, :sign_command, :notarize)

@@ -11,7 +11,7 @@ require_relative "error"
 module Fledge
   # Runs one of the tools a build hands its work to.
   #
-  # Each platform's app is made with that platform's own tools (ADR 010):
+  # Each platform's app is made with that platform's own tools (ADR 101):
   # tar packs and unpacks archives everywhere, codesign, plutil, and
   # hdiutil make a Mac's bundle and disk image, rcedit and makensis a
   # Windows program and its installer, and mksquashfs a Linux AppImage. A

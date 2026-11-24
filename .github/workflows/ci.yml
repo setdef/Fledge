@@ -4,7 +4,7 @@
 # Plan 001's pipeline, on every push and pull request: the gate, then a
 # runtime per platform, then the tests on each platform with its own
 # runtime, then each platform building the examples for itself on a
-# runner of its own (ADR 010), then Delivery: each built app unpacked and
+# runner of its own (ADR 101), then Delivery: each built app unpacked and
 # run on a fresh computer that has never had Ruby.
 #
 # The gate runs once, on Linux: its lints (RuboCop, Steep, RDoc
@@ -324,7 +324,7 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
           # Cross-compiled; the runner's 7z unpacks RubyInstaller's archive
-          # and its gpgv checks the signature. Windows on ARM64 too (ADR 100).
+          # and its gpgv checks the signature. Windows on ARM64 too (ADR 102).
           - os: ubuntu-24.04
             platform: x64-mingw-ucrt
           - os: ubuntu-24.04
@@ -1185,7 +1185,7 @@ jobs:
   # runtime, so test/integration/built_app_test.rb builds and runs a
   # real app rather than skipping (FLEDGE_REQUIRE_RUNTIME turns a skip
   # into a failure); on Linux with squashfs-tools' mksquashfs, which
-  # writes an AppImage's file system (ADR 010), and with GObject
+  # writes an AppImage's file system (ADR 101), and with GObject
   # introspection, so test/integration/typelib_test.rb builds an app
   # over ruby-gnome's gems. No sqlite3 gem is built for Ruby 4.1 yet, so the
   # builds of test/fixtures/my_cool_app and the gem-shaped probe compile it
@@ -1362,7 +1362,7 @@ jobs:
       full: ${{ needs.changes.outputs.release == 'true' }}
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
-  # Ruby, which the runtime ships too (ADR 100): the very build the
+  # Ruby, which the runtime ships too (ADR 102): the very build the
   # runtime came from, with the DLLs it lacks and the MSYS2 that compiles
   # gems for it, which mise installs at mise.toml's pins, as on a
   # contributor's Windows computer (matrix.mise names those tools).
@@ -1397,7 +1397,7 @@ jobs:
           - platform: x64-mingw-ucrt
             os: windows-latest
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2
-          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 100).
+          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 102).
           - platform: aarch64-mingw-ucrt
             os: windows-11-arm
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2
@@ -1517,7 +1517,7 @@ jobs:
 
   # Each platform's apps, built on a runner of that platform from the
   # runtime the runtime job built for it, with that platform's own tools
-  # (ADR 010), as a developer builds them: examples/hello, the parity
+  # (ADR 101), as a developer builds them: examples/hello, the parity
   # probe (test/fixtures/parity), which Delivery asks what a child Ruby
   # sees, and the probe as a gem-shaped app's program (Parity.gem_probe),
   # which Delivery asks what Bundler.with_original_env and
@@ -2008,7 +2008,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows on ARM64 (ADR 100) builds no my_cool_app: sqlite3
+          # Windows on ARM64 (ADR 102) builds no my_cool_app: sqlite3
           # publishes no aarch64-mingw-ucrt build and its source does not
           # configure there, mini_portile2 passing configure clang's name
           # for the target (doc/contributors/design/gems.md, "Examples that
@@ -2957,7 +2957,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Natively on Windows 11 on ARM64 (ADR 100).
+          # Natively on Windows 11 on ARM64 (ADR 102).
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
     env:

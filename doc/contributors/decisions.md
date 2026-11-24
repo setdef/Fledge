@@ -32,7 +32,7 @@ The numbers are those of the list of questions these decisions settled, now the 
 
 **6.** Before 1.0, agents may push to `trunk`, create and push tags, and create GitHub Releases, but never release to RubyGems.org. *Applied in:* AGENTS.md, Committing and Releasing; `.github/workflows/release.yml`.
 
-**7.** The oldest glibc a Linux app runs on is 2.39, and a newer floor is fine when there is good reason to raise it. *Applied in:* ADR 100; `doc/contributors/design/releases.md`, "Platform floors".
+**7.** The oldest glibc a Linux app runs on is 2.39, and a newer floor is fine when there is good reason to raise it. *Applied in:* ADR 102; `doc/contributors/design/releases.md`, "Platform floors".
 
 **8.** No third-party component of a runtime leaves an app's developer with a copyleft obligation beyond keeping notices. This governs Fledge's runtimes, not the app's own gems (2026-10-28). *Applied in:* AGENTS.md, Licensing; Plan 002, "Copyleft-free runtimes" and "Tell app developers what they owe, from CI."
 
@@ -56,7 +56,7 @@ The numbers are those of the list of questions these decisions settled, now the 
 
 **18.** Everything an operating system shows of an app (the taskbar, the task manager, the Start menu, desktop icons, a window's corner and title bar, and their like) is the app's developer's to control. *Applied in:* Plan 002, "App identity."
 
-**19.** The RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "The RubyInstaller signing key".
+**19.** The RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 102; `doc/contributors/design/runtimes.md`, "The RubyInstaller signing key".
 
 **20.** An app's Ruby code working as it does without Fledge comes first, and a small size does not. A runtime prunes only what no running Ruby code can observe. *Applied in:* `doc/contributors/design/runtimes.md`, "What a runtime keeps" and "What a runtime prunes, and why nothing reads it".
 
@@ -163,15 +163,15 @@ The numbers are those of the list of questions these decisions settled, now the 
 - **A bug in someone else's project is not Fledge's bug.** *Applied in:* `doc/contributors/design/releases.md`, "Versions".
 - **The candidate for 1.0.0 has automation that takes care of every update:** when an input a runtime is built from has a newer release upstream, Fledge moves the pin, proves the new runtimes in CI, and releases, with no person or agent in the loop on the happy path, and nobody notified. It governs a release an upstream has made, not one it has not: a library compiled into another project's Ruby build is as new as that build, and a lag there is a stated dependency (the entry on jdx/ruby, below). *Applied in:* `doc/contributors/design/releases.md`, "Versions"; `.github/workflows/pin-watch.yml`.
 - **A deterministic process that a person has decided to trust, such as a GitHub Actions workflow that the maintainer has set RubyGems.org to trust, may publish Fledge there,** and that counts as the person's act; an agent never sets up that trust. *Applied in:* AGENTS.md, Releasing; `doc/contributors/design/releases.md`.
-- **The oldest macOS a Fledge app runs on may be raised to 15, and to 26 if keeping 15 becomes costly.** The weighing is the agents', and they chose 26. *Applied in:* ADR 100; `doc/contributors/design/releases.md`, "Platform floors".
-- **The glibc switch may land before the candidate, and whether to switch away from rv-ruby entirely is the agents' to judge.** *Applied in:* ADR 100.
+- **The oldest macOS a Fledge app runs on may be raised to 15, and to 26 if keeping 15 becomes costly.** The weighing is the agents', and they chose 26. *Applied in:* ADR 102; `doc/contributors/design/releases.md`, "Platform floors".
+- **The glibc switch may land before the candidate, and whether to switch away from rv-ruby entirely is the agents' to judge.** *Applied in:* ADR 102.
 - **There is no deadline; quality comes first.**
 - **Fledge may carry, in a Mac app, libraries from the developer's computer that the app's gems link, when the app's developer chooses it.** The choice and the licenses are the developer's, as with the app's gems (2026-10-28), and neither setdef nor Fledge takes responsibility for them. Whether to build it is the agents' to judge; if built, it is in the candidate for 1.0.0. *Applied in:* `doc/contributors/design/gems.md`, "Libraries a Mac app carries".
 - **CI is improved by whatever reduces wall-clock time, the risk of a red `trunk`, metered usage, and real-world regressions, and whatever shortens cycle time and raises confidence.**
 - **Fledge publishes no copies of the files Gradle downloads, and keeps no pinned sets of them;** CI relies on Gradle's own retries. *Applied in:* `doc/contributors/design/phone-projects.md`, "Gradle's downloads in CI".
 - **A question is about something that exists or is about to; nothing hypothetical is asked.** *Applied in:* AGENTS.md, Questions.
 - **When a platform is added, the first check is whether a maintained project already publishes a portable Ruby for it,** before Fledge builds one. *Applied in:* AGENTS.md, How to work.
-- **Intel Mac is a non-decision: Fledge builds no Intel Mac apps.** *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "The Mac's Ruby is jdx/ruby's".
-- **Fledge takes its macOS and glibc Linux Ruby from jdx/ruby and builds none of its own,** trusting a widely used project over build automation of its own that is unproven, on which a developer would rely just the same; a lag in that project's libraries is a stated dependency. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "Why Fledge builds no Ruby for macOS and glibc Linux".
+- **Intel Mac is a non-decision: Fledge builds no Intel Mac apps.** *Applied in:* ADR 102; `doc/contributors/design/runtimes.md`, "The Mac's Ruby is jdx/ruby's".
+- **Fledge takes its macOS and glibc Linux Ruby from jdx/ruby and builds none of its own,** trusting a widely used project over build automation of its own that is unproven, on which a developer would rely just the same; a lag in that project's libraries is a stated dependency. *Applied in:* ADR 102; `doc/contributors/design/runtimes.md`, "Why Fledge builds no Ruby for macOS and glibc Linux".
 - **The candidate carries whatever Ruby the runtimes carry on the day it is cut, and 1.0.0 waits for Ruby 4.1.0;** between them nothing is meant to change but the pin to Ruby 4.1.0 and what newer builds of Ruby force. *Applied in:* `doc/contributors/design/releases.md`, "Versions" and "The day Ruby 4.1.0 appears".
 - **Fast, reliable tests are a maxim.** A test that is slow for its tier, or fails for no fault in the code, is a defect to fix. *Applied in:* CONTRIBUTING.md, "The tests" and "When CI fails"; AGENTS.md, Commands.

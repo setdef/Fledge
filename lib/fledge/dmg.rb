@@ -27,7 +27,7 @@ module Fledge
   # bundle with +ditto+, which keeps its signature, links, and modes, into
   # a folder beside the link, and has <tt>hdiutil create</tt> make a
   # read-only, zlib-compressed image of it (UDZO) on a Mac OS Extended
-  # volume, as create-dmg makes one (ADR 010).
+  # volume, as create-dmg makes one (ADR 101).
   #
   # <tt>hdiutil create</tt> makes the image from a scratch volume it
   # mounts and detaches, and fails with "Resource busy" when another

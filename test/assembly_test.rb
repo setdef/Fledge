@@ -10,7 +10,7 @@ require_relative "support/assembly"
 require_relative "support/gems"
 
 # Fledge::Assembly with fake runtimes, on the computer the tests run on:
-# each platform's app is built on that platform (ADR 010), so a test of
+# each platform's app is built on that platform (ADR 101), so a test of
 # what only one platform's tools make runs only there, and CI runs the
 # tests on every platform. test/integration/assembly_tools_test.rb has
 # those tools make what only they make.

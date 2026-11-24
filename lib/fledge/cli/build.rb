@@ -37,7 +37,7 @@ module Fledge
     #
     # This command builds for the computer it runs on, as Tauri's and
     # Briefcase's builds do, since each platform's app is made with that
-    # platform's own tools (ADR 010), or, given a phone's name first
+    # platform's own tools (ADR 101), or, given a phone's name first
     # (<tt>fledge build ios</tt>), writes that phone's project, with
     # Fledge::MobileProject, on a computer whose tools build it (ADR 012). It reads <tt>--out</tt> and the
     # program to ship from its arguments (Fledge::App), finds this

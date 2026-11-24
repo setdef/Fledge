@@ -5,7 +5,7 @@
 
 # AGENTS.md
 
-This file is binding for every agent that works in this repository. It holds rules and where to look, not the state of the project, and the repository keeps no running account of that state (decisions, 2026-11-21): what Fledge does is in the README and the design documents, what changed is in CHANGELOG.md and git's history, and what is left is in the open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge, with the stories and the direction in the plan of record.
+This file is binding for every agent that works in this repository. It holds the rules every session needs, and says where the rest is.
 
 ## Project
 
@@ -13,68 +13,65 @@ Fledge (the `fledge` gem, https://github.com/setdef/Fledge) ships a Ruby app to 
 
 Pre-1.0, zero external users. Prefer good design over backward compatibility; record every breaking change in CHANGELOG.md.
 
-Where to look, in this order for a session with no memory of earlier ones:
+The repository keeps no running account of the project's state (decisions, 2026-11-21). What Fledge does is in the README and the design documents, what changed is in CHANGELOG.md and `git log`, and what is left is in the open issues of the milestone "1.0.0 release candidate".
 
-- `README.md`: what Fledge does today, for app developers.
-- `CONTRIBUTING.md`: how to set up, check a change, and read CI.
+## Where to look
+
+- `README.md`: what Fledge does, for app developers.
+- `CONTRIBUTING.md`: setup, the tests, checking a change before and after its push, and reading CI.
 - `doc/contributors/decisions.md`: the maintainer's words that shaped Fledge up to now. His replies on `question` issues are his words too, and stay on those issues.
-- The open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left before the candidate, each written so that an agent can start from it. A commit that fixes one ends its body with "Fixes #N". An agent that finds a defect, or work the candidate needs, files it as an issue there: a title that states it as a plain sentence, and the evidence the finder holds (the command, its output, the conditions), not where the fix might be. An agent may comment on, edit, and close the project's issues. An agent posts nothing on another project's tracker: a fault that is another project's is recorded as an issue labelled `upstream`, saying whose it is and what Fledge does meanwhile, and whether to report it there is the maintainer's (decisions, 2026-11-22, on whose bug a fault is).
-- `doc/contributors/plan/003.md`: the plan of record, with the stories and the direction behind those issues, after `001.md` and `002.md`, both done.
-- `doc/contributors/design/`: how each part works, and why. `architecture.md` there is the overview, and indexes the few ADRs in `doc/contributors/adr/`; `releases.md` there says how to release.
-- The open issues labelled `question` at github.com/setdef/Fledge, assigned to the maintainer: what only he can answer.
-- `CHANGELOG.md` and git's history (`git log`): what changed since each release, and why.
+- The milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left, each issue written so that an agent can start from it. `doc/contributors/plan/003.md`, the plan of record, holds the stories and the direction behind them.
+- `doc/contributors/design/`: how each part works, and why. `architecture.md` is the overview and indexes the few ADRs; `releases.md` says how a release is made, and `license-audit.md` how the license policy is enforced.
+- `doc/contributors/documentation_style.md`: how to write prose, RDoc, and the READMEs.
 
 ## Design precedence
 
 1. **A person who double-clicks or runs the app never meets Ruby.** No install step, no Ruby on `PATH`, no error that names a gem, no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot, and the app's gems are the runtime's). When anything below conflicts with this, this wins.
-2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`.** Same requires, same globals, same `ENV`, same standard library, bundled gems, and locked gems (decisions 9, 10, and 20; ADR 081). The parity check proves it on every platform; a difference is a bug unless `Parity::JUSTIFIED` says why it is right. The reason is that Fledge must never surprise an app developer with how Ruby, its globals, built-ins, and standard library behave compared with not using Fledge (decisions, 2026-11-02).
+2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`.** Same requires, same globals, same `ENV`, same standard library, bundled gems, and locked gems (decisions 9, 10, and 20; ADR 081). The parity check proves it on every platform; a difference is a bug unless `Parity::JUSTIFIED` says why it is right, because Fledge must never surprise an app developer with how Ruby, its globals, built-ins, and standard library behave compared with not using Fledge (decisions, 2026-11-02).
 3. **Ruby the language and its conventions.** RubyGems platform names for targets, CRuby's own `main.c` for how the launcher starts the interpreter, Ruby's layout for the standard library. Read the source at the pinned Ruby version; do not guess.
 4. **Prior art and standards.** GNU's and POSIX's command-line conventions, sysexits.h, LÖVE's fused games, the Tauri bundler, PyInstaller and Briefcase, and python-build-standalone. When Fledge needs a behavior these already settled, match them and cite them in the design document that specifies the behavior.
 5. **Ruby culture.** Idioms yield to 1 through 4.
 
 ## How to work
 
-- Research before designing: read the design document for the part, and the prior art's source or documentation first. Never guess at a reference's contents; cite the file and lines you relied on.
+- Research before designing: read the part's design document, and the prior art's source or documentation. Never guess at a reference's contents; cite the file and lines you relied on.
 - Root-cause every fix. If you cannot explain why a change fixed the symptom, it is not a fix.
-- Write tests first. A test must fail if the code it covers is deleted or mutated, and must exercise real collaborators, not stubs that hide missing behavior. Test the CLI through real streams (injected `StringIO`) and as a subprocess. The acceptance test for a build is a built app run on a fresh machine with no Ruby.
-- Code is a liability (decisions, 2026-10-28). Never write a file format, archive, image codec, signer, or other tool that a maintained, pinnable tool or gem already provides; use the tool, built or run on the platform it belongs to. Write code only for what no such tool does, and say in the part's design document which tools were considered and why none fit. Whenever you add a platform, first check whether a maintained project already publishes a portable Ruby for it, before building one (decisions, 2026-11-22).
-- The pin automation carries an upstream's release to a Fledge release with nobody acting; it does not make Fledge responsible for how current the libraries inside another project's build are, and a lag there is recorded in the runtime's design document, not cured by building that Ruby in Fledge (decisions, 2026-11-22).
-- Build each target on its own operating system, with that system's tools, as Tauri, Electron's tooling, and Briefcase do; Fledge does not build one platform's app on another (decisions, 2026-10-28).
+- Write tests first. A test must fail if the code it covers is deleted or mutated, and must exercise real collaborators, not stubs that hide missing behavior. The acceptance test for a build is a built app run on a fresh machine with no Ruby.
+- Code is a liability (decisions, 2026-10-28). Never write a file format, archive, image codec, signer, or other tool that a maintained, pinnable tool or gem provides: use the tool, and when none fits, say in the part's design document which were considered and why. Build each target on its own operating system with that system's tools, never one platform's app on another (decisions, 2026-10-28; ADR 010). Before adding a platform, first check whether a maintained project already publishes a portable Ruby for it (decisions, 2026-11-22).
 - Pin every external input (Ruby builds, actions, tools, gems) by version and, where it is downloaded, by SHA-256. Updates arrive on purpose.
 - Add no requirement the maintainer did not ask for without weighing what it costs, and say what it costs when you propose one.
-- Design in the spirit of Kent Beck (small steps, Implementation Patterns), Freeman & Pryce (tests drive interfaces), Sandi Metz (duplication over the wrong abstraction), Rebecca Wirfs-Brock (responsibility-driven roles), Martin Fowler (refactor in behavior-preserving steps), and Matz (programmer happiness). Write prose as `doc/contributors/documentation_style.md` describes.
+- Design in the spirit of Kent Beck (small steps), Freeman & Pryce (tests drive interfaces), Sandi Metz (duplication over the wrong abstraction), Rebecca Wirfs-Brock (responsibility-driven roles), Martin Fowler (behavior-preserving refactors), and Matz (programmer happiness).
 
 ## Working as an agent
 
-- Proceed through the plan of record without checking in with the maintainer. Decide what is the agents' to decide (Questions, below), record it, and go on to the next story. Come back only when truly blocked.
-- No change leaves a design document false, or a fact an ADR cites as proof (a test, an example, a path): correct it in the same change. Code that falls short of an ADR on purpose, for now, is a defect: its design document says so, and the fix is the code's.
-- Work trunk-based, as trunkbaseddevelopment.com describes (decisions, 2026-11-12): small commits pushed straight to `trunk`, never push-and-poll, a red `trunk` reverted at once. A commit passes `mise x -- ruby bin/check` before its push, and CI runs the gate after it.
-- Leave existing `spike/*`, `wip/*`, and `experiment/*` branches alone, and do not delete branches.
+- Proceed through the plan of record without checking in with the maintainer. Decide what is the agents' to decide (Questions, below), record it, and go on. Come back only when truly blocked.
+- No change leaves a design document false, or a fact an ADR cites as proof (a test, an example, a path): correct it in the same change. Code that falls short of an ADR on purpose is a defect, which its design document states.
+- An ADR is rare: write one only when you can name the architecturally significant requirement the decision resolves and what it would cost to undo. Everything else goes in the design document for its subject.
+- Work trunk-based, as trunkbaseddevelopment.com describes (decisions, 2026-11-12): small commits pushed straight to `trunk`, no long-lived or sideways branches, never push-and-poll, and a red `trunk` reverted at once. CONTRIBUTING.md, "Before a push" and "After a push", says how.
+- Leave existing `spike/*`, `wip/*`, and `experiment/*` branches alone, and delete no branch.
 - `doc/contributors/decisions.md` holds only the maintainer's meaningful decisions, the ones that shape what Fledge is or does. Corrections, wording changes, and asides go into the document they touch.
+- A commit that fixes an issue ends its body with "Fixes #N". File a defect you find, or work the candidate needs, as an issue in the milestone: a title that states it as a plain sentence, and the evidence you hold (the command, its output, the conditions), not where the fix might be. Agents may comment on, edit, and close the project's issues.
+- Post nothing on another project's tracker. A fault that is another project's is an issue here labelled `upstream`, saying whose it is and what Fledge does meanwhile; whether to report it there is the maintainer's (decisions, 2026-11-22, on whose bug a fault is).
 
-## Ruby, RBS, and docs
+## Code and docs
 
 - `Data.define` for value objects (`class Foo < Data.define(...)`), `class` for entities.
-- Every Ruby method has an RBS signature in `sig/` mirroring `lib/`. No `untyped`, no comments in `.rbs`. For `Data.define` classes, declare `self.new` instead of `initialize` (Steep mis-checks `initialize` there); plain classes declare `initialize` as usual.
-- RDoc (never YARD) in `.rb` files only. Wrap SPDX headers in `#--` / `#++`, and wrap examples in `MIT-0` SPDX snippets.
-- The help `fledge --help` prints is the comment header in `exe/fledge`, between the `####` and `###` lines. Change the CLI and that header together.
-- `lib/fledge/config.schema.json` describes `fledge.yml`. Change `Fledge::Config` and the schema together; a test fails when they disagree.
-- An ADR is rare: write one only when you can name the architecturally significant requirement the decision resolves and what it would cost to undo. Everything else is recorded in the design document for its subject, in `doc/contributors/design/`. Plans live in `doc/contributors/plan/`.
-- Before you edit `README.md` or `README.rdoc`, read both in full, start to finish, not a section found by `grep`. They are one story told twice: the README for people who read it on GitHub, the RDoc for the gem's description. An edit changes what the whole page says, so rewrite the paragraphs it touches until the page reads as one piece, and keep the two files true to each other and to the code. Appending a sentence or a section that the rest of the page does not know about is how those files grew unreadable; do not do it.
+- Every Ruby method has an RBS signature in `sig/` mirroring `lib/`, with no `untyped` and no comments. A `Data.define` class declares `self.new`, not `initialize`, which Steep mis-checks there. An exception goes in `rbs_exceptions.rb` only with a justification that nothing else is possible.
+- RDoc, never YARD, in `.rb` files only. Write it, and all prose, as `doc/contributors/documentation_style.md` describes.
+- The help `fledge --help` prints is the comment header in `exe/fledge`, between the `####` and `###` lines: change it with the CLI.
+- `lib/fledge/config.schema.json` describes `fledge.yml`: change it with `Fledge::Config`; a test fails when they disagree.
+- No file in `lib/` may be rated F by RubyCritic, which itself fails nothing. Read its report after a change; when a file falls toward F, give the responsibility it took on a class of its own.
+- Generated files, `doc/licensing.md` among them, say so in their header and are never edited by hand: change the generator.
+- Before you edit `README.md` or `README.rdoc`, read both in full (`documentation_style.md`, "README.md and README.rdoc").
 
 ## Commands
 
-- Run Ruby with `bundle exec ruby`. Never `ruby -Ilib:test`.
-- `bundle exec rake test` runs the unit tests, every test file under `test/` but those in `test/integration/`, in seconds on any computer: run it on the computer you work on, as often as you like. `bundle exec rake test:integration` runs the integration tests, and `bundle exec rake test:all` both, as the gate and CI do. `TEST=test/foo_test.rb` runs one file or glob of either tier (names separated by commas; `N=/pattern/` picks tests by name).
-- A unit test takes milliseconds: it builds no runtime and reads none that `rake runtime` built, builds no app that it then runs, compiles nothing, starts no Ruby or script, runs no signing or disk image tool, and reaches no network; a wait in the code under test is passed in short. A test that needs any of these goes in `test/integration/`. CONTRIBUTING.md, "The tests", draws the line.
-- An agent's shell runs no hook of `mise activate`, so its `ruby` may not be the one `mise.toml` pins, and Bundler then stops with a stack trace: start every command with `mise x --` (`mise x -- bundle exec rake test`), as CONTRIBUTING.md says.
-- `mise x -- ruby bin/check` is the fast check, one command on every system, which sets the checkout up first and needs only git and mise. Run beside it the one test of the behavior the change alters (`TEST=`). For a commit that changes a runtime, or the Ruby a parity check compares one with, run `mise x -- ruby bin/check --runtime` on a computer of that platform instead (`--runtime=android` for Android's), which proves the change with CI's own checks of apps built from it (CONTRIBUTING.md, "Before the push of a runtime change").
-- `bundle exec rake` is the gate, which CI runs: RuboCop and REUSE fixes, tests, RuboCop, RubyCritic, RDoc coverage, REUSE, actionlint and shellcheck, RBS checks (no `untyped`, `rbs validate`, signature parity), Steep, and the package check. It must pass with zero errors and zero warnings.
-- RubyCritic reports a score and a rating for each file and fails nothing. Read its report after a change: no file in `lib/` may be rated F, and when one falls toward it, find the responsibility it took on and give that a class of its own.
-- Approved exceptions live in `rbs_exceptions.rb`; adding one needs a justification that it is impossible otherwise.
+- An agent's shell runs no hook of `mise activate`, so its `ruby` may not be the one `mise.toml` pins, and Bundler then stops with a stack trace: start every command with `mise x --`.
+- Run Ruby with `bundle exec ruby`, never `ruby -Ilib:test`. Always `PAGER=cat` for git.
+- Before every push, `mise x -- ruby bin/check`, and beside it the one test of the behavior the change alters (`TEST=test/foo_test.rb`). For a change to a runtime, or to the Ruby a parity check compares one with, run `mise x -- ruby bin/check --runtime` on a computer of that platform instead (CONTRIBUTING.md, "Before the push of a runtime change").
+- `bundle exec rake test` runs the unit tests, in seconds; `bundle exec rake test:all` adds those in `test/integration/`. A unit test takes milliseconds: one that builds or reads a runtime, runs an app it built, compiles, starts a Ruby or a script, signs, or reaches the network is an integration test (CONTRIBUTING.md, "The tests"). Fast, reliable tests are a maxim (decisions, 2026-11-22): a test slow for its tier, or failing for no fault in the code, is a defect.
+- `bundle exec rake` is the gate, which CI runs: every test and every lint, with zero errors and zero warnings.
 - Rake tasks use `git ls-files`: stage new or deleted files before they count.
-- `bundle exec rake parity` compares an app built from this computer's runtime with `ruby main.rb` on the Ruby that runtime came from, and a gem-shaped one with `bundle exec`. Run it after `bundle exec rake runtime`. CI runs it on every platform.
-- Always `PAGER=cat` for git.
 
 ## Provenance
 

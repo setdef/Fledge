@@ -57,7 +57,7 @@ Each item below may change in any release, with a CHANGELOG entry when a develop
 
 ## The command's conventions
 
-`fledge` follows GNU's conventions, with Ruby's and Windows' short options, so a developer keeps the habits they bring and a script tells a call it got wrong from a build that failed. The maintainer asked that agents follow the standards here, and accepted these (`decisions.md`, 2026-10-26, decisions 4 and 16, and later, reply 4).
+`fledge` follows GNU's conventions, with Ruby's and Windows' short options, so a developer keeps the habits they bring and a script tells a call it got wrong from a build that failed. Agents follow the standards here (`decisions.md`, 2026-10-26, decisions 4 and 16).
 
 - `-h`, `-?`, and `--help` print the help, and `-v` and `--version` the version, to standard output, and exit 0, as the GNU Coding Standards ask (4.8.1 and 4.8.2). `-v` is how `ruby`, `gem`, and `bundle` spell it; `-?` is how `dotnet` and `winget` do, after `cmd`'s `/?`.
 - A usage error, a bare `fledge` included, prints the message, the short usage, and `Try 'fledge --help'.` to standard error, as GNU's `ls` does after BSD's one-line `usage:`, and exits 2, as `grep`, `diff`, and `cmp` do, whose statuses POSIX specifies, and GNU `ls` and `bash`'s builtins. Status 1, which most coreutils and BSD `usage()` functions give, would make 1 mean two things, and sysexits' `EX_USAGE` (64) is one few command-line tools use, so scripts do not expect it.

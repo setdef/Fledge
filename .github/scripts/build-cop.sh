@@ -8,7 +8,8 @@
 #
 #   none    nothing is red: deletes the bisect/* branches left over
 #   wait    a run it needs has not finished
-#   bisect  pushes the commit to bisect/SHA and starts ci.yml there
+#   bisect  pushes the commit to bisect/SHA and starts ci.yml there,
+#           once, and only if the commit's ci.yml can be started
 #   rerun   runs the failed jobs of the run that blames a commit again
 #   revert  reverts the commit on trunk and starts ci.yml on trunk
 #   stuck   says why, for a person
@@ -52,18 +53,48 @@ none)
 wait) ;;
 bisect)
   branch=bisect/$commit
+  # ci.yml can be run on a branch only where the commit's own copy lists
+  # workflow_dispatch, which an older commit's may not; GitHub refuses
+  # the dispatch, and the cop's run would go red every half hour. A
+  # person judges that commit. Not a pipe into grep -q (see revert).
+  workflow=$(git show "$commit:.github/workflows/ci.yml" 2>/dev/null || true)
+  if ! grep -q '^  workflow_dispatch:' <<<"$workflow"; then
+    echo "::warning::The build cop cannot run ci.yml on $commit: its copy has no workflow_dispatch, so a person judges that commit: $reason"
+    exit 0
+  fi
+  # The branch says the run was asked for. GitHub may list that run only
+  # minutes later, and until it does the next call finds no run of the
+  # commit and says to bisect it again; dispatching again would run it
+  # twice. A branch whose runs were all cancelled, by a person or by
+  # the next dispatch, asks again.
+  if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    any=$(gh run list --workflow ci.yml --branch "$branch" --event workflow_dispatch --json databaseId --jq length)
+    if [ "${any:-0}" = 0 ]; then
+      echo "The run of ci.yml on $branch is not listed yet; not starting it again." | tee -a "$summary"
+      exit 0
+    fi
+    git push --quiet origin --delete "$branch"
+  fi
   git push --quiet origin "$commit:refs/heads/$branch"
-  gh workflow run ci.yml --ref "$branch"
+  # A branch with no run to come would make every later call wait.
+  if ! gh workflow run ci.yml --ref "$branch"; then
+    git push --quiet origin --delete "$branch"
+    echo "::error::GitHub did not start ci.yml on $branch"
+    exit 1
+  fi
   # The next call reads the run as waiting only once GitHub lists it.
-  for _ in $(seq 30); do
-    started=$(gh run list --workflow ci.yml --branch "$branch" --event workflow_dispatch --json databaseId --jq '.[0].databaseId // empty')
+  started=
+  for _ in $(seq "${BUILD_COP_LIST_TRIES:-30}"); do
+    started=$(gh run list --workflow ci.yml --branch "$branch" --event workflow_dispatch --json databaseId,conclusion --jq '[.[] | select(.conclusion != "cancelled") | .databaseId] | first // empty')
     [ -n "$started" ] && break
-    sleep 10
+    sleep "${BUILD_COP_LIST_PAUSE:-10}"
   done
   echo "Started ${started:-a run} of ci.yml on $branch." | tee -a "$summary"
   ;;
 rerun)
-  gh run rerun "$run" --failed
+  # GitHub refuses a run with no failed job, or one already running
+  # again: the next call reads the runs as they are.
+  gh run rerun "$run" --failed || echo "::warning::GitHub would not run the failed jobs of run $run again: $reason"
   ;;
 revert)
   # Not a pipe into grep -q: with pipefail, grep leaving early makes git
@@ -82,9 +113,9 @@ revert)
     exit 0
     ;;
   esac
-  # Off until a failure that outlasts one rerun, as a rate limit of Maven
-  # Central's may, cannot blame the batch's oldest commit (releases.md,
-  # "The build cop").
+  # Off until the maintainer has seen tasks/build_cop.rb run the parent
+  # of a suspect, and stop where it fails too, as a rate limit of Maven
+  # Central's makes it (releases.md, "The build cop").
   if [ "${BUILD_COP_REVERT:-false}" != true ]; then
     echo "::warning::The build cop would revert $commit ($subject); BUILD_COP_REVERT is not true: $reason"
     exit 0

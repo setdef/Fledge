@@ -720,11 +720,15 @@ jobs:
             tmp/mobile-parity/ios/*.ips
           retention-days: 3
 
-  # The iOS integration tests, in a job of their own beside the apps', so
-  # that the two, each about a quarter of an hour or more on the iOS
-  # chain that is the full run's longest path, run at once and not one
-  # after the other (doc/contributors/design/releases.md, "The full
-  # run's longest path"). This is the one job with the iOS runtime, the
+  # The iOS integration tests, in jobs of their own beside the apps', so
+  # that the apps and the tests, each about a quarter of an hour or more
+  # on the iOS chain that is the full run's longest path, run at once and
+  # not one after the other (doc/contributors/design/releases.md, "The
+  # full run's longest path"), in three legs, so that no step runs near
+  # its limit ("The iOS integration tests' legs", there): the two tests
+  # that build an app with Xcode and run it on a Simulator of its own for
+  # about six minutes each, one leg apiece, and every other test in the
+  # third. Each leg has the iOS runtime, the
   # pinned Xcode, XcodeGen, CMake, and Rust's iOS targets that runs
   # them: test/integration/mobile_extensions_build_test.rb's iOS tests,
   # the iOS runtime's in test/integration/mobile_default_gems_test.rb, the
@@ -738,12 +742,24 @@ jobs:
   # FLEDGE_REQUIRE_IOS fails a test that would skip for want of any of
   # these, so a green job means every one of them ran.
   mobile-tests-ios:
-    name: iOS integration tests (iOS Simulator)
+    name: iOS integration tests (iOS Simulator, ${{ matrix.leg }})
     needs: [runtime, runtime-mobile]
     runs-on: macos-26
-    # A green run takes 13 to 16 minutes for the tests; the step's limit
-    # is 25, and the job's that with the setup's, as a backstop.
+    # Each leg takes a third to a half of the 24 minutes the one job's
+    # step took; the step's limit is 25, and the job's that with the
+    # setup's, as a backstop. test/workflow_ios_legs_test.rb keeps the
+    # legs a partition of the files the one job ran.
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: built files
+            tests: test/integration/mobile_built_files_test.rb
+          - leg: ffi extconf
+            tests: test/integration/mobile_ffi_extconf_test.rb
+          - leg: the rest
+            tests: test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_separation_names_test.rb
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -812,13 +828,14 @@ jobs:
       # Their Android tests skip here, with no Android runtime or NDK, and
       # run in the Android emulator job with 4 KB pages.
       - name: Run the iOS integration tests
-        timeout-minutes: 35
+        timeout-minutes: 25
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
           FLEDGE_REQUIRE_IOS: "1"
-        run: bundle exec rake test:integration TEST=test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_built_files_test.rb,test/integration/mobile_separation_names_test.rb,test/integration/mobile_ffi_extconf_test.rb
+          TESTS: ${{ matrix.tests }}
+        run: bundle exec rake test:integration TEST="$TESTS"
 
       - name: Key the downloads by the files they hold
         id: downloads-key

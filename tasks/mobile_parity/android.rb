@@ -301,9 +301,27 @@ class MobileParity
           # The bundle's APKs are signed with another key than the debug
           # APK, which Android refuses to install over it.
           adb("uninstall", app.identifier)
-          Android.bundletool("install-apks", "--apks=#{File.join(APKS, "#{app.identifier}.apks")}")
+          installed = Android.bundletool("install-apks", "--apks=#{File.join(APKS, "#{app.identifier}.apks")}")
+          installed_or_raise(app, installed)
           [from_apk, check_launch(app, parity, "from its release bundle")]
         end.all?
+      end
+    end
+
+    # Waits, up to +timeout+ seconds, until the package manager knows
+    # +app+, and raises with what bundletool printed (+printed+) and the
+    # packages the device holds when it never does, so that a launch's
+    # "Activity class does not exist" is told from an app that was not
+    # installed.
+    private def installed_or_raise(app, printed, timeout: 30)
+      deadline = Time.now + timeout
+      until Open3.capture2e("adb", "shell", "pm", "path", app.identifier).first.include?("package:")
+        if Time.now > deadline
+          packages = adb("shell", "pm", "list", "packages", "com.setdef").lines.map(&:strip).join(", ")
+          raise "#{app.name} is not installed after install-apks (the device holds: #{packages}):\n#{printed}"
+        end
+
+        sleep 1
       end
     end
 

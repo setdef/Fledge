@@ -14,7 +14,7 @@ path = ['test/fixtures/my_cool_app/Gemfile.lock', 'test/fixtures/native_app/Gemf
   'test/fixtures/mobile_app/Gemfile.lock', 'test/fixtures/real_gems/Gemfile.lock',
   'test/fixtures/real_gems/.bundle/config', 'test/fixtures/native_phone/Gemfile.lock', 'test/fixtures/sdl_phone/Gemfile.lock',
   'test/fixtures/cmake_phone/Gemfile.lock', 'test/fixtures/rake_phone/Gemfile.lock', 'test/fixtures/ffi_phone/Gemfile.lock', 'test/fixtures/ffi_library_phone/Gemfile.lock',
-  'test/fixtures/system_library/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock', 'examples/libui_app/Gemfile.lock', 'examples/file_drop/Gemfile.lock', 'examples/markdown_preview/Gemfile.lock', 'examples/lectern/Gemfile.lock',
+  'test/fixtures/system_library/Gemfile.lock', 'test/fixtures/libui/Gemfile.lock', 'examples/libui_app/Gemfile.lock', 'examples/file_drop/Gemfile.lock', 'examples/markdown_preview/Gemfile.lock', 'examples/lectern/Gemfile.lock', 'examples/lota_pop/Gemfile.lock',
   'test/fixtures/rust_phone/Gemfile.lock', 'test/fixtures/rust_phone/gems/rusty/ext/rusty/Cargo.lock',
   'test/fixtures/rust_lengths/Gemfile.lock', 'test/fixtures/rust_lengths/gems/lengths/ext/lengths/Cargo.lock',
   'test/fixtures/bundled_with/Gemfile.lock', 'test/fixtures/mobile_commands/Gemfile.lock', 'test/fixtures/ffi_extconf/Gemfile.lock', 'test/fixtures/ffi_libc/Gemfile.lock',

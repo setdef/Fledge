@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+# Lota is not on RubyGems.org. Each release of github.com/setdef/Lota
+# carries its gems, which a build takes from vendor/cache
+# (README.md, "Get Lota's gems").
+gem "lota", "0.8.0"

@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+#
+# SPDX-License-Identifier: MIT-0
+
+# Lota's gems, from a release of Lota, and the host files that are in
+# its source gem (README.md).
+/vendor/cache/
+/host/

@@ -421,7 +421,53 @@ class MobileParity
 
         sleep interval
       end
+      add_item(app, timeout:, interval:) if app.adds
       MobileParity.settled(interval:) { logged(app) }.tap { adb("shell", "am", "force-stop", app.identifier) }
+    end
+
+    # The nodes of a UI Automator dump, +xml+ (uiautomator dump), each as
+    # a Hash of its attributes.
+    def self.nodes(xml)
+      xml.scan(/<node\s([^>]*)>/).map { |(attributes)| attributes.scan(/([\w-]+)="([^"]*)"/).to_h }
+    end
+
+    # The centre of the first node of +nodes+ whose attributes include
+    # +match+, as x and y in pixels, from its bounds, or nil.
+    def self.centre(nodes, **match)
+      bounds = nodes.find { |node| match.all? { |key, value| node[key.to_s] == value } }&.fetch("bounds", nil)
+      return unless bounds && (corners = bounds.scan(/\d+/).map(&:to_i)).size == 4
+
+      [(corners[0] + corners[2]) / 2, (corners[1] + corners[3]) / 2]
+    end
+
+    # Does what a person does once the list shows: types +app+'s item
+    # into its field, taps its Add button, and waits, up to +timeout+
+    # seconds, for the item to show as a row of the list, drawn by the
+    # app's own adapter. A crash in drawing it ends the process, which
+    # the wait reports.
+    private def add_item(app, timeout:, interval:)
+      nodes = Android.nodes(screen)
+      field = Android.centre(nodes, class: "android.widget.EditText") || raise("#{app.name} shows no field to type in:\n#{screen}")
+      adb("shell", "input", "tap", *field.map(&:to_s))
+      adb("shell", "input", "text", app.adds)
+      button = Android.centre(Android.nodes(screen), text: "Add") || raise("#{app.name} shows no Add button:\n#{screen}")
+      adb("shell", "input", "tap", *button.map(&:to_s))
+      deadline = Time.now + timeout
+      until (row = Android.centre(Android.nodes(screen), class: "android.widget.TextView", text: app.adds))
+        raise "#{app.name} did not show #{app.adds} as a row after it was added:\n#{logged(app).entries.last(40).join("\n")}" if Time.now > deadline
+        raise "#{app.name} ended when #{app.adds} was added:\n#{logged(app).entries.last(40).join("\n")}" unless process(app) && running?(process(app))
+
+        sleep interval
+      end
+      note "#{app.name} on #{device}: typed #{app.adds.inspect} into its field at #{field.join(',')}, tapped Add at #{button.join(',')}, " \
+        "and its list showed #{app.adds.inspect} as a row at #{row.join(',')}"
+    end
+
+    # The screen's UI Automator dump, which it writes to a file: with
+    # no terminal, as adb's shell has none, it prints no XML to /dev/tty.
+    private def screen
+      adb("shell", "uiautomator", "dump", "/data/local/tmp/fledge-window.xml")
+      adb("shell", "cat", "/data/local/tmp/fledge-window.xml")
     end
 
     # The ID of +app+'s process, by the line ActivityManager logged when

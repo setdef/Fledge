@@ -73,6 +73,7 @@ module Fledge
       GetMethodID: 33,
       NewObjectA: 30,
       GetStaticMethodID: 113,
+      GetStaticFieldID: 144,
       NewString: 163,
       GetStringLength: 164,
       GetArrayLength: 171,
@@ -271,6 +272,16 @@ module Fledge
         id = (@direct ||= {})[key] ||= call(TABLE[:GetMethodID], [P, P, P, P], P, import(owner).ref, name, signature).to_i
         result = checked { call(returns[3], [P, P, P, P], returns[1], target, id, nil) }
         returns.equal?(OBJECT) ? result.to_i : result
+      end
+
+      # The JNI descriptor of the type +name+, as Class.getName spells it:
+      # "I" for "int", "Ljava/lang/String;" for "java.lang.String",
+      # "[I" for "[I".
+      def descriptor(name)
+        return PRIMITIVES.fetch(name).first if PRIMITIVES.key?(name)
+        return name.tr(".", "/") if name.start_with?("[")
+
+        "L#{name.tr('.', '/')};"
       end
 
       # The text of the Java string +ref+, a local reference this deletes.
@@ -688,9 +699,16 @@ module Fledge
         end
       end
 
+      # The value of the static +field+. FromReflectedField's ID does not
+      # initialize the class, which Android's ART leaves, as the JNI
+      # specification allows, with every static field at zero until
+      # something does (+android.R$layout.simple_list_item_1+ read as 0);
+      # GetStaticFieldID is the call the specification says initializes
+      # it, so the bridge asks it for the ID.
       private def read_static(field)
         type = JNI::PRIMITIVES.fetch(field.returns, JNI::OBJECT)
-        result = JNI.checked { JNI.call(type[6], [P, P, P], type[1], ref, field.id) }
+        id = JNI.checked { JNI.call(TABLE[:GetStaticFieldID], [P, P, P, P], P, ref, field.name, JNI.descriptor(field.returns)).to_i }
+        result = JNI.checked { JNI.call(type[6], [P, P, P], type[1], ref, id) }
         return result != 0 if field.returns == "boolean"
 
         JNI::PRIMITIVES.key?(field.returns) ? result : JNI.from_java(result.to_i)

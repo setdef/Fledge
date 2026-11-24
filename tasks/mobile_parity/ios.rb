@@ -213,6 +213,7 @@ class MobileParity
       # simctl gives an app the variables of its own environment that
       # begin SIMCTL_CHILD_, without the prefix.
       env = app.https ? { "SIMCTL_CHILD_#{HTTPS::VARIABLE}" => @https_url } : {}
+      seed(udid, app) if app.adds
       launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier, env:)
       pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
       deadline = Time.now + timeout
@@ -226,6 +227,16 @@ class MobileParity
       end
       MobileParity.settled(interval: 5) { messages(udid, since, pid, app) }
         .tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
+    end
+
+    # Puts the item +app+ adds in the list's file in the app's own
+    # Documents folder, as the app wrote it after a person added the
+    # item, so that its screen draws a row. The Simulator has no input
+    # to type with that a script can send.
+    private def seed(udid, app)
+      container = capture("xcrun", "simctl", "get_app_container", udid, app.identifier, "data").strip
+      FileUtils.mkdir_p(File.join(container, "Documents"))
+      File.write(File.join(container, "Documents", "basket.json"), JSON.generate([app.adds]))
     end
 
     # The messages the process +pid+ logged in the app's subsystem since

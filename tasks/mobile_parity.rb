@@ -70,10 +70,14 @@ class MobileParity
   # for the parity probe, whose report is compared instead, the phones
   # it runs on (default: both), whether it asks the check's HTTPS
   # server (HTTPS; default: no), a second line it must print, if any
-  # (+also+), and whether it stays open, as a real app does, so that its
-  # line, not its program's end, finishes its run (default: no).
-  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open)
-    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil, stays_open: false)
+  # (+also+), whether it stays open, as a real app does, so that its
+  # line, not its program's end, finishes its run (default: no), and an
+  # item a person adds once it shows its list (+adds+): the Android
+  # check types it into the app's field and taps its Add button, and the
+  # iOS check puts it in the list's file before the launch, so that each
+  # app draws a row, not only an empty list.
+  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open, :adds)
+    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil, stays_open: false, adds: nil)
       super
     end
 
@@ -129,7 +133,7 @@ class MobileParity
       phones: %w[android]),
     App.new(path: "test/fixtures/parity", name: "Parity", identifier: "com.setdef.fledge.Parity", prints: nil),
     App.new(path: "examples/basket", name: "Basket", identifier: "com.setdef.fledge.Basket",
-      prints: /\ABasket shows \d+ items?\z/, stays_open: true),
+      prints: /\ABasket shows \d+ items?\z/, stays_open: true, adds: "Milk"),
   ].freeze
 
   # The line the host app of every project fledge build writes logs when

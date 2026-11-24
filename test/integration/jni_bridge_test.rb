@@ -23,6 +23,15 @@ class JNIBridgeTest < Minitest::Test
   BRIDGE = File.join(ROOT, "runtime/mobile/vendor_ruby/fledge/jni.rb")
   PROXY = File.join(ROOT, "runtime/mobile/android/src/main/java/org/setdef/fledge/RubyProxy.java")
 
+  # A class whose static field only its static initializer sets, so that
+  # the field reads zero until the class is initialized, as every static
+  # field of an Android class does until ART initializes it.
+  CONSTANTS = <<~JAVA
+    public class FledgeBridgeTestConstants {
+        public static int COUNT = 7;
+    }
+  JAVA
+
   PROGRAM = <<~'RUBY'
     require "fiddle"
     require "json"
@@ -51,6 +60,8 @@ class JNIBridgeTest < Minitest::Test
     report["overloads"] = builder.toString
     report["field"] = JNI.import("java.lang.Integer").MAX_VALUE
     report["static"] = JNI.import("java.lang.Math").max(3, 7)
+    report["initialized"] = JNI.import("FledgeBridgeTestConstants").COUNT
+    org = JNI.import("org.setdef.fledge.RubyProxy")
     begin
       JNI.import("java.lang.Integer").parseInt("x")
     rescue JNI::JavaError => e
@@ -68,6 +79,10 @@ class JNIBridgeTest < Minitest::Test
     report["object"] = [comparator.equals(comparator), comparator.hashCode.is_a?(Integer)]
     failing = JNI.implement("java.util.concurrent.Callable", call: -> { raise ArgumentError, "boom" })
     report["failed"] = failing.call.nil?
+    ran_before = ran.size
+    org.rubyEnded
+    JNI.import("java.lang.Thread").new(runnable).run
+    report["after_end"] = [ran.size - ran_before, comparator.compare("a", "b"), comparator.equals(comparator)]
     puts JSON.generate(report)
   RUBY
 
@@ -81,7 +96,9 @@ class JNIBridgeTest < Minitest::Test
 
   def test_ruby_reaches_java_and_java_reaches_ruby
     Dir.mktmpdir do |work|
-      _, err, status = Open3.capture3(File.join(@home, "bin", "javac"), "-d", work, PROXY)
+      constants = File.join(work, "FledgeBridgeTestConstants.java")
+      File.write(constants, CONSTANTS)
+      _, err, status = Open3.capture3(File.join(@home, "bin", "javac"), "-d", work, PROXY, constants)
       assert status.success?, err
       program = File.join(work, "program.rb")
       File.write(program, PROGRAM)
@@ -95,10 +112,12 @@ class JNIBridgeTest < Minitest::Test
       assert_equal "a1b2.5true", report.fetch("overloads"), "each append takes the overload its argument fits"
       assert_equal 2_147_483_647, report.fetch("field")
       assert_equal 7, report.fetch("static")
+      assert_equal 7, report.fetch("initialized"), "a static field is read after its class is initialized"
       assert_equal 'java.lang.NumberFormatException: For input string: "x"', report.fetch("thrown")
       assert_equal 1, report.fetch("ran"), "Java called a Runnable written in Ruby"
       assert_equal "[a, b, c]", report.fetch("sorted"), "Java sorted with a Comparator written in Ruby"
       assert_equal [true, true], report.fetch("object"), "Object's own methods are the proxy's"
+      assert_equal [0, 0, true], report.fetch("after_end"), "once Ruby has ended, Java's calls into it return zero and run nothing"
       assert report.fetch("failed"), "an exception in Ruby returns null to Java"
       assert_match(/boom \(ArgumentError\)/, err, "and is printed as Ruby prints one")
     end

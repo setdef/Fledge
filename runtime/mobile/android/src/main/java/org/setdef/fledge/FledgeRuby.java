@@ -128,7 +128,11 @@ public final class FledgeRuby {
         append(strings, root.getPath());
         append(strings, new File(new File(root, "app"), script).getPath());
         for (String argument : arguments) append(strings, argument);
-        return nativeRun(strings.toByteArray(), arguments.length);
+        try {
+            return nativeRun(strings.toByteArray(), arguments.length);
+        } finally {
+            RubyProxy.rubyEnded();
+        }
     }
 
     /**
@@ -147,7 +151,11 @@ public final class FledgeRuby {
         ByteArrayOutputStream strings = new ByteArrayOutputStream();
         append(strings, root.getPath());
         for (String argument : arguments) append(strings, argument);
-        return nativeRunApp(strings.toByteArray(), arguments.length);
+        try {
+            return nativeRunApp(strings.toByteArray(), arguments.length);
+        } finally {
+            RubyProxy.rubyEnded();
+        }
     }
 
     /**

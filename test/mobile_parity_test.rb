@@ -344,6 +344,24 @@ class MobileParityTest < Minitest::Test
       .sub("libfledgeruby.so (OK)", "libfledgeruby.so (OK - compressed)"))
   end
 
+  # The check types an item into an app's field and taps its button
+  # where UI Automator's dump says they are.
+  def test_a_ui_automator_dump_gives_the_centre_of_a_node
+    xml = <<~XML
+      <?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0">
+      <node index="0" text="" class="android.widget.EditText" bounds="[0,100][600,200]" />
+      <node index="1" text="Add" class="android.widget.Button" bounds="[600,100][800,200]" />
+      <node index="2" text="Milk" class="android.widget.TextView" bounds="[0,200][800,300]" /></hierarchy>
+      UI hierchary dumped to: /dev/tty
+    XML
+    nodes = MobileParity::Android.nodes(xml)
+    assert_equal 3, nodes.size
+    assert_equal [300, 150], MobileParity::Android.centre(nodes, class: "android.widget.EditText")
+    assert_equal [700, 150], MobileParity::Android.centre(nodes, text: "Add")
+    assert_equal [400, 250], MobileParity::Android.centre(nodes, class: "android.widget.TextView", text: "Milk")
+    assert_nil MobileParity::Android.centre(nodes, text: "Eggs")
+  end
+
   # bundletool get-size total prints the smallest and largest download
   # of the APKs it made, as CSV, in bytes; Play's limit is on the largest.
   def test_the_download_size_is_the_largest_bundletool_reports

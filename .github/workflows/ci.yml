@@ -1189,12 +1189,15 @@ jobs:
   # introspection, so test/integration/typelib_test.rb builds an app
   # over ruby-gnome's gems. No sqlite3 gem is built for Ruby 4.1 yet, so the
   # builds of test/fixtures/my_cool_app and the gem-shaped probe compile it
-  # from source, which the limits below leave room for.
+  # from source, which the limits below leave room for. The Mac's tests
+  # took 17 and 19 minutes in the runs that passed, and the macOS
+  # runner's speed varies: the limit of its tests step is half again
+  # what they take, so that a slow runner is not a red job.
   test:
     name: Test (${{ matrix.platform }})
     needs: runtime
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -1284,7 +1287,7 @@ jobs:
         run: .github/scripts/make-test-identity.sh "$RUNNER_TEMP/certificate.pem"
 
       - name: Run the tests
-        timeout-minutes: 20
+        timeout-minutes: 30
         env:
           A: --verbose
           FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes

@@ -99,14 +99,16 @@ class RuntimeProof
     licensing_page
   end
 
-  # The glibc Linux runtime the Android checks compare with, then the
-  # Android runtime, each into tmp/runtime unless FLEDGE_RUNTIME_DIR
-  # names a folder that holds both.
+  # The Android SDK, which the Android runtime's Gradle build of its AAR
+  # needs (RuntimeBuilder::Android#pack_aar), then the glibc Linux
+  # runtime the Android checks compare with, then the Android runtime,
+  # each into tmp/runtime unless FLEDGE_RUNTIME_DIR names a folder that
+  # holds both.
   private def android
     raise Failed, "the Android proof needs MISE_ENV=android (CONTRIBUTING.md, \"Android on Linux\")" unless ENV["MISE_ENV"] == "android"
 
-    runtimes = @runtimes || [Fledge::Platform.find("x86_64-linux"), platform].map { |each| build(each) }.last
     step("the Android SDK", {}, "bin/android-sdk")
+    runtimes = @runtimes || [Fledge::Platform.find("x86_64-linux"), platform].map { |each| build(each) }.last
     env = { "BUNDLETOOL" => capture(RbConfig.ruby, ".github/scripts/fetch_pin.rb", "mobile", "bundletool") }
     %w[tasks/mobile_parity.rb tasks/ruby_spec.rb].each do |task|
       step("#{task} android-build", env, RbConfig.ruby, task, "android-build", runtimes, bundled: true)

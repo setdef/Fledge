@@ -55,4 +55,31 @@ class RuntimeProofTest < Minitest::Test
       assert_includes ci, script
     end
   end
+
+  # A proof that records the steps it would run, rather than running them.
+  class Recording < RuntimeProof
+    def steps = @steps ||= []
+
+    private def step(label, *)
+      steps << label
+    end
+
+    private def capture(*) = ""
+  end
+
+  # The Android runtime's build packs its AAR with Gradle, which needs the
+  # SDK that bin/android-sdk lays out, as "Android on Linux" in
+  # CONTRIBUTING.md runs it first; after the build, the proof failed on a
+  # clean checkout with "SDK location not found".
+  def test_the_android_proof_lays_out_the_sdk_before_it_builds_a_runtime
+    previous = ENV.fetch("MISE_ENV", nil)
+    ENV["MISE_ENV"] = "android"
+    proof = Recording.new(platform: "android", runtimes: nil, work: Dir.mktmpdir, out: StringIO.new)
+    proof.call
+
+    assert_equal "the Android SDK", proof.steps.first
+    assert_includes proof.steps, "the android runtime"
+  ensure
+    ENV["MISE_ENV"] = previous
+  end
 end

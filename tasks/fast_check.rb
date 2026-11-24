@@ -72,9 +72,13 @@ class FastCheck
   end
 
   # The files, relative to the root, that the commits checked and the
-  # working tree change and that are still there, sorted.
+  # working tree change and that are still there, sorted. A new file git
+  # does not track yet counts: the gate's rake tasks read git ls-files,
+  # and run after a push of the file, so a lint that skipped it here
+  # would first meet it there.
   def changed
-    @changed ||= git("diff", "--name-only", "--no-renames", "--diff-filter=d", "-z", since).split("\0").sort
+    @changed ||= (git("diff", "--name-only", "--no-renames", "--diff-filter=d", "-z", since).split("\0") +
+      git("ls-files", "--others", "--exclude-standard", "-z").split("\0")).uniq.sort
   end
 
   # Whether a changed file is one Steep or the RBS checks read.

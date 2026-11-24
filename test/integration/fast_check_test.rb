@@ -91,6 +91,17 @@ class FastCheckTest < Minitest::Test
     assert_equal %w[lib/new.rb], check.among(%w[lib/new.rb Rakefile gone.rb])
   end
 
+  # A new file nobody has run git add on yet is one the check lints: the
+  # pin prove test reached trunk with offenses RuboCop's autocorrect
+  # mended in the gate, because the file was new.
+  def test_a_new_file_git_does_not_track_yet_is_among_the_changed
+    two_commits
+    write("test/integration/new_test.rb" => "1\n", "tmp/ignored.rb" => "1\n", ".gitignore" => "tmp/\n")
+    git("add", ".gitignore")
+
+    assert_equal %w[.gitignore README.md lib/new.rb test/integration/new_test.rb], FastCheck.new(root: @root).changed
+  end
+
   # The shell scripts, workflows, and C the gate lints (LintFiles) that
   # a change touches are the ones the fast check lints. A comment in
   # bin/setup that shellcheck reads as a directive once reached trunk,

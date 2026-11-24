@@ -12,7 +12,7 @@ On Android, Fledge links every gem's extension into one shared library per ABI, 
 
 The findings of 2026-11-13 (`doc/contributors/research/2026-11-13-phone-extensions-as-files.md`) showed that Android lets an app load a library its installer extracts, so linking every extension in is Fledge's choice, not the phone's. Commit 10b0cfe2 acted on that. It shipped each C or C++ extension an `extconf.rb` builds as a native library of its own, `libfledgeext.FEATURE.so`, which Ruby loads through a link at the desktop's path. An app whose extensions were all of that kind then had no `libfledgeext.so`. Fledge's `MainActivity` stopped loading it, but a host's file is fixed. SDL's activity refuses to start an app when a library it names is missing, so every game over SDL would have stopped at launch. Commit b6d7cdf2 reverted the change an hour later, before any release. No CI job builds an app with a host of its own, so nothing ran into it.
 
-These findings ask how an Android app should carry its gems' extensions so that two things hold. The app's Ruby sees what it sees under `ruby main.rb` wherever Android allows it; the maintainer accepts a difference "only when it is inherent to where the app ships or a platform truly forbids what Ruby does" (`decisions.md`, 2026-11-12). And any framework's host keeps working without knowing how Fledge packaged the extensions, with a contract in Fledge's own terms: the maintainer, on one framework's needs, "We gotta support Tokra (a Tauri port), and any other framework in the future."
+These findings ask how an Android app should carry its gems' extensions so that two things hold. The app's Ruby sees what it sees under `ruby main.rb` wherever Android allows it; a difference is accepted only when it is inherent to where the app ships or a platform truly forbids what Ruby does (`decisions.md`, 2026-11-12). And any framework's host keeps working without knowing how Fledge packaged the extensions, with a contract in Fledge's own terms, since Fledge serves Tokra, a Tauri port, and any framework to come.
 
 ## Verdict
 
@@ -112,7 +112,7 @@ Building `sdl_phone` in CI would test SDL's own host, but it is SDL work: `sdl3/
 
 ## Options
 
-**A. Keep ADR 022: link every extension into `libfledgeext.so`.** Costs nothing now. Closes nothing: on Android, `$LOADED_FEATURES` keeps features where a desktop has files, `archdir` stays empty, ADR 080's stub files and ADR 088's `load.c` mapping stay, and an `extconf.rb` sees `$static` set. Under the maintainer's words of 2026-11-12 these are differences Android does not force. Hosts keep working, and the contract is still unwritten.
+**A. Keep ADR 022: link every extension into `libfledgeext.so`.** Costs nothing now. Closes nothing: on Android, `$LOADED_FEATURES` keeps features where a desktop has files, `archdir` stays empty, ADR 080's stub files and ADR 088's `load.c` mapping stay, and an `extconf.rb` sees `$static` set. Under the decision of 2026-11-12 these are differences Android does not force. Hosts keep working, and the contract is still unwritten.
 
 **B. 10b0cfe2 as it was.** Closes those differences for C and C++ extensions. Breaks every host that names `fledgeext` for an app with no linked extension, a game engine's app above all, and gives hosts nothing to rely on. Listed to be rejected.
 
@@ -138,7 +138,7 @@ Building `sdl_phone` in CI would test SDL's own host, but it is SDL work: `sdl3/
 The reasons, in Fledge's order of design precedence:
 
 1. **A person never meets Ruby.** C and A both start every app. B fails at launch with SDL's alert, which is the failure this rule exists to prevent.
-2. **Ruby code runs as under `ruby main.rb`.** C loads an extension from a file at `require`, records its path, gives `$static` a desktop's value, and raises `LoadError` where a desktop does. A and E keep differences the maintainer calls bugs, and D brings back one.
+2. **Ruby code runs as under `ruby main.rb`.** C loads an extension from a file at `require`, records its path, gives `$static` a desktop's value, and raises `LoadError` where a desktop does. A and E keep differences the decision calls bugs, and D brings back one.
 3. **Ruby's own conventions.** `dln` loads an extension from a file when it is required; C uses Ruby's own loader for it.
 4. **Prior art.** No host read here loads a language runtime's extension modules itself. Python's tools load them from files when imported, and hosts load only fixed names of the framework's own. Chaquopy and React Native kept old names working when they repackaged; C keeps `fledgeext` the same way, with no host change, which also keeps the promise made to Lota's orchestrator that no release drops or renames it without notice. Every framework read here keeps its JNI in a library its own Java loads, which C's contract states.
 5. **Ruby culture** yields to these.

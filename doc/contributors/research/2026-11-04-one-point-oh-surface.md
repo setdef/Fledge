@@ -28,7 +28,7 @@ The three riskiest items are the Ruby version (section 4.1), the undeclared Ruby
 Each part of the surface is listed as it is on `trunk`, with the file it is in, and judged on three questions:
 
 - **Freeze it?** Is the design one to keep for the life of 1.x?
-- **Surprise?** The maintainer's test: "Fledge should never surprise an app dev with how it behaves or causes Ruby or its globals, built-ins, and standard library to behave compared to not using Fledge" (decisions, 2026-11-02, later again).
+- **Surprise?** The test: Fledge never surprises an app's developer with how it behaves, or with how it makes Ruby, its globals, built-ins, and standard library behave, compared with not using Fledge (decisions, 2026-11-02, later again).
 - **Pressure?** Is something likely to need breaking soon, and what is the cheapest way to leave room?
 
 A change is *compatible* when every project that builds on 1.0 builds on 1.x with the same output and every app it built behaves the same. By that rule, turning a refusal into an acceptance is compatible (a new key, a new value of `kind`, lifting "at most one"); changing a default, a file name, a printed line, or the meaning of an accepted value is not.
@@ -112,7 +112,7 @@ Duplicates in `installers` are dropped. The phone keys are ignored by desktop bu
 
 **Surprise?** Three, none of them a reason to break:
 
-- A gem-shaped console app's program is `MyCoolApp`, in CamelCase, where a Linux user types `my_cool_app`. That is decision 5's rule, the maintainer's, and `name: my_cool_app` changes it. The same program listed under `programs` is `my_cool_app`, by its file name. Two defaults for one program is odd, but each is documented.
+- A gem-shaped console app's program is `MyCoolApp`, in CamelCase, where a Linux user types `my_cool_app`. That is decision 5's rule, and `name: my_cool_app` changes it. The same program listed under `programs` is `my_cool_app`, by its file name. Two defaults for one program is odd, but each is documented.
 - `version` is the marketing version and the only version. A phone needs a build number that grows on every upload (section 3.4).
 - `icon` names files by convention, and every size a target lists must be there. A size added to a target's list in 1.x would fail builds that passed. Freeze the lists, and make any later size optional.
 
@@ -174,7 +174,7 @@ Every difference the parity check allows is in `Parity::JUSTIFIED` (`tasks/parit
 
 On a phone: a system environment with `SSL_CERT_FILE` added (and `HOME` on Android); no child processes; no `bin/ruby`; `RUBY_PLATFORM`, `RUBY_DESCRIPTION`, and the architecture folders name the phone; extensions recorded by feature name; no YJIT; no `fiddle` on iOS.
 
-**Freeze it?** Yes, as a list that may only shrink in 1.x. A new difference is a change in how Ruby behaves under Fledge, which is the surprise the maintainer's test forbids; a difference removed is a bug fixed toward `ruby main.rb`.
+**Freeze it?** Yes, as a list that may only shrink in 1.x. A new difference is a change in how Ruby behaves under Fledge, which is the surprise that test forbids; a difference removed is a bug fixed toward `ruby main.rb`.
 
 **Surprise?** Three that a developer can meet without reading an ADR:
 
@@ -244,10 +244,10 @@ The INI-like sections came in 0.2.0 and are read by the launcher, `bin/ruby`, an
 Every runtime of a release carries one Ruby, 4.0.9 today, and nothing chooses another. `Fledge::Bundle#check_ruby` refuses a Gemfile whose `ruby` asks for a different one (`lib/fledge/bundle.rb`, lines 263 to 268). Ruby releases a minor version every December, and a minor version changes what Ruby code sees: default gems become bundled gems, which a locked app then cannot `require`; warnings become errors. Under SemVer, a Fledge 1.y that moves its runtimes from Ruby 4.0 to 4.1 changes what a built app contains in a way an app can observe, which is a major change. The alternatives:
 
 - **Every Ruby minor is a Fledge major.** True to SemVer, and a 2.0 every December.
-- **A Ruby minor may arrive in a Fledge minor.** Simple, and a break under a minor version, the surprise the maintainer's test forbids.
+- **A Ruby minor may arrive in a Fledge minor.** Simple, and a break under a minor version, the surprise that test forbids.
 - **A Fledge 1.x keeps Ruby 4.0.x, moving only its patch; a new Ruby minor arrives in a 1.y as a second runtime, chosen by the Gemfile's `ruby` directive, and becomes the default only in a major.** No new key: Bundler's directive already says which Ruby the project wants, and Fledge already reads it. It costs a runtime per Ruby per platform in each release and a CI matrix that doubles while two Rubies are carried, as cibuildwheel's builds for several Pythons do.
 
-The third fits Design precedence 2 and 3 best, but it decides what a Fledge version promises and adds a requirement the maintainer did not ask for, a second runtime per platform while two Rubies are carried, which doubles the runtime jobs of every CI run and every release. What Fledge promises across versions is product scope, so it is the maintainer's (AGENTS.md, Questions, kind 2; How to work, on requirements and their cost). It belongs in `questions.md` with the third as the default. The same answer should cover the platform floors (macOS 14, glibc 2.39, iOS 15, API 26): raise one only in a major, unless the platform's vendor forces it, as Google Play's target API does each year.
+The third fits Design precedence 2 and 3 best, but it decides what a Fledge version promises and adds a requirement no decision calls for, a second runtime per platform while two Rubies are carried, which doubles the runtime jobs of every CI run and every release. What Fledge promises across versions is product scope, so it is the maintainer's (AGENTS.md, Questions, kind 2; How to work, on requirements and their cost). It belongs in `questions.md` with the third as the default. The same answer should cover the platform floors (macOS 14, glibc 2.39, iOS 15, API 26): raise one only in a major, unless the platform's vendor forces it, as Google Play's target API does each year.
 
 ### 4.2 An undeclared public API
 
@@ -274,7 +274,7 @@ Every developer who follows the docs copies a modeline that names `trunk` into a
 - Top-level `kind`, `identifier`, and `icon` as defaults for each program (section 3.3).
 - `ios: build` and `android: version_code`, under the reserved names (section 3.4).
 - New installers, opt-in (section 3.5); new `kind` values; new options (`--notarize`, `--json`).
-- A runtime per Ruby version, under the reserved name pattern (section 2.10), if the maintainer's answer to item 2 calls for it.
+- A runtime per Ruby version, under the reserved name pattern (section 2.10), if the answer to item 2 calls for it.
 - Restarting through `RbConfig.ruby` on Windows as on macOS and Linux, which removes a difference.
 - The cache folder's location on Windows.
 - `-oDIR` and other GNU forms the parser refuses today.

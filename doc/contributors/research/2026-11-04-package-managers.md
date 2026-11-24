@@ -10,7 +10,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 ## Short answer
 
-The maintainer's decision brings the system package managers into scope for console programs (decisions.md, last entry on the maintainer's side; it is not yet on `trunk` at a737305). Read against what Fledge writes today, the answer splits in two.
+A decision brings the system package managers into scope for console programs (decisions.md, 2026-11-03; it was not yet on `trunk` at a737305). Read against what Fledge writes today, the answer splits in two.
 
 Channels that take a prebuilt archive and need only a text file (a manifest, a formula, a PKGBUILD) work **today**, with no change to the archive: a Scoop bucket, a Homebrew tap, a winget manifest, an AUR `-bin` package, a Chocolatey package that downloads the zip, a Nix flake **(guess for NixOS; see section 14)**, and the GitHub-release installers `mise`, `aqua`, and `ubi`. What is missing is the text file, a checksum list, and (for apt, dnf, pacman repositories) a package format for a console program.
 
@@ -83,7 +83,7 @@ Launcher defects found. None in symlink handling on macOS. Two things to know:
 1. **The "bin" and "lib" refusal is by design, but a package manager can trigger it.** `unix.c` header: "when that folder is named bin (in any case) or lib, ruby.c takes its parent as the prefix instead. The launcher refuses to run from such a folder rather than run with a standard library from somewhere else." This is a documented restriction (`unix.c` header), not a defect, but every recipe in this note must keep the tree in a folder with another name (`libexec/NAME`, `/opt/NAME`, `/usr/lib/NAME`) and link or shim only the launcher.
 2. **Windows symlinks are an open risk, not a measured defect.** If `GetModuleFileNameW` returns the link, the launcher looks for `fledge.cfg` in winget's `Links` folder and fails with "this app is incomplete". Fix if so: resolve the path with `CreateFileW` + `GetFinalPathNameByHandleW` in `own_path`. The cheaper workaround in the manifest is `ArchiveBinariesDependOnPath: true` (section 3), which makes winget add the install folder to `PATH` and make no symlink.
 
-Gatekeeper: I set `com.apple.quarantine` on a copied launcher and ran it from a shell, once with a malformed value (killed) and then with well-formed values (ran, exit 0), and `spctl --assess --type execute` printed "rejected". The malformed-value run made macOS show a "Hello Not Opened" dialog in the maintainer's own session; I should not have run it there, and I ran nothing quarantined after the coordinator said so. What this shows, and no more: a terminal run of a quarantined, ad hoc signed launcher was not blocked on this Mac, and `spctl` rejects it for the double-click path. Whether a Cask download, which Homebrew quarantines, runs from a shell without a dialog is **(guess)** the same; I did not test it.
+Gatekeeper: I set `com.apple.quarantine` on a copied launcher and ran it from a shell, once with a malformed value (killed) and then with well-formed values (ran, exit 0), and `spctl --assess --type execute` printed "rejected". The malformed-value run made macOS show a "Hello Not Opened" dialog in a desktop session in use; it should not have run there, and nothing quarantined ran after that. What this shows, and no more: a terminal run of a quarantined, ad hoc signed launcher was not blocked on this Mac, and `spctl` rejects it for the double-click path. Whether a Cask download, which Homebrew quarantines, runs from a shell without a dialog is **(guess)** the same; I did not test it.
 
 ## 3. winget
 

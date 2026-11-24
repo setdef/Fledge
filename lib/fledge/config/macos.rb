@@ -29,7 +29,7 @@ module Fledge
     # carry from this computer, by the file name the compiled files give
     # it, as <tt>linux: system_libraries</tt> names the distribution's:
     # the developer chooses every library the app distributes, and its
-    # license is the developer's to honor (the maintainer's words of
+    # license is the developer's to honor (the decision of
     # 2026-11-22; Fledge::CarriedLibraries).
     #
     # This class reads the mapping: its +build+, one to three whole

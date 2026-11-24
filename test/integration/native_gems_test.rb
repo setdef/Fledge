@@ -21,7 +21,7 @@ require_relative "../test_helper"
 #
 # nokogiri's builds for macOS and Windows compile GNU libiconv in
 # statically (nokogiri's LICENSE-DEPENDENCIES.md at 1.19.4). Fledge
-# refused them for it until the maintainer ruled, on 2026-10-28, that the
+# refused them for it until it was decided, on 2026-10-28, that the
 # licenses of an app's gems are its developer's to judge, not Fledge's.
 # Now they ship like every other build.
 class NativeGemsTest < Minitest::Test

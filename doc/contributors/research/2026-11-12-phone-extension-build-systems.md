@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Phone extensions that no `extconf.rb` builds
 
-On a phone, Fledge compiles a gem's extension only by running its `extconf.rb` with mkmf aimed at the phone, and refuses a gemspec whose `extensions` name a Rakefile, a `CMakeLists.txt`, or a `configure` (ADR 022). The maintainer, on 2026-11-12 (`decisions.md`): "Python and other languages that have Fledge-like tools must solve this somehow; so can we." This file answers four questions before any code:
+On a phone, Fledge compiles a gem's extension only by running its `extconf.rb` with mkmf aimed at the phone, and refuses a gemspec whose `extensions` name a Rakefile, a `CMakeLists.txt`, or a `configure` (ADR 022). The decision of 2026-11-12 (`decisions.md`): gems whose extensions build without an `extconf.rb` build for the phones, as other languages' tools do it. This file answers four questions before any code:
 
 1. What RubyGems runs for each kind of extension, and where it expects the built file.
 2. How many real gems use each kind.
@@ -252,7 +252,7 @@ Commits: tauri-apps/tauri at 5edd31c8a8914674c217b21a660a914823da2dae; tauri-app
    - Once the build is done, each archive found where `require` looks (the gem's require paths, or the folder RubyGems installs into) is an extension, named by its path.
    - The same environment carries `CMAKE_TOOLCHAIN_FILE` for CMake and `--host` for `configure`, the next two kinds.
 2. **A recipe per gem**, as python-for-android, kivy-ios, Chaquopy, and mobile-forge carry. This is a database of others' gems for Fledge to pin, patch, and keep, against ADR 007 and "code is a liability". The Python corpora show recipes are needed for the remainder, not instead of an environment.
-3. **Ask each gem's author for an `extconf.rb`.** This is today's refusal, which the maintainer's words of 2026-11-12 overrule.
+3. **Ask each gem's author for an `extconf.rb`.** This is today's refusal, which the decision of 2026-11-12 overrules.
 4. **Shared libraries, as Python ships them:** one framework per extension on iOS (PEP 730), and `dlopen` on Android (PEP 738). It reverses ADR 022's static design and the iOS runtime's `--disable-dln`. It would serve ffi libraries too, but that is a different question from extensions of Ruby's.
 5. **Build each extension's sources directly, ignoring the gem's build**, as Flutter's iOS podspec does. This drops the gem's own configuration, which ADR 022 already rejected for `extconf.rb`.
 

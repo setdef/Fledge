@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # An Adversarial Audit of Desktop Parity
 
-The maintainer, 2026-11-12: "Every difference, every lack of parity, is a knife in Fledge's back that could kill the project before it launches." Two accepted justifications had just collapsed: Android's `$0 =`, called impossible and then fixed in about 25 lines, and `fiddle` left out of iOS "for App Review" on a sentence nobody checked. This audit assumes every other justification may be the same, and tries to break each one.
+The rule of 2026-11-12: a difference is accepted only when it is truly justified, and every other is a serious risk to the project. Two accepted justifications had just collapsed: Android's `$0 =`, called impossible and then fixed in about 25 lines, and `fiddle` left out of iOS "for App Review" on a sentence nobody checked. This audit assumes every other justification may be the same, and tries to break each one.
 
 ## Scope and method
 
@@ -69,7 +69,7 @@ The reference installs the bundle into the person's `GEM_HOME`; the app installs
 
 Closed by `feat(lib)!: ship the development and test groups, as bundle exec loads them`: the app sets up the groups `bundle exec` sets up under the developer's own settings (`gems.md`, "Groups"). What follows is the finding that led to it.
 
-`gems.md`, "Groups": "with `development` and `test` always left out: a built app has no development gems, as Warbler's `bundle_without` has it." The reason is prior art (Warbler, Heroku's default `BUNDLE_WITHOUT`), and size. Neither is a rule of an operating system, and decision 20 says "Tiny filesize is not a priority; "my ruby code just works" _is_ a (high) priority."
+`gems.md`, "Groups": "with `development` and `test` always left out: a built app has no development gems, as Warbler's `bundle_without` has it." The reason is prior art (Warbler, Heroku's default `BUNDLE_WITHOUT`), and size. Neither is a rule of an operating system, and decision 20 puts code that works above a small size.
 
 What a developer meets: a program that requires a gem of its development group at run time, such as `debug`, `pry`, `dotenv`, or `rake` used as a library, works under `bundle exec` and fails in the app with a `LoadError` that names the gem, to the person. Measured, with a Gemfile whose only gem is rake in `group :development` and a `main.rb` of `require "rake"`:
 
@@ -86,7 +86,7 @@ The fix: stop forcing `development` and `test` into `without` in `Fledge::Bundle
 
 ### J16: `$VERBOSE` under a person's `RUBYOPT` (B)
 
-Design precedence 1 names it: "no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot". A person's `RUBYOPT=-rsomething` would load code into the app; `-W0` is the harmless stand-in the probe uses. `ruby main.rb` with no `RUBYOPT` gives `false`, as the app does. The maintainer agreed to restore the variables into `ENV` afterwards (decision 11, "I think yes?"), which ADR 040 does, so only the boot is shielded. Nothing to close without breaking precedence 1.
+Design precedence 1 names it: "no influence from a Ruby the person happens to have (`RUBYLIB`, `RUBYOPT`, `GEM_HOME`, and the rest are hidden from Ruby's boot". A person's `RUBYOPT=-rsomething` would load code into the app; `-W0` is the harmless stand-in the probe uses. `ruby main.rb` with no `RUBYOPT` gives `false`, as the app does. Decision 11 restores the variables into `ENV` afterwards, which ADR 040 does, so only the boot is shielded. Nothing to close without breaking precedence 1.
 
 ### J17–J18: Bundler reads the app's `.bundle/config` (J17 closed, J18 A)
 
@@ -151,7 +151,7 @@ $ env -i ruby /…/Ünïcödé/main.rb
 …/main.rb:3:in 'File.join': incompatible character encodings: US-ASCII and UTF-8 (Encoding::CompatibilityError)
 ```
 
-That is an ordinary line of app code failing for a person whose folder name is not ASCII, before anything of Bundler's; the former ADR 041, now ADR 087 adds that Ruby's boot and Bundler's setup fail too under a prefix outside ASCII, which this audit did not measure, having no runtime built. A double-clicked macOS app gets no `LANG`. Python's PEP 538 is the prior art. The maintainer accepted it conditionally (2026-11-03): "I can buy that for now, but will easily be swayed by the first app dev who gets upset by the deviation." B, with that condition.
+That is an ordinary line of app code failing for a person whose folder name is not ASCII, before anything of Bundler's; the former ADR 041, now ADR 087 adds that Ruby's boot and Bundler's setup fail too under a prefix outside ASCII, which this audit did not measure, having no runtime built. A double-clicked macOS app gets no `LANG`. Python's PEP 538 is the prior art. It is accepted conditionally (2026-11-03): it stands until the first app developer reports it as a surprise. B, with that condition.
 
 ## The sections of `doc/differences_from_ruby.md`
 
@@ -171,7 +171,7 @@ That is an ordinary line of app code failing for a person whose folder name is n
 
 the former ADR 026, now ADR 096: "On Windows this is a limit, not a choice. Fledge keeps RubyInstaller's tree whole and builds no `ruby.exe` of its own (ADR 038), and Windows has no `exec` that keeps the process". Only the second half is a limit. Ruby's own `exec` on Windows starts the program, waits, and exits with its status (`launcher.md`, "bin/ruby and restarts", citing `process.c` line 1639 and `win32/win32.c` lines 1184 to 1200), so under `ruby.exe` too a restart gets a new PID, and under `rubyw.exe` `RbConfig.ruby` is `ruby.exe` and opens a console. Those parts are A. The rest is ADR 038's choice: a restart through `RbConfig.ruby` boots with the person's `RUBYOPT`, `RUBYLIB`, and `GEM_HOME`, with no Bundler setup, and under the system's ANSI code page, so the ffi failure the launcher's manifest prevents comes back in the restarted app.
 
-A developer meets it with any self-restarting app (after an update, after a settings change) on Windows, and the only fix today is a branch per operating system, which decision 23 ("Would this require app devs to have a bunch of `if`s …") hoped to spare them.
+A developer meets it with any self-restarting app (after an update, after a settings change) on Windows, and the only fix today is a branch per operating system, which decision 23, no branch per operating system in an app's code, means to spare them.
 
 The fix: build a `ruby.exe` (and `rubyw.exe`) of Fledge's with llvm-mingw, which already builds the launchers, and put it in place of RubyInstaller's inside the same tree, so the tree's shape stays ADR 038's. It is Ruby's `main.c` against the DLL, as `bin/ruby` is on Unix, plus a Windows `relaunch`: when `argv[1]` names the app's entry by file identity (`GetFileInformationByHandle`, the volume serial and file index, as `relaunch.c` compares device and inode), `CreateProcessW` the app's launcher with the rest of the command line, wait, and exit with its status, which is what Ruby's own `exec` does there. It reads `fledge.cfg` with `config.c` and carries the `activeCodePage` manifest. About 150 to 250 lines of C, the build steps in `RuntimeBuilder::Windows`, the license audit's record of the replaced programs, a Windows restart check in Delivery, and the former ADR 026, now ADR 096's and ADR 038's lines on Windows. It would also give every child Ruby the app starts the launcher's code page, closing the last paragraph of "Windows' ANSI code page".
 
@@ -179,7 +179,7 @@ The fix: build a `ruby.exe` (and `rubyw.exe`) of Fledge's with llvm-mingw, which
 
 Closed by `fix: keep the library mkmf links against in every desktop runtime`: every desktop runtime keeps the static libruby, or the import library of Ruby's DLL (`runtimes.md`, "What a runtime keeps"). What follows is the finding that led to it.
 
-the former ADR 039, now ADR 085 prunes "static and import libraries" as what "no running code reads". `runtimes.md`, "The build-only companion", says otherwise in its own words: "mkmf links the test programs of `have_func` and the rest against `LIBRUBYARG_STATIC`, so an `extconf.rb` that checks for a function (nokogiri's) fails without it" (`LIBDIR/mkmf.rb`, line 552, `link_config`'s `$(LIBRUBYARG)`, and lines 2790 to 2806). An app's own running code that calls `have_func` or `try_link`, on a computer with a compiler, reads them. It needs a compiler a person rarely has, so it is the least likely entry here to be met. The fix ships the companion's files in the runtime: no new code, the license audit's and SBOM's entries (Ruby's license, and Rust's beside a static libruby), and some megabytes on macOS and Linux; Windows' import library is small. Decision 20 says size does not count against "my ruby code just works". the former ADR 039, now ADR 085's "Decision Outcome" line on pruning would change with it.
+the former ADR 039, now ADR 085 prunes "static and import libraries" as what "no running code reads". `runtimes.md`, "The build-only companion", says otherwise in its own words: "mkmf links the test programs of `have_func` and the rest against `LIBRUBYARG_STATIC`, so an `extconf.rb` that checks for a function (nokogiri's) fails without it" (`LIBDIR/mkmf.rb`, line 552, `link_config`'s `$(LIBRUBYARG)`, and lines 2790 to 2806). An app's own running code that calls `have_func` or `try_link`, on a computer with a compiler, reads them. It needs a compiler a person rarely has, so it is the least likely entry here to be met. The fix ships the companion's files in the runtime: no new code, the license audit's and SBOM's entries (Ruby's license, and Rust's beside a static libruby), and some megabytes on macOS and Linux; Windows' import library is small. Decision 20 says size does not count against code that works. the former ADR 039, now ADR 085's "Decision Outcome" line on pruning would change with it.
 
 ## The closable entries, ranked
 

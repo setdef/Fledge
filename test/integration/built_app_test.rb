@@ -1269,7 +1269,7 @@ class BuiltAppTest < Minitest::Test
     end
   end
 
-  # The contract test of --notarize, which only the maintainer runs:
+  # The contract test of --notarize, which only a person with the account runs:
   # Apple's real notary service, with a Developer ID Application
   # identity in FLEDGE_TEST_SIGN_IDENTITY and the keychain profile
   # FLEDGE_TEST_NOTARY_PROFILE names (doc/contributors/signing-test.md).
@@ -1277,7 +1277,7 @@ class BuiltAppTest < Minitest::Test
   # and stapler must validate the ticket on each.
   def test_a_notarized_build_opens_with_gatekeepers_blessing
     profile = ENV["FLEDGE_TEST_NOTARY_PROFILE"].to_s
-    skip "FLEDGE_TEST_NOTARY_PROFILE names no notarytool profile; the maintainer runs this with his own" if profile.empty?
+    skip "FLEDGE_TEST_NOTARY_PROFILE names no notarytool profile; a person with an Apple account runs this with theirs" if profile.empty?
     skip "notarization is Apple's" unless @platform.os == "darwin"
 
     Dir.mktmpdir do |dir|

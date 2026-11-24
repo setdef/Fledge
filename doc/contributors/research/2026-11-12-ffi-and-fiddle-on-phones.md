@@ -8,7 +8,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # ffi and fiddle on phones: what the sources say
 
-Fledge leaves fiddle out of its iOS runtime, and refuses gems that build a library for Ruby's ffi on both phones. The only reason on record for iOS is one comment in xord/cruby. The maintainer asked why (decisions, 2026-11-12): "Why can't we have it on both? And why does Fledge leave Ruby's `fiddle` out?" These findings check that reason, and four claims the orchestrating agent made from memory, against their sources. Every page below was read on 2026-11-12.
+Fledge leaves fiddle out of its iOS runtime, and refuses gems that build a library for Ruby's ffi on both phones. The only reason on record for iOS is one comment in xord/cruby. The decision of 2026-11-12 asks for ffi on both phones and fiddle in the iOS runtime. These findings check the reason for leaving them out, and four claims made from memory, against their sources. Every page below was read on 2026-11-12.
 
 ## Verdict
 

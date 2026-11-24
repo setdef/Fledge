@@ -218,7 +218,7 @@ class GemAppBuildTest < Minitest::Test
   end
 
   # The gems an app depends on, and their licenses, are its developer's
-  # choice and responsibility, not Fledge's (the maintainer's words of
+  # choice and responsibility, not Fledge's (the decision of
   # 2026-10-28). So every one of these ships: a GPL gem, an
   # AGPL native gem shaped like Tokra, a gem that declares no license, a
   # precompiled LGPL gem whose source the lockfile does not pin, an MPL

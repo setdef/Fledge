@@ -25,7 +25,7 @@ module Fledge
   # as delocate and dylibbundler do. The developer
   # names every library the app is to carry, its own needs among them, and
   # distributes them under their licenses, which are the developer's to
-  # honor, as their gems' are (the maintainer's words of 2026-11-22 and
+  # honor, as their gems' are (the decisions of 2026-11-22 and
   # 2026-10-28): Fledge carries nothing unlisted and says nothing of a
   # license.
   #

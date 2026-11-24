@@ -58,7 +58,7 @@ The numbers are those of the list of questions these decisions settled, now the 
 
 **19.** The RubyInstaller signing key is the agents' to manage. *Applied in:* ADR 100; `doc/contributors/design/runtimes.md`, "The RubyInstaller signing key".
 
-**20.** A tiny file size is not a priority; "my Ruby code just works" is a high one. A runtime prunes only what no running Ruby code can observe. *Applied in:* `doc/contributors/design/runtimes.md`, "What a runtime keeps" and "What a runtime prunes, and why nothing reads it".
+**20.** An app's Ruby code working as it does without Fledge comes first, and a small size does not. A runtime prunes only what no running Ruby code can observe. *Applied in:* `doc/contributors/design/runtimes.md`, "What a runtime keeps" and "What a runtime prunes, and why nothing reads it".
 
 **21.** Console code pages and Ctrl-C on Windows are the agents' to decide. *Applied in:* ADR 081; `doc/contributors/design/launcher.md`, "The locale"; Plan 002, "Ctrl-C and the console."
 

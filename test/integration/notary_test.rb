@@ -13,8 +13,8 @@ require_relative "../support/stand_in_notary"
 # when Apple does not accept an app. No CI runner and no agent has an
 # Apple Developer account, so the service is the stand-in xcrun of
 # test/support/stand_in_notary.rb, which answers as Apple documents;
-# ditto, which zips what is submitted, is the real one. A run with the
-# maintainer's own account is test/integration/built_app_test.rb's
+# ditto, which zips what is submitted, is the real one. A run with a
+# real Apple account is test/integration/built_app_test.rb's
 # test_a_notarized_build_opens_with_gatekeepers_blessing, with
 # FLEDGE_TEST_NOTARY_PROFILE set.
 class NotaryTest < Minitest::Test

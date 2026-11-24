@@ -113,7 +113,7 @@ revert)
     exit 0
     ;;
   esac
-  # Off until the maintainer has seen tasks/build_cop.rb run the parent
+  # Off until a person has seen tasks/build_cop.rb run the parent
   # of a suspect, and stop where it fails too, as a rate limit of Maven
   # Central's makes it (releases.md, "The build cop").
   if [ "${BUILD_COP_REVERT:-false}" != true ]; then

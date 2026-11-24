@@ -18,8 +18,8 @@ require_relative "../lib/fledge/version"
 # them, from the license audit of each platform's runtime
 # (doc/contributors/design/license-audit.md, "The licensing page").
 #
-# The maintainer asked for this page to come from the pipeline, never by
-# hand (decisions.md, replies of 2026-10-26), so it holds only what the
+# This page comes from the pipeline, never by
+# hand (decisions.md, 2026-10-26, later), so it holds only what the
 # audit finds in the runtimes, what runtime/licenses.yml records of each
 # component, and prose that names license sections. Most of a change to
 # the page comes from the repository: Fledge's version, the map's names,
@@ -315,7 +315,7 @@ class LicensingPage
   end
 
   # What the page says of an app's own gems: that they, and their
-  # licenses, are the developer's (the maintainer's words of 2026-10-28),
+  # licenses, are the developer's (decisions.md, 2026-10-28),
   # and where their own notices are in the app.
   private def app_gems
     <<~GEMS

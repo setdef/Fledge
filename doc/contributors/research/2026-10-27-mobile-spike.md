@@ -17,9 +17,8 @@ line by line). Spike code is throwaway; these findings are what the spike
 is for. Date: 2026-10-27. Branch spike/mobile, forked from trunk at
 618d0f7.
 
-The maintainer's decision this informs (2026-10-27): "We should, if we
-can, support iOS and iPadOS and Android. Ideally before 1.0 but I could be
-swayed if it turns out incredibly burdensome."
+The decision this informs (2026-10-27): iOS, iPadOS, and Android are in
+scope, aimed at 1.0, unless they prove incredibly burdensome.
 
 
 VERDICT
@@ -834,7 +833,7 @@ Recommendation
     - Rust gems, through rb-sys;
     - Delivery on real devices.
 
-  If the maintainer wants to be swayed: Android first is the cheaper
+  If the scope is to shrink: Android first is the cheaper
   half. It builds from any OS, runs on Linux CI, its emulator runs both
   page sizes, and its sandbox lets more desktop Ruby code work as is.
 

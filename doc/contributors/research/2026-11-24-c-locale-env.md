@@ -16,7 +16,7 @@ Stock Ruby 4.1.0-preview1 (the pin of `runtime/sources.yml`), started with `env 
 
 | System | Ruby | Placement |
 |---|---|---|
-| macOS 27.2.1, arm64 | jdx/ruby's `4.1.0-preview1-1` archive, SHA-256 checked | Ruby unpacked inside the folder, as in a Fledge app. Run on the maintainer's Mac itself, with Homebrew present (the build node's run never started); the child Ruby's failure under a C locale was seen by one separate run of the probe |
+| macOS 27.2.1, arm64 | jdx/ruby's `4.1.0-preview1-1` archive, SHA-256 checked | Ruby unpacked inside the folder, as in a Fledge app. Run on a Mac with Homebrew present (the build node's run never started); the child Ruby's failure under a C locale was seen by one separate run of the probe |
 | glibc Linux, Ubuntu 26.04, with `en_US.UTF-8` generated | jdx/ruby's archive for x86_64 | inside the folder |
 | glibc Linux, Ubuntu 24.04 (WSL2), glibc 2.39, `C.utf8` the only UTF-8 locale | the same | inside the folder |
 | musl Linux, the Alpine 3.24 image `ruby:4.1.0-preview1-alpine3.24` of `runtime/sources.yml`, unpacked from Docker Hub and entered with `unshare -Ur chroot` on the WSL2 node | the image's own Ruby, at `/usr/local` | the app inside the folder, Ruby at an ASCII prefix: the image's Ruby is not relocatable, so Bundler's failures that need Ruby inside the folder could not be reproduced there |

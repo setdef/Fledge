@@ -17,7 +17,7 @@ the readings are for the maintainer's counsel to confirm.
 
 THE RULE
 
-The maintainer: an app developer with a commercial license must owe
+The rule: an app developer with a commercial license must owe
 nothing beyond notices for what Fledge copies into the app, except LGPL
 libraries, which may ship as separate shared libraries the recipient can
 replace, with the library's source (never the app's) published. The
@@ -348,7 +348,7 @@ GMP -> our own Windows Ruby --without-gmp
     MSYS2's rolling, unpinnable toolchain at about 30-60 minutes per
     build; follow every RubyInstaller patch; lose the signed-archive
     provenance.
-  Not prototyped, since the maintainer chose path 1.
+  Not prototyped, since path 1 was chosen.
 
 RECOMMENDATION
 

@@ -158,7 +158,7 @@ Items I could not settle:
 
 ### Cost and accounts
 
-US$99 a year (above). Fledge cannot enroll. ADR 012 already records that the maintainer will get an account "at the last responsible moment".
+US$99 a year (above). Fledge cannot enroll. ADR 012 already records that an account is opened at the last responsible moment.
 
 ### Prior art
 

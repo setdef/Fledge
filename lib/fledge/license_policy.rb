@@ -9,7 +9,7 @@ module Fledge
   # Which licenses may ship inside a Fledge runtime.
   #
   # Everything Fledge itself copies into an app, its runtime, the app's
-  # developer gives to whoever receives the app. The maintainer's rule is
+  # developer gives to whoever receives the app. The rule is
   # that a developer must be able to ship an app with no copyleft
   # obligation beyond keeping notices (decisions 8 and 24 in
   # <tt>doc/contributors/decisions.md</tt>): permissive licenses ship

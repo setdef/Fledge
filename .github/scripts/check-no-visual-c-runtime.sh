@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: MIT
 
 # Fails if anything a Windows Build job is about to upload holds a DLL
-# of Microsoft's Visual C++ runtime. The maintainer's rule is that
-# nothing setdef publishes carries it, "not an app that Fledge's CI
-# builds and uploads" (doc/contributors/decisions.md), and a public
+# of Microsoft's Visual C++ runtime. The rule is that
+# nothing setdef publishes carries it, an app that Fledge's CI builds
+# and uploads included (doc/contributors/decisions.md, 2026-11-21), and a public
 # repository's artifacts are anyone's to download.
 #
 #   check-no-visual-c-runtime.sh FOLDER...

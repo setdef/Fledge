@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Fledge's Architecture
 
-This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads the plan of record for what is left and CHANGELOG.md for what each release changed. Seven ADRs hold the decisions that shape the rest: ADR 001 the shape of a desktop app, ADR 101 that each platform's app is built on that platform, ADR 093 that desktop runtimes are prebuilt in Fledge's CI, ADR 102 where their Ruby comes from, ADR 081 how the app's program runs, and ADRs 099 and 012 a phone's Ruby and project. Every other choice is in the design document for its subject.
+This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads the plan of record for what is left and CHANGELOG.md for what each release changed. Eight ADRs hold the decisions that shape the rest: ADR 001 the shape of a desktop app, ADR 101 that each platform's app is built on that platform, ADR 093 that desktop runtimes are prebuilt in Fledge's CI, ADR 102 where their Ruby comes from, ADR 081 how the app's program runs, and ADRs 099 and 012 a phone's Ruby and project, and ADR 103 how its Ruby draws the phone's own widgets. Every other choice is in the design document for its subject.
 
 ## The parts
 
@@ -52,7 +52,7 @@ Two more rules shape every part. Code is a liability (decisions, 2026-10-28): Fl
 
 ## Architecture Decision Records
 
-An ADR in `doc/contributors/adr/` records one decision that changed what Fledge is, and would cost much to undo: its context, the options weighed, the choice, and what it costs. Such decisions are rare: Fledge has the seven below. Write one only when you can name the architecturally significant requirement the decision resolves and what it would cost to undo. Every other choice, with its reasons, the options weighed, and its prior art, is recorded in the design document for its subject. An accepted ADR is never rewritten, only replaced by a new one or deleted once it no longer passes. Numbers are never reused, so the list has gaps.
+An ADR in `doc/contributors/adr/` records one decision that changed what Fledge is, and would cost much to undo: its context, the options weighed, the choice, and what it costs. Such decisions are rare: Fledge has the eight below. Write one only when you can name the architecturally significant requirement the decision resolves and what it would cost to undo. Every other choice, with its reasons, the options weighed, and its prior art, is recorded in the design document for its subject. An accepted ADR is never rewritten, only replaced by a new one or deleted once it no longer passes. Numbers are never reused, so the list has gaps.
 
 Dated records, such as finished plans and research notes, cite ADRs by number and section as they stood on their dates; git keeps those versions. Everything else cites only an ADR that `doc/contributors/adr/` holds, and `test/adr_citations_test.rb` fails on any other, so deleting an ADR moves each of its citations to the design-document section that took its reasons.
 
@@ -63,5 +63,6 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 | [012](../adr/012.md) | For a phone, `fledge build` writes a project the developer builds, signs, and submits |
 | [102](../adr/102.md) | Take CRuby from jdx/ruby on macOS and glibc Linux, and from RubyInstaller on Windows |
 | [099](../adr/099.md) | On a phone, Ruby is a shared library Fledge builds from source, with each of its extensions a file |
+| [103](../adr/103.md) | On a phone, an app's Ruby drives the platform's own widgets from the main thread, through a bridge over Fiddle |
 | [081](../adr/081.md) | An app's program runs as `ruby PROGRAM` runs it, with nothing of Fledge's between |
 | [093](../adr/093.md) | Prebuild Each Platform's Runtime in Fledge's CI, and Publish It with the Release |

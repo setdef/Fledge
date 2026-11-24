@@ -53,12 +53,23 @@ class PhoneTestCommandTest < Minitest::Test
   def test_android_runs_the_tests_in_the_app_and_exits_with_their_status
     android_missing("no Android device or emulator: set ANDROID_SERIAL, as bin/android-emulator does") unless ENV["ANDROID_SERIAL"]
     runtimes("android")
+    uninstall_android_apps
     assert_passes fledge_test("android", BASKET), runs: 8
     assert_passes fledge_test("android", PASSES), runs: 1, warns: true
     assert_fails fledge_test("android", FAILS)
   ensure
+    uninstall_android_apps if ENV["ANDROID_SERIAL"]
+  end
+
+  # Uninstalls the apps the Android test installs, before it and after.
+  # Before, because a copy signed with another key cannot be replaced,
+  # and fledge test then stops and uninstalls nothing
+  # (doc/contributors/design/phone-projects.md, "Tests in the app"): the
+  # mobile parity check, run first on CI's emulator, leaves Basket there
+  # installed from its release bundle, signed with its own upload key.
+  private def uninstall_android_apps
     %w[Basket PhoneTests].each do |name|
-      system("adb", "uninstall", "com.setdef.fledge.#{name}", out: File::NULL, err: File::NULL) if ENV["ANDROID_SERIAL"]
+      system("adb", "uninstall", "com.setdef.fledge.#{name}", out: File::NULL, err: File::NULL)
     end
   end
 

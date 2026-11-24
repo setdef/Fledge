@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=../../lib/fledge/config.schema.json
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+
+# Basket is a phone app: main.rb keeps the list, and each phone's own
+# widgets show it, drawn by a host of the app's own that replaces the
+# screen Fledge's template draws (host/ios, in UIKit, and host/android,
+# in Android's views). Each host starts main.rb with a pair of pipes and
+# talks to it a line at a time.
+name: Basket
+identifier: com.setdef.fledge.Basket
+version: "1.0.0"
+ios:
+  host: host/ios
+android:
+  host: host/android

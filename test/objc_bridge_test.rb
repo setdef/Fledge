@@ -89,6 +89,19 @@ class ObjCBridgeTest < Minitest::Test
     assert_equal "evictions", evictions.objc_send("description").to_s, "an override takes its superclass's encoding"
   end
 
+  def test_a_protocol_the_runtime_lacks_gives_its_recorded_encodings
+    rows = FledgeBridgeTestRows.new
+    assert_equal "q32@0:8@16q24", objc.protocol_encoding(["UITableViewDataSource"], "tableView:numberOfRowsInSection:")
+    assert_equal "q32@0:8@16q24", objc.encoding_of(rows.objc_pointer, objc.selector("tableView:numberOfRowsInSection:"))
+    assert rows.respondsToSelector(:"tableView:numberOfRowsInSection:")
+    assert_equal 42, rows.objc_send("tableView:numberOfRowsInSection:", nil, 2)
+  end
+
+  def test_a_protocol_nothing_knows_is_refused_by_name
+    error = assert_raises(Fledge::ObjC::Error) { Class.new(objc::NSObject) { def self.name = "FledgeBridgeTestNoProtocol" }.objc_protocols("FledgeNoSuchProtocol") }
+    assert_match(/no protocol FledgeNoSuchProtocol/, error.message)
+  end
+
   def test_an_exception_in_a_method_objective_c_called_is_printed_not_raised
     greeter = FledgeBridgeTestGreeter.new
     _, err = capture_subprocess_io { assert_equal 0, greeter.objc_send("boom") }

@@ -30,3 +30,12 @@ class FledgeBridgeTestEvictions < Fledge::ObjC::NSObject
   objc_method("cache:willEvictObject:") { |_cache, object| @evicted = object.to_s }
   objc_method("description") { "evictions" }
 end
+
+# A data source of UIKit's, whose protocol a Mac's Foundation-only
+# process, like an iOS process's Objective-C runtime for a protocol no
+# compiled code refers to, does not have.
+class FledgeBridgeTestRows < Fledge::ObjC::NSObject
+  objc_protocols "UITableViewDataSource"
+
+  objc_method("tableView:numberOfRowsInSection:") { |_table, section| 40 + section }
+end

@@ -120,6 +120,32 @@ module Fledge
     @instances = {} # each live instance of a class defined in Ruby, by pointer
     @closures = [] # each method a Ruby class gave Objective-C, kept from the collector
 
+    # The type encodings of the methods of the UIKit protocols a Ruby
+    # class most often implements, for when the Objective-C runtime has
+    # no such protocol to give them (see objc_protocols). From UIKit's
+    # headers, for 64-bit ARM: +q+ is NSInteger, +B+ is BOOL.
+    PROTOCOL_ENCODINGS = {
+      "UITableViewDataSource" => {
+        "tableView:numberOfRowsInSection:" => "q32@0:8@16q24",
+        "tableView:cellForRowAtIndexPath:" => "@32@0:8@16@24",
+        "numberOfSectionsInTableView:" => "q24@0:8@16",
+        "tableView:titleForHeaderInSection:" => "@32@0:8@16q24",
+        "tableView:canEditRowAtIndexPath:" => "B32@0:8@16@24",
+        "tableView:commitEditingStyle:forRowAtIndexPath:" => "v40@0:8@16q24@32",
+        "tableView:moveRowAtIndexPath:toIndexPath:" => "v40@0:8@16@24@32",
+      },
+      "UIApplicationDelegate" => {
+        "application:didFinishLaunchingWithOptions:" => "B32@0:8@16@24",
+        "application:configurationForConnectingSceneSession:options:" => "@40@0:8@16@24@32",
+      },
+      "UIWindowSceneDelegate" => {
+        "scene:willConnectToSession:options:" => "v40@0:8@16@24@32",
+        "sceneDidBecomeActive:" => "v24@0:8@16",
+        "sceneWillResignActive:" => "v24@0:8@16",
+        "sceneDidDisconnect:" => "v24@0:8@16",
+      },
+    }.freeze
+
     class << self
       # The Objective-C class named +name+, as the Ruby class whose
       # instances wrap its objects, or nil when there is none.
@@ -309,9 +335,7 @@ module Fledge
         sel = selector(selector)
         protocols.each do |name|
           protocol = Runtime::GET_PROTOCOL.call(name.to_s)
-          next if protocol.null?
-
-          found = protocol_types(protocol.to_i, sel)
+          found = protocol.null? ? PROTOCOL_ENCODINGS.dig(name.to_s, selector.to_s) : protocol_types(protocol.to_i, sel)
           return found if found
         end
         nil
@@ -480,12 +504,23 @@ module Fledge
 
         # Declares the protocols this class, defined in Ruby, conforms
         # to, whose methods' encodings its objc_method methods take.
+        #
+        # +objc_getProtocol+ finds only a protocol that compiled code in
+        # the process refers to, and UIKit's own are not always one. For
+        # a protocol in PROTOCOL_ENCODINGS that it does not find, the
+        # class conforms by answering the protocol's selectors, which is
+        # all UIKit asks of a delegate or a data source
+        # (+respondsToSelector:+), and the encodings are the table's.
         def objc_protocols(*names)
           objc_define
           @protocols = protocols + names.map(&:to_s)
           names.each do |name|
             protocol = Runtime::GET_PROTOCOL.call(name.to_s)
-            raise Error, "Objective-C has no protocol #{name}" if protocol.null?
+            if protocol.null?
+              raise Error, "Objective-C has no protocol #{name}" unless PROTOCOL_ENCODINGS.key?(name.to_s)
+
+              next
+            end
 
             Runtime::ADD_PROTOCOL.call(objc_pointer, protocol)
           end

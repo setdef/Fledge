@@ -49,8 +49,9 @@ module Basket
       end
 
       objc_method("tableView:commitEditingStyle:forRowAtIndexPath:") do |table, _style, path|
-        list.remove(path.row)
+        item = list.remove(path.row)
         table.deleteRowsAtIndexPaths([path], withRowAnimation: FADE)
+        puts "Basket removed #{item}"
       end
     end
 
@@ -82,9 +83,11 @@ module Basket
 
       # Adds what the field holds, and empties the field.
       def add
-        @list.add(@field.text.to_s)
+        item = @list.add(@field.text.to_s) or return
+
         @field.text = ""
         @table.reloadData
+        puts "Basket added #{item}"
       end
 
       # How many rows the table shows, as UIKit asks Rows.

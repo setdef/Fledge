@@ -7,9 +7,11 @@ require "fledge/jni"
 
 module Basket
   # Basket's screen on Android, drawn by Android's own views: a text
-  # field with an Add button above a list, under the app bar. A long
-  # press on an item removes it. Each object is Android's own, made and
-  # called as Android documents it, through Fledge::JNI.
+  # field with an Add button above a list, under the app bar. The
+  # keyboard's Done key, or Enter, adds the item, as the Add button
+  # does, and a long press on an item removes it. Each object is
+  # Android's own, made and called as Android documents it, through
+  # Fledge::JNI.
   module Android
     # The runtime's bridge to Java.
     JNI = Fledge::JNI
@@ -27,6 +29,9 @@ module Basket
     ArrayAdapter = JNI.import("android.widget.ArrayAdapter")
     # Java's list, which the adapter reads.
     ArrayList = JNI.import("java.util.ArrayList")
+    # What a field tells the keyboard, such as which action its Enter key
+    # shows.
+    EditorInfo = JNI.import("android.view.inputmethod.EditorInfo")
     # Android's own layouts, such as a list's row of one line.
     Layouts = JNI.import("android.R$layout")
 
@@ -54,19 +59,19 @@ module Basket
 
       # Adds what the field holds, and empties the field.
       def add
-        item = @field.getText.to_s.strip
-        return if item.empty?
+        item = @list.add(@field.getText.to_s) or return
 
-        @list.add(item)
         @adapter.add(item)
         @field.setText("")
+        puts "Basket added #{item}"
       end
 
       # Removes the item at +position+.
       def remove(position)
-        @list.remove(position)
+        item = @list.remove(position)
         @items.remove(position)
         @adapter.notifyDataSetChanged
+        puts "Basket removed #{item}"
       end
 
       # Runs +block+ once the list is laid out, from Android's loop.
@@ -83,6 +88,7 @@ module Basket
         @field = EditText.new(activity)
         @field.setHint("Add an item")
         @field.setSingleLine(true)
+        @field.setImeOptions(EditorInfo.IME_ACTION_DONE)
         @field.setOnEditorActionListener(JNI.implement("android.widget.TextView$OnEditorActionListener",
           onEditorAction: -> (_view, _action, _event) { add || true }))
         button = Button.new(activity)

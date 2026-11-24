@@ -73,7 +73,8 @@ class MobileParity
   # (+also+), whether it stays open, as a real app does, so that its
   # line, not its program's end, finishes its run (default: no), and an
   # item a person adds once it shows its list (+adds+): the Android
-  # check types it into the app's field and taps its Add button, and the
+  # check types it into the app's field, presses Enter, and long-presses
+  # its row to remove it, and the
   # iOS check puts it in the list's file before the launch, so that each
   # app draws a row, not only an empty list.
   class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open, :adds)

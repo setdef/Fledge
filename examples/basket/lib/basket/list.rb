@@ -20,19 +20,20 @@ module Basket
       @items = File.exist?(path) ? JSON.parse(File.read(path)) : []
     end
 
-    # Adds +text+, without the spaces around it, unless nothing is left.
+    # Adds +text+, without the spaces around it, unless nothing is left,
+    # and returns the item it added, or nil.
     def add(text)
       item = text.to_s.strip
       return if item.empty?
 
       @items << item
       save
+      item
     end
 
-    # Removes the item at +index+.
+    # Removes the item at +index+, and returns it.
     def remove(index)
-      @items.delete_at(index)
-      save
+      @items.delete_at(index).tap { save }
     end
 
     private def save

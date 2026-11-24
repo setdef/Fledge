@@ -30,6 +30,12 @@ class MobileParity
     # The host app's activity in every project fledge build writes.
     ACTIVITY = "org.setdef.fledge.host.MainActivity"
 
+    # KeyEvent.KEYCODE_ENTER, the key the check presses after typing an
+    # item, and how long, in milliseconds, it presses a row to long-press
+    # it: more than ViewConfiguration's long-press timeout, 400 to 500.
+    ENTER = "66"
+    LONG_PRESS_MILLISECONDS = 1500
+
     # Where the built debug APKs go, one per app, named for its identifier,
     # each beside the APK set (+.apks+) bundletool made from its release
     # bundle.
@@ -459,26 +465,41 @@ class MobileParity
     end
 
     # Does what a person does once the list shows: types +app+'s item
-    # into its field, taps its Add button, and waits, up to +timeout+
-    # seconds, for the item to show as a row of the list, drawn by the
-    # app's own adapter. A crash in drawing it ends the process, which
-    # the wait reports.
+    # into its field and presses the keyboard's Enter, which the field's
+    # editor action listener turns into adding the item, and waits, up
+    # to +timeout+ seconds, for the item to show as a row of the list,
+    # drawn by the app's own adapter; then presses the row for longer
+    # than a tap, which removes it, and waits for the row to go. A crash
+    # in either ends the process, which the wait reports.
     private def add_item(app, timeout:, interval:)
       nodes = Android.nodes(screen)
       field = Android.centre(nodes, class: "android.widget.EditText") || raise("#{app.name} shows no field to type in:\n#{screen}")
       adb("shell", "input", "tap", *field.map(&:to_s))
       adb("shell", "input", "text", app.adds)
-      button = Android.centre(Android.nodes(screen), text: "Add") || raise("#{app.name} shows no Add button:\n#{screen}")
-      adb("shell", "input", "tap", *button.map(&:to_s))
+      adb("shell", "input", "keyevent", ENTER)
+      row = wait_for_row(app, shown: true, timeout:, interval:)
+      note "#{app.name} on #{device}: typed #{app.adds.inspect} into its field at #{field.join(',')} and pressed Enter, " \
+        "and its list showed #{app.adds.inspect} as a row at #{row.join(',')}"
+      adb("shell", "input", "swipe", *row.map(&:to_s), *row.map(&:to_s), LONG_PRESS_MILLISECONDS.to_s)
+      wait_for_row(app, shown: false, timeout:, interval:)
+      note "#{app.name} on #{device}: a long press on #{app.adds.inspect} removed its row"
+    end
+
+    # Waits, up to +timeout+ seconds, until the list shows +app+'s item
+    # as a row (+shown+), and returns the row's centre, or until it no
+    # longer does.
+    private def wait_for_row(app, shown:, timeout:, interval:)
       deadline = Time.now + timeout
-      until (row = Android.centre(Android.nodes(screen), class: "android.widget.TextView", text: app.adds))
-        raise "#{app.name} did not show #{app.adds} as a row after it was added:\n#{logged(app).entries.last(40).join("\n")}" if Time.now > deadline
-        raise "#{app.name} ended when #{app.adds} was added:\n#{logged(app).entries.last(40).join("\n")}" unless process(app) && running?(process(app))
+      loop do
+        row = Android.centre(Android.nodes(screen), class: "android.widget.TextView", text: app.adds)
+        return row if shown ? row : row.nil?
+
+        what = shown ? "show #{app.adds} as a row after Enter" : "remove #{app.adds} after a long press"
+        raise "#{app.name} did not #{what}:\n#{logged(app).entries.last(40).join("\n")}" if Time.now > deadline
+        raise "#{app.name} ended with #{app.adds} on its list:\n#{logged(app).entries.last(40).join("\n")}" unless process(app) && running?(process(app))
 
         sleep interval
       end
-      note "#{app.name} on #{device}: typed #{app.adds.inspect} into its field at #{field.join(',')}, tapped Add at #{button.join(',')}, " \
-        "and its list showed #{app.adds.inspect} as a row at #{row.join(',')}"
     end
 
     # The screen's UI Automator dump, which it writes to a file: with

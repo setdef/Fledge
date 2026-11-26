@@ -786,3 +786,69 @@ The process exit code was -1073741189, which is 0xC000027B, as in every earlier 
 **Removal.** The script ran `Get-AppxPackage -Name Setdef.FledgeWinUIProbe | Remove-AppxPackage` in a handler that runs when the script ends, whether or not the probe passed. Afterward `@(Get-AppxPackage -Name Setdef.FledgeWinUIProbe).Count` printed 0 and `Get-AppxPackage -Name Setdef.FledgeWinUIProbe` printed nothing. The run changed no setting and installed no certificate.
 
 WinUI 3 from pure Ruby still cannot carry Basket's screen on this computer, packaged or not: a text box ends the process in both.
+
+## 2026-11-26: why the text box ends the process, and the fix
+
+The text box fails because the probe's `Application` does not answer `IXamlMetadataProvider`. A WinUI 3 app's `Application` answers it, through code the XAML compiler generates, and hands each call to `XamlControlsXamlMetaDataProvider`, which describes the types of `Microsoft.UI.Xaml.Controls.dll`. Without it, WinUI cannot make an object of those types, and the default styles of `TextBox`, `PasswordBox`, and `RichEditBox` set two such objects. With it, the text box works, `XamlControlsResources` activates, and the screen of section 4 runs with its text box: typed text becomes a row on Add and on Return. The cause is in how the probe set WinUI up, not in Windows, the desktop, package identity, or Microsoft's code. The `LimitedAccessFeatures` message that every earlier run printed has nothing to do with the text box.
+
+Each run below ran on the same Windows 11 computer (version 26H2, build 26300.9974), on a desktop made for the run, through the bootstrapper with the Windows App Runtime 2.7.0 framework package that Windows had registered (the last form of Appendix A), as the Windows account set aside for these runs. Each checked the account first. No run installed anything. The first run printed the SHA-256 of the framework package's `Microsoft.ui.xaml.dll` and `WinUIEdit.dll`, and each matched the file in the `Microsoft.WindowsAppSDK.WinUI` 2.7.0 package, so the frames below are named from Microsoft's public symbols for those files (from `msdl.microsoft.com`, by each file's CodeView GUID and age). Source lines are cited at tag `winui3/release/2.7.0` of microsoft/microsoft-ui-xaml (commit 1b5b1a0).
+
+**Run 1. Hypothesis: the text box fails because of focus (the Text Services Framework starting when the box takes focus), spell checking, or text prediction.** The probe set, in turn, `IsSpellCheckEnabled` false, `IsTextPredictionEnabled` false, both, `IsTabStop` false, and `IsEnabled` false, each before the box joined the window. Every variant ended the process with 0xC000027B and the same message, so the hypothesis is ruled out. The same run read the thread's error information at two points, with `GetRestrictedErrorInfo` and `RoInspectCapturedStackBackTrace`. Right after `Window.Activate`, before anything failed, the thread already held an error of 0x80040111 ("ClassFactory cannot supply requested class") with the text `Windows.ApplicationModel.LimitedAccessFeatures`. The stack combase captured when that error was raised runs from `Microsoft.UI.Xaml.dll`, during window creation, through `dcompi.dll` and Windows' `dcomp.dll`, to combase's activation of a class in `Windows.ApplicationModel.dll`. DirectComposition asked for a limited access feature, got that error, and went on. A scan of `C:\Windows\System32` found the string in 18 files, `dcomp.dll` among them, and in no file of the framework package.
+
+**Run 2. Hypothesis: the `LimitedAccessFeatures` error is left over on the thread, and WinUI reports it in place of the text box's error.** WinUI's `ErrorHelper::ReportUnhandledError` takes whatever error is on the thread (`ErrorHelper.cpp`, line 459; `ErrorInfo::GetFromThread`, `ErrorInfo.cpp`, lines 52 to 78), with no check that it matches the failure being reported, and `ProcessUnhandledError` raises `UnhandledException` with that error's code and message (`ErrorHelper.cpp`, lines 545 to 552). The run made two checks:
+
+- Without a text box, the same `LimitedAccessFeatures` error was on the thread after `Activate`, and the probe ran to its end with status 0.
+- With a text box, the probe cleared the thread's error (`SetErrorInfo(0, NULL)`) after `Activate`. The process still ended, and `UnhandledException` then reported 0x80004005, "Unspecified error", which is what the 1.8.260921001 runs of section 5 printed.
+
+The hypothesis holds: the text box's error is E_FAIL, and it carries no message.
+
+**Run 3. Where E_FAIL comes from.** WinUI records each failure its code returns in "error contexts" for the thread: up to five, each with up to 512 frames and the HRESULT at each frame (`ErrorContextStructure.h`, lines 37 to 100). They are kept in a TLS slot whose index is the static `g_dwErrorContextTlsIndex` (`errorcontext.cpp`, lines 54 and 250), at RVA 0xd33204 in this `Microsoft.ui.xaml.dll` by its public symbols. The probe's `UnhandledException` handler read the list from that slot. The newest context, of 157 frames, read from the failure outward (frame numbers in parentheses):
+
+- `CXcpDispatcher::Tick` (115) ran a frame, whose `CLayoutManager::UpdateLayout` (110) measured the window's content. That applied the content presenter's template, which added the panels, and the text box entered the tree (`CTextBoxBase::EnterImpl`, 43).
+- On entering, the text box applied its default style (`CControl::EnsureBuiltInStyleApplied`, 41, then `DefaultStyles::GetDefaultStyleByKey`, 37). A setter of that style has a `StaticResource` value (`OptimizedStyle::EnsureValueRealized`, 18; `BinaryFormatObjectWriter::ProvideStaticResourceReference`, 16), which WinUI looked up in the global theme resources and made from its deferred markup (`CResourceDictionary::GetKeyFromGlobalThemeResourceNoRef`, 12; `CResourceDictionary::TryLoadDeferredResource`, 9).
+- Making that object failed in `ObjectWriterCommonRuntime::CreateType` (3), under `XamlType::get_FullName` (1), with E_FAIL at frame 0.
+
+In WinUI's default styles (`dxaml/xcp/dxaml/themes/generic.xaml`), `TextBox`'s `ContextFlyout` and `SelectionFlyout` are set to `{StaticResource TextControlCommandBarContextFlyout}` and `{StaticResource TextControlCommandBarSelectionFlyout}` (lines 21358, 21373, and 21374), and so are those of `RichEditBox` (lines 20047, 20063, and 20064) and `PasswordBox` (lines 20267, 20282, and 20283). Both resources are a `TextCommandBarFlyout` (lines 7167 and 7168). An `AutoSuggestBox` holds a `TextBox`. Those are the four controls that failed, and the styles of the controls that worked have no such setter. `TextCommandBarFlyout` is a class of `Microsoft.UI.Xaml.Controls.dll`, not of `Microsoft.UI.Xaml.dll` (the WinUI package's `package.appxfragment` lists it at line 713, under the `Path` of line 517). WinUI finds types outside `Microsoft.UI.Xaml.dll` by asking the `Application` object for `IXamlMetadataProvider` (`MetadataAPI::TryGetMetadataProvider`, `MetadataAPI.cpp`, lines 326 to 375), and adds only `Microsoft.UI.Xaml.Phone.dll` by itself (line 32). The XAML compiler puts `XamlControlsXamlMetaDataProvider` first among the providers an app's generated code consults (`TypeInfoCollector.cs`, lines 180 to 199). The probe's `Application` answered `IApplicationOverrides` and handed every other interface to WinUI's inner object, which does not answer `IXamlMetadataProvider`, so WinUI had no description of `TextCommandBarFlyout` and could not make one.
+
+**Run 4. Hypothesis: if the probe's `Application` answers `IXamlMetadataProvider` by handing each of its three methods to a `XamlControlsXamlMetaDataProvider`, the text box and `XamlControlsResources` start.** The probe gave its outer `Application` object one more interface, whose three methods call the same slots of a `Microsoft.UI.Xaml.XamlTypeInfo.XamlControlsXamlMetaDataProvider`, made on the first call:
+
+```ruby
+IID_XAML_METADATA_PROVIDER = "a96251f0-2214-5d53-8746-ce99a2593cd7" # GetXamlType 6 and 7, GetXmlnsDefinitions 8
+
+provider = nil
+forward = lambda do |slot|
+  [[P, P], lambda do |_this, a, b|
+    provider ||= activate("Microsoft.UI.Xaml.XamlTypeInfo.XamlControlsXamlMetaDataProvider").qi(IID_XAML_METADATA_PROVIDER)
+    provider.call(slot, [P, P], a, b)
+  end]
+end
+overrides = Impl.new("Probe.App", {
+  IID_APPLICATION_OVERRIDES => [[[P], ->(_this, _args) { launched.call; 0 }]],
+  IID_XAML_METADATA_PROVIDER => [forward.(6), forward.(7), forward.(8)],
+})
+```
+
+Each method takes two pointers on x64 (the 16-byte `TypeName` of the first `GetXamlType` goes by reference), so the Ruby passes them on as they came. In `OnLaunched` the probe then activated `XamlControlsResources` and set it as `Application.Resources` (`IApplication`, slot 7), as a WinUI app merges it in its `App.xaml`. The screen was section 4's, with the text box. The timer's steps set the text box's text and clicked Add through UI Automation twice, removed the first row, focused the text box (`UIElement.Focus`, slot 226, with `FocusState.Keyboard`), posted `WM_CHAR` for each letter of "Bread" to the window that `GetGUIThreadInfo` gave as having keyboard focus, and posted the Return key's `WM_KEYDOWN` and `WM_KEYUP` there. The text box's `KeyDown` handler adds the text as a row on Return. The run printed:
+
+```
+[probe] the Application answers IXamlMetadataProvider: true
+[probe] XamlControlsResources: activated
+[probe] Application.Resources is the XamlControlsResources
+[probe] window activated
+[probe] layout: the content is 1424.0 by 734.0
+[probe] added "Milk"; the list has 1 rows
+[probe] added "Eggs"; the list has 2 rows
+[probe] removed row 0; the list has 1 rows
+[probe] Focus returned 1; focused window 0x1310498
+[probe] posted "Bread" as WM_CHAR to 0x1310498
+[probe] posted Return to 0x1310498; the text box holds "Bread"
+[probe] KeyDown 13
+[probe] added "Bread"; the list has 2 rows
+[probe] layout: the content is 1424.0 by 734.0
+[probe] the list ends with 2 rows: ["Eggs", "Bread"]
+[probe] Application.Start returned; exiting with 0
+```
+
+The same probe without the interface, in the same run, ended with 0xC000027B as before, and `XamlControlsResources` failed with 0x80004005 again. The hypothesis holds. The characters reached the text box through its input path, since `get_Text` returned "Bread" after the posts, and Return raised `KeyDown` with key 13, which added the row.
+
+**What this changes in the note above.** These runs used the bootstrapper route only; nobody ran the self-contained route of section 1, or a package with identity, again with the fix. Section 5's text box, its `PasswordBox`, `RichEditBox`, and `AutoSuggestBox`, and its failing `XamlControlsResources` share the one cause found here. The failure of `XamlReader.Load` on `<TextBox/>` (0x802B000A) fits the same cause, and no run tried it with the fix. The `LimitedAccessFeatures` error that DirectComposition leaves on the thread does no harm, but WinUI reports it in place of any later unhandled error that carries no message, so a Ruby `UnhandledException` handler prints a misleading message unless the Ruby clears that error after `Activate`. Basket's Windows bridge needs the interface above, about ten lines. With it, WinUI 3 from pure Ruby carries Basket's screen on this computer: the list, the text box, Add, Remove, and Return. How the Fluent styles look is not known, since no run read a pixel.

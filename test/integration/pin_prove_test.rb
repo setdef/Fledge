@@ -7,6 +7,9 @@
 
 require_relative "../test_helper"
 require "open3"
+require "json"
+require_relative "../support/loopback_server"
+require_relative "../../tasks/runnerless_runs"
 
 # What .github/scripts/pin-prove.sh reports once a proven move is on
 # trunk (doc/contributors/design/runtimes.md, "The proof"), run as the
@@ -126,6 +129,65 @@ class PinProveTest < Minitest::Test
     assert_equal "base", result[:trunk_version]
   end
 
+  # A run that loses a runner has not failed: the script asks
+  # tasks/runnerless_runs.rb, which reads GitHub's answers for the run
+  # (the recorded ones of test/fixtures/runnerless, served on the
+  # loopback), and when every red job never got a runner, runs the failed
+  # jobs again and judges the new attempt.
+  def test_a_proof_whose_only_red_jobs_never_got_a_runner_is_run_again_and_judged_by_the_rerun
+    result = prove(branch_run: ["completed failure", "completed success"], causes: [:runnerless])
+
+    assert_equal 0, result[:status], result[:stderr]
+    assert_equal ["POST /repos/setdef/Fledge/actions/runs/1/rerun-failed-jobs"], result[:reruns][1]
+    assert_includes result[:summary], "Ran its failed jobs again"
+    assert_includes result[:output], "proven=true"
+    assert_equal "changed", result[:trunk_version]
+  end
+
+  def test_a_proof_with_a_real_failure_is_red_with_no_rerun
+    result = prove(branch_run: "completed failure", causes: [:real])
+
+    assert_equal 1, result[:status]
+    assert_empty result[:reruns][1]
+    assert_includes result[:output], "proven=false"
+    assert_equal "base", result[:trunk_version]
+  end
+
+  def test_a_proof_that_loses_a_runner_on_every_attempt_is_red_after_two_reruns
+    result = prove(branch_run: ["completed failure"] * 3, causes: [:runnerless] * 3)
+
+    assert_equal 1, result[:status]
+    assert_equal 2, result[:reruns][1].size
+    assert_includes result[:output], "proven=false"
+    assert_equal "base", result[:trunk_version]
+  end
+
+  # A real failure beside a job no runner took leaves the run red.
+  def test_a_proof_with_a_real_failure_beside_a_job_no_runner_took_is_not_run_again
+    result = prove(branch_run: "completed failure", causes: [:both])
+
+    assert_equal 1, result[:status]
+    assert_empty result[:reruns][1]
+  end
+
+  # The run on trunk that judges a rebased move is waited for the same
+  # way.
+  def test_a_run_on_trunk_that_loses_a_runner_is_run_again_and_judged_by_the_rerun
+    result = prove(trunk_run: ["completed failure", "completed success"], trunk_causes: [:runnerless])
+
+    assert_equal 0, result[:status], result[:stderr]
+    assert_equal ["POST /repos/setdef/Fledge/actions/runs/2/rerun-failed-jobs"], result[:reruns][2]
+    assert_includes result[:summary], "Green on trunk"
+    assert_match(/^release=\h{40}$/, result[:output])
+  end
+
+  # The recorded answers of GitHub for a red run, by cause: a job that
+  # never got a runner (run 44536045262), a job that ran a step and
+  # failed (run 43869914706), and both (run 44527956502).
+  CAUSES = { runnerless: "44536045262-1", real: "43869914706-1", both: "44527956502-1" }.freeze
+  FIXTURES = File.expand_path("../fixtures/runnerless", __dir__)
+  TASK = File.expand_path("../../tasks/runnerless_runs.rb", __dir__)
+
   # The runs gh lists for the dispatch whose number is the key, as JSON,
   # where HERE stands for the commit checked out when gh is asked.
   RUN_LISTS = {
@@ -137,7 +199,7 @@ class PinProveTest < Minitest::Test
     none: "[]",
   }.freeze
 
-  private def prove(trunk_run:, branch_run: "completed success", trunk_list: :own, branch_list: :own)
+  private def prove(trunk_run: "completed success", branch_run: "completed success", trunk_list: :own, branch_list: :own, causes: [:real], trunk_causes: [:real])
     Dir.mktmpdir do |dir|
       work = File.join(dir, "work")
       checkout = File.join(dir, "checkout")
@@ -152,7 +214,8 @@ class PinProveTest < Minitest::Test
       commit(work, "other", "landed meanwhile")
       git(work, "push", "--quiet", "origin", "HEAD:trunk")
       File.write(File.join(dir, "ancestor-sha"), git(work, "rev-parse", "HEAD"))
-      write_shims(bin, dir, work, branch_run, trunk_run)
+      write_shims(bin, dir, work)
+      server = github({ 1 => [branch_run, causes, "pin-move"], 2 => [trunk_run, trunk_causes, "trunk"] }, dir)
       { 1 => branch_list, 2 => trunk_list }.each { |number, kind| File.write(File.join(dir, "list-#{number}.json"), RUN_LISTS.fetch(kind).gsub("%d", number.to_s)) }
       env = {
         "PATH" => "#{bin}:#{ENV.fetch('PATH')}",
@@ -160,6 +223,8 @@ class PinProveTest < Minitest::Test
         "GITHUB_STEP_SUMMARY" => File.join(dir, "summary"),
         "GITHUB_SERVER_URL" => "https://github.test",
         "GITHUB_REPOSITORY" => "setdef/Fledge",
+        "GITHUB_API_URL" => server.url(""),
+        "GH_TOKEN" => "secret",
       }
       FileUtils.touch([env["GITHUB_OUTPUT"], env["GITHUB_STEP_SUMMARY"]])
       out, err, status = Open3.capture3(env, "bash", SCRIPT, "report.json", chdir: checkout)
@@ -172,12 +237,63 @@ class PinProveTest < Minitest::Test
         summary: File.read(env["GITHUB_STEP_SUMMARY"]),
         output: File.read(env["GITHUB_OUTPUT"]),
         trunk_version: File.read(File.join(work, "version")).strip,
+        reruns: [1, 2].to_h { |run| [run, server.calls.grep(%r{\APOST .*/runs/#{run}/rerun-failed-jobs\z})] },
       }
+    ensure
+      server&.stop
     end
   end
 
-  private def write_shims(bin, dir, work, branch_run, trunk_run)
+  # GitHub's API on the loopback, for each run of ci.yml the shim of gh
+  # starts (number 1 on pin-move, 2 on trunk): +outcomes+ gives, for
+  # each, the conclusion of each attempt (a line of the file outcome-N,
+  # which the shim reads), the cause of each red attempt's red jobs, and
+  # the branch. The answers are the recorded ones, with the run's own
+  # fields. A POST that runs the failed jobs again makes the next
+  # attempt the current one.
+  private def github(outcomes, dir)
+    routes = {}
+    outcomes.each do |run, (conclusions, causes, branch)|
+      conclusions = Array(conclusions)
+      File.write(File.join(dir, "outcome-#{run}"), conclusions.map { |each| "#{each}\n" }.join)
+      FileUtils.touch(File.join(dir, "reruns-#{run}"))
+      attempt = -> { File.readlines(File.join(dir, "reruns-#{run}")).size + 1 }
+      recorded = causes.map { |cause| JSON.parse(File.read(File.join(FIXTURES, "#{CAUSES.fetch(cause)}.json"))) }
+      cause = -> { recorded.fetch([attempt.call, recorded.size].min - 1) }
+      routes["/repos/setdef/Fledge/actions/runs/#{run}/rerun-failed-jobs"] = lambda {
+        File.write(File.join(dir, "reruns-#{run}"), "rerun\n", mode: "a")
+        [201, {}, "{}"]
+      }
+      routes["/repos/setdef/Fledge/actions/runs/#{run}"] = lambda {
+        fields = {
+"id" => run,
+"head_branch" => branch,
+"event" => "workflow_dispatch",
+"path" => ".github/workflows/ci.yml",
+"status" => "completed",
+"conclusion" => "failure",
+"run_attempt" => attempt.call,
+}
+        [200, {}, JSON.generate(cause.call.fetch("run").merge(fields))]
+      }
+      routes["/repos/setdef/Fledge/actions/workflows/396724957/runs?branch=#{branch}&status=pending&per_page=#{RunnerlessRuns::PER_PAGE}&page=1"] =
+        [200, {}, JSON.generate(total_count: 0, workflow_runs: [])]
+      (1..3).each do |number|
+        routes["/repos/setdef/Fledge/actions/runs/#{run}/attempts/#{number}/jobs?per_page=#{RunnerlessRuns::PER_PAGE}&page=1"] = lambda {
+          jobs = cause.call.fetch("jobs")
+          [200, {}, JSON.generate(total_count: jobs.size, jobs:)]
+        }
+      end
+      recorded.flat_map { |each| each.fetch("annotations").to_a }.each do |job, annotations|
+        routes["/repos/setdef/Fledge/check-runs/#{job}/annotations?per_page=#{RunnerlessRuns::PER_PAGE}&page=1"] = [200, {}, JSON.generate(annotations)]
+      end
+    end
+    LoopbackServer.new(routes)
+  end
+
+  private def write_shims(bin, dir, work)
     shim(bin, "ruby", <<~SH)
+      if [ "$1" = tasks/runnerless_runs.rb ]; then shift; exec #{RbConfig.ruby} #{TASK} "$@"; fi
       echo changed > version
       printf 'chore: move zlib\\n' > "$4"
       echo "moved zlib"
@@ -208,7 +324,10 @@ class PinProveTest < Minitest::Test
             jq --arg c "$commit" 'map(select($c == "" or .headSha == $c))' | jq -r "$expr" ;;
         "run view")
           case "$*" in
-            *status,conclusion*) if [ "$(cat #{dir}/runs)" = 1 ]; then echo "#{branch_run}"; else echo "#{trunk_run}"; fi ;;
+            *status,conclusion*)
+              n=$(cat #{dir}/runs); a=$(wc -l < #{dir}/reruns-$n); a=$((a + 1))
+              line=$(sed -n "${a}p" #{dir}/outcome-$n); line=${line:-completed failure}
+              case "$*" in *conclusion,attempt*) echo "$line $a" ;; *) echo "$line" ;; esac ;;
           esac ;;
       esac
     SH

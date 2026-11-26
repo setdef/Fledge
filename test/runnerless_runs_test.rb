@@ -195,6 +195,26 @@ class RunnerlessRunsTest < Minitest::Test
     end
   end
 
+  # The proof of a pin move runs ci.yml by dispatch on pin-move
+  # (.github/scripts/pin-prove.sh asks for its rerun): here run
+  # 44536045262 as such a run, and then as each thing that is not: a
+  # push to pin-move, another workflow's dispatch, a branch of another
+  # name. A run of pin-move that lost a runner runs again at once, since
+  # no other run shares its group.
+  def test_runs_again_the_proof_of_a_pin_move_and_no_other_run_of_that_branch
+    proof = { "head_branch" => "pin-move", "event" => "workflow_dispatch" }
+    with_case("44536045262-1", run: proof) do |server, runs|
+      assert_equal :rerun, runs.call(44_536_045_262, 1).action
+      assert_equal 1, posts(server).size
+    end
+    [{ "event" => "push" }, { "path" => ".github/workflows/fast.yml" }, { "head_branch" => "pin-move2" }].each do |change|
+      with_case("44536045262-1", run: proof.merge(change)) do |server, runs|
+        assert_equal :leave, runs.call(44_536_045_262, 1).action, change
+        assert_empty posts(server)
+      end
+    end
+  end
+
   def test_leaves_a_run_that_was_run_again_since
     with_case("44536045262-1", attempt: 2) do |server, runs|
       verdict = runs.call(44_536_045_262, 1)

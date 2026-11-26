@@ -20,7 +20,9 @@
 # a single pin. A red proof of several pins exits 0 with proven=false in
 # GITHUB_OUTPUT, for the workflow to prove each alone. It writes moved,
 # the names it moved as JSON, there too, and two commits of trunk: landed,
-# the move's own commit, once that commit's own run is green, and
+# the move's own commit, once that commit's own run is green (a run
+# red only for jobs no runner took is run again, up to twice, and its
+# last attempt judges, as "A job no runner took" of releases.md says), and
 # release, the commit to release, whose own run passed every job. Both
 # are the move's commit when it landed as proven, whose run is the
 # proof's. When it was rebased, the script waits for the run its dispatch
@@ -88,6 +90,32 @@ prove() {
   follow "$branch" "$commit"
 }
 
+# Waits for run to be completed in attempt MIN or a later one, and sets
+# conclusion and attempt to its. After a rerun GitHub keeps answering
+# with the attempt that ended until the new one starts, so the attempt
+# is part of the wait.
+settle() {
+  local state=-
+  until [ "$state" = completed ] && [ "$attempt" -ge "$1" ]; do
+    gh run watch "$run" --interval 60 >tmp/pin-proof.txt 2>&1 || tail -n 5 tmp/pin-proof.txt
+    state=-
+    read -r state conclusion attempt < <(gh run view "$run" --json status,conclusion,attempt \
+      --jq '.status + " " + (.conclusion // "-") + " " + (.attempt | tostring)') || attempt=0
+    { [ "$state" = completed ] && [ "$attempt" -ge "$1" ]; } || sleep 60
+  done
+}
+
+# Asks tasks/runnerless_runs.rb whether the red run's only red jobs are
+# ones no runner took, and if so it has run them again: returns 0. It
+# returns non-zero for any other red, and for a failure of GitHub's API,
+# which leaves the run red as it is.
+rerun_if_no_runner() {
+  local said code=0
+  said=$(ruby tasks/runnerless_runs.rb "$run" "$attempt" --exit-status 2>&1) || code=$?
+  echo "$said" | tee -a "$summary"
+  [ "$code" -eq 0 ]
+}
+
 # Starts ci.yml on BRANCH and waits for the run it started. With COMMIT,
 # that run is the one whose head is COMMIT, as on pin-move, whose head
 # is the commit just pushed. Without it, as on trunk, where a push may
@@ -130,17 +158,19 @@ follow() {
   # a run in which no job had failed. So the verdict is the run's
   # conclusion, read once the run is completed, and the job's timeout
   # bounds the wait.
-  verdict=
-  until [ "${verdict%% *}" = completed ]; do
-    gh run watch "$run" --interval 60 >tmp/pin-proof.txt 2>&1 || tail -n 5 tmp/pin-proof.txt
-    verdict=$(gh run view "$run" --json status,conclusion --jq '.status + " " + .conclusion') || verdict=
-    [ "${verdict%% *}" = completed ] || sleep 60
+  attempt=0
+  settle 1
+  # A run red only because no runner took a job has failed nothing:
+  # runnerless_runs.rb, the rule runnerless.yml uses, says so and runs
+  # the failed jobs again, at most twice, and the new attempt is judged.
+  while [ "$conclusion" = failure ] && rerun_if_no_runner; do
+    settle $((attempt + 1))
   done
-  if [ "$verdict" = "completed success" ]; then return 0; fi
+  if [ "$conclusion" = success ]; then return 0; fi
   # What the summary says of a red run: each job that failed, and its
   # step, or that the run was cancelled, which judges nothing.
   {
-    echo "CI ${verdict#completed }: $url"
+    echo "CI $conclusion: $url"
     gh run view "$run" --json jobs --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out")
       | "- \(.name): \([.steps[]? | select(.conclusion == "failure") | .name] | join(", "))"' || true
   } | tee -a "$summary"

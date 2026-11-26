@@ -96,6 +96,8 @@ jobs:
     permissions:
       contents: write
       actions: write
+      # Reading each red job's annotations, for tasks/runnerless_runs.rb.
+      checks: read
     outputs:
       moved: ${{ steps.prove.outputs.moved }}
       proven: ${{ steps.prove.outputs.proven }}
@@ -144,6 +146,8 @@ jobs:
     permissions:
       contents: write
       actions: write
+      # Reading each red job's annotations, for tasks/runnerless_runs.rb.
+      checks: read
     strategy:
       fail-fast: false
       max-parallel: 1

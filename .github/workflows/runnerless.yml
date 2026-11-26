@@ -13,7 +13,8 @@
 #
 # Only trunk's own runs, not a pull request's: on any other branch a run
 # queued again would cancel the newer run in progress there (concurrency
-# in ci.yml, fast.yml, and fast-macos.yml). The trigger below sends no
+# in ci.yml, fast.yml, and fast-macos.yml), but for the proofs of pin
+# moves, which .github/scripts/pin-prove.sh asks for itself. The trigger below sends no
 # other, and tasks/runnerless_runs.rb leaves any other it is given by
 # hand. A run is run again at most twice (RunnerlessRuns::ATTEMPTS).
 #

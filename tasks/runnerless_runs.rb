@@ -23,14 +23,17 @@ require_relative "github_api"
 # does. It never does so for a run in which any job ran a step and
 # failed, or was cancelled for another reason, so a real failure stays
 # exactly as red as it is (doc/contributors/design/releases.md, "A job
-# no runner took"), nor for any run but trunk's own, whoever asks.
-# .github/workflows/runnerless.yml calls it when a run of CI, Fast,
-# Fast (macOS), or ruby/spec on trunk ends red.
+# no runner took"), nor for any run but trunk's own and the proofs of a
+# pin move (PROOF_BRANCH), whoever asks. .github/workflows/runnerless.yml
+# calls it when a run of CI, Fast, Fast (macOS), or ruby/spec on trunk
+# ends red, and .github/scripts/pin-prove.sh when the run of CI it waits
+# for does.
 #
-#   ruby tasks/runnerless_runs.rb RUN ATTEMPT [--dry-run]
+#   ruby tasks/runnerless_runs.rb RUN ATTEMPT [--dry-run] [--exit-status]
 #
-# prints what it did, or with --dry-run what it would do, and why. It
-# reads GITHUB_REPOSITORY, GITHUB_API_URL, and GH_TOKEN or GITHUB_TOKEN,
+# prints what it did, or with --dry-run what it would do, and why. With
+# --exit-status it exits 3 when it left the run, so that a script can
+# tell; it exits 0 otherwise, and 1 when GitHub's API fails. It reads GITHUB_REPOSITORY, GITHUB_API_URL, and GH_TOKEN or GITHUB_TOKEN,
 # as a workflow's steps have them.
 class RunnerlessRuns
   # What to do with a run, and why: +action+ is :rerun or :leave.
@@ -40,6 +43,11 @@ class RunnerlessRuns
   # again would cancel the newer run in progress there, and so would a
   # pull request's run, whose head branch may be a fork's trunk.
   BRANCH = "trunk"
+
+  # The branch on which the proof of a pin move runs ci.yml, whose
+  # dispatched runs are run again too (runtimes.md, "The proof"). Its
+  # runs share one concurrency group, in which only that proof runs.
+  PROOF_BRANCH = "pin-move"
 
   # How the message of a commit starts whose push gets a concurrency
   # group of its own in ci.yml: a release commit's and a pin commit's.
@@ -78,7 +86,7 @@ class RunnerlessRuns
 
   private def judge(run, attempt)
     branch, event = run.values_at("head_branch", "event")
-    return leave("it is a #{event} run of #{branch}, not one of #{BRANCH}'s own") unless branch == BRANCH && event != "pull_request"
+    return leave("it is a #{event} run of #{branch}, not one of #{BRANCH}'s own") unless trunks?(run) || proof?(run)
 
     latest = run.fetch("run_attempt")
     return leave("it is on attempt #{latest} now, not #{attempt}") unless latest == attempt
@@ -98,6 +106,17 @@ class RunnerlessRuns
     return leave("run #{newer.join(', ')} waits in its concurrency group, which a rerun would replace") unless newer.empty?
 
     Verdict.new(action: :rerun, reason: "#{names(red)} never got a runner")
+  end
+
+  private def trunks?(run)
+    run["head_branch"] == BRANCH && run["event"] != "pull_request"
+  end
+
+  # Whether +run+ is a proof of a pin move: a run of ci.yml that
+  # .github/scripts/pin-prove.sh dispatched on PROOF_BRANCH, which only
+  # that script writes and which holds one proof at a time.
+  private def proof?(run)
+    run["head_branch"] == PROOF_BRANCH && run["event"] == "workflow_dispatch" && run["path"] == ".github/workflows/ci.yml"
   end
 
   # The IDs of the newer runs waiting in +mine+, the concurrency group
@@ -127,7 +146,7 @@ class RunnerlessRuns
 
     case run.fetch("path")
     when ".github/workflows/ci.yml"
-      own_ci_group?(run) ? run.fetch("head_sha") : BRANCH
+      own_ci_group?(run) ? run.fetch("head_sha") : run.fetch("head_branch")
     when ".github/workflows/fast.yml", ".github/workflows/fast-macos.yml" then run.fetch("head_sha")
     when ".github/workflows/ruby-spec.yml" then nil
     else :unknown
@@ -136,7 +155,7 @@ class RunnerlessRuns
 
   # Whether a run of ci.yml on trunk has a group named for its commit.
   private def own_ci_group?(run)
-    return true if run["event"] == "workflow_dispatch" || run.fetch("run_attempt") > 1
+    return true if run["head_branch"] == BRANCH && (run["event"] == "workflow_dispatch" || run.fetch("run_attempt") > 1)
 
     run["event"] == "push" && run.dig("head_commit", "message").to_s.start_with?(*OWN_GROUP)
   end
@@ -162,8 +181,9 @@ end
 
 if $PROGRAM_NAME == __FILE__
   dry_run = ARGV.delete("--dry-run")
+  exit_status = ARGV.delete("--exit-status")
   id, attempt = ARGV
-  abort "usage: ruby tasks/runnerless_runs.rb RUN ATTEMPT [--dry-run]" unless id && attempt
+  abort "usage: ruby tasks/runnerless_runs.rb RUN ATTEMPT [--dry-run] [--exit-status]" unless id && attempt
   token = ENV["GH_TOKEN"] || ENV.fetch("GITHUB_TOKEN")
   api = ENV.fetch("GITHUB_API_URL", "https://api.github.com")
   runs = RunnerlessRuns.new(repository: ENV.fetch("GITHUB_REPOSITORY"), token:, api:, dry_run: !dry_run.nil?)
@@ -171,6 +191,7 @@ if $PROGRAM_NAME == __FILE__
     verdict = runs.call(Integer(id), Integer(attempt))
     done = { rerun: dry_run ? "Would run its failed jobs again" : "Ran its failed jobs again", leave: "Left it as it is" }.fetch(verdict.action)
     puts "Run #{id}, attempt #{attempt}: #{done}: #{verdict.reason}."
+    exit 3 if exit_status && verdict.action == :leave
   rescue GitHubAPI::Error => e
     abort "#{'::error::' if ENV['GITHUB_ACTIONS']}#{e.message}"
   end

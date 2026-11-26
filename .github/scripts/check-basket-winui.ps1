@@ -8,7 +8,14 @@
 # item, presses Add, types another and presses Return, selects a row, and
 # presses Remove. Basket must draw WinUI's window, show the rows as it
 # does so, and log "Basket added Eggs", "Basket added Milk", and "Basket
-# removed Eggs".
+# removed Eggs". It then starts Basket again, and ends it by running
+# ExitProcess on a thread that it makes in Basket (CreateRemoteThread), as
+# Windows ends a process from a thread it made, say for Ctrl+Break at a
+# console. Windows then releases Basket's COM objects on that thread, which
+# Ruby did not make. The check fails unless Basket exits with the status the
+# thread gave and its standard error holds no "[BUG]", which CRuby prints
+# when a Ruby callback runs on a thread Ruby did not make (see AddRef and
+# Release in lib/basket/winrt.rb).
 #
 #   powershell -NoProfile -File check-basket-winui.ps1 -Archive ARCHIVE -Platform PLATFORM [-Work FOLDER]
 #
@@ -79,6 +86,26 @@ public static extern IntPtr FindWindowExW(IntPtr parent, IntPtr after, string wi
 public static extern bool PostMessageW(IntPtr window, uint message, UIntPtr wParam, IntPtr lParam);
 '@
 
+# Running ExitProcess on a thread made in another process. kernel32.dll is
+# the same file in both processes, so ExitProcess is at the same offset from
+# its base in each, and the base in Basket comes from its list of modules.
+Add-Type -Namespace Fledge -Name BasketExit -MemberDefinition @'
+[DllImport("kernel32.dll", SetLastError = true)]
+public static extern IntPtr OpenProcess(uint access, bool inherit, uint id);
+[DllImport("kernel32.dll")]
+public static extern bool CloseHandle(IntPtr handle);
+[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+public static extern IntPtr GetModuleHandleW(string name);
+[DllImport("kernel32.dll", CharSet = CharSet.Ansi)]
+public static extern IntPtr GetProcAddress(IntPtr module, string name);
+[DllImport("kernel32.dll", SetLastError = true)]
+public static extern IntPtr CreateRemoteThread(IntPtr process, IntPtr attributes, UIntPtr stack, IntPtr start, IntPtr parameter, uint flags, out uint id);
+[DllImport("psapi.dll", SetLastError = true)]
+public static extern bool EnumProcessModulesEx(IntPtr process, IntPtr[] modules, uint size, out uint needed, uint filter);
+[DllImport("psapi.dll", CharSet = CharSet.Unicode)]
+public static extern uint GetModuleBaseNameW(IntPtr process, IntPtr module, System.Text.StringBuilder name, uint size);
+'@
+
 $WM_CLOSE = 0x10; $WM_KEYDOWN = 0x100; $WM_KEYUP = 0x101; $WM_CHAR = 0x102
 $VK_RETURN = 0x0D
 $Element = [Windows.Automation.AutomationElement]
@@ -95,6 +122,10 @@ function WaitFor([string] $What, [scriptblock] $Block) {
 
 function Show-Log {
   foreach ($file in $out, $err) { if (Test-Path -LiteralPath $file) { "$file`: $(Get-Content -LiteralPath $file -Raw)" } }
+}
+
+function Show-Log2 {
+  foreach ($file in $out2, $err2) { if (Test-Path -LiteralPath $file) { "$file`: $(Get-Content -LiteralPath $file -Raw)" } }
 }
 
 function Post([IntPtr] $Window, [uint32] $Message, [uint64] $WParam, [int64] $LParam = 1) {
@@ -273,5 +304,51 @@ Expect 'where Basket said it keeps its list' ($lines[0] -replace '/', '\') "Bask
 Expect 'what Basket logged after that' ($lines[1..($lines.Count - 1)] -join '|') 'Basket shows 0 items|Basket added Eggs|Basket added Milk|Basket removed Eggs'
 Expect 'what Basket saved in its list' ((Get-Content -LiteralPath $list -Raw) -replace '\s+$', '') '["Milk"]'
 Expect 'what Basket wrote to standard error' ((Get-Content -LiteralPath $err -Raw) -replace '\s+$', '') ''
+
+# Ending Basket from a thread Ruby did not make. ExitProcess on such a
+# thread has Windows release Basket's COM objects there, and their AddRef
+# and Release must call no Ruby.
+$out2 = Join-Path $Work 'basket-winui-exit.out'
+$err2 = Join-Path $Work 'basket-winui-exit.err'
+Remove-Item -LiteralPath $out2, $err2 -ErrorAction SilentlyContinue
+$second = Start-Process -FilePath $app -WorkingDirectory $system -PassThru `
+  -RedirectStandardOutput $out2 -RedirectStandardError $err2
+$null = $second.Handle
+$process_condition = New-Object Windows.Automation.PropertyCondition($Element::ProcessIdProperty, [int] $second.Id)
+$both = New-Object Windows.Automation.AndCondition($name_condition, $process_condition)
+WaitFor 'show a window to end from another thread' {
+  $script:window = $Element::RootElement.FindFirst('Children', $both)
+  $null -ne $script:window
+}
+$window = $script:window
+WaitFor 'show its list before it is ended' { $null -ne (Control 'Rows') }
+
+$PROCESS_ALL_ACCESS = 0x1FFFFF; $LIST_MODULES_ALL = 3; $EXIT_STATUS = 3
+$handle = [Fledge.BasketExit]::OpenProcess($PROCESS_ALL_ACCESS, $false, [uint32] $second.Id)
+if ($handle -eq [IntPtr]::Zero) { Fail "OpenProcess failed with error $([Runtime.InteropServices.Marshal]::GetLastWin32Error())" }
+$modules = New-Object IntPtr[] 1024
+$needed = [uint32] 0
+if (-not [Fledge.BasketExit]::EnumProcessModulesEx($handle, $modules, [uint32] ($modules.Length * [IntPtr]::Size), [ref] $needed, $LIST_MODULES_ALL)) {
+  Fail "EnumProcessModulesEx failed with error $([Runtime.InteropServices.Marshal]::GetLastWin32Error())"
+}
+$remote_kernel32 = [IntPtr]::Zero
+foreach ($module in $modules[0..([int] ($needed / [IntPtr]::Size) - 1)]) {
+  $name_buffer = New-Object Text.StringBuilder 260
+  [void] [Fledge.BasketExit]::GetModuleBaseNameW($handle, $module, $name_buffer, 260)
+  if ($name_buffer.ToString() -ieq 'kernel32.dll') { $remote_kernel32 = $module }
+}
+if ($remote_kernel32 -eq [IntPtr]::Zero) { Fail "Basket's process lists no kernel32.dll" }
+$local_kernel32 = [Fledge.BasketExit]::GetModuleHandleW('kernel32.dll')
+$offset = [int64] [Fledge.BasketExit]::GetProcAddress($local_kernel32, 'ExitProcess') - [int64] $local_kernel32
+$thread_id = [uint32] 0
+$thread = [Fledge.BasketExit]::CreateRemoteThread($handle, [IntPtr]::Zero, [UIntPtr]::Zero, [IntPtr] ([int64] $remote_kernel32 + $offset), [IntPtr] $EXIT_STATUS, 0, [ref] $thread_id)
+if ($thread -eq [IntPtr]::Zero) { Fail "CreateRemoteThread failed with error $([Runtime.InteropServices.Marshal]::GetLastWin32Error())" }
+[void] [Fledge.BasketExit]::CloseHandle($thread)
+[void] [Fledge.BasketExit]::CloseHandle($handle)
+if (-not $second.WaitForExit(30000)) { $second.Kill(); Fail "Basket did not exit when ExitProcess ran in it`n$(Show-Log2)" }
+Expect 'the exit status when ExitProcess ran on another thread' $second.ExitCode $EXIT_STATUS
+$report = Get-Content -LiteralPath $err2 -Raw
+if ($report -match '\[BUG\]') { Fail "Basket's standard error holds a CRuby [BUG] after ExitProcess ran on another thread`n$report" }
+Write-Host 'ok: Basket printed no [BUG] when ExitProcess ran on another thread'
 
 Write-Host "Delivered: Basket's WinUI screen, on Windows"

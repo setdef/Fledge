@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 
-> Findings of 2026-11-25 for issue #130, on whether an app's own Ruby can drive UIKit on an iPhone with nothing of Fledge's, and on what Fledge's Ruby has to change to behave there as it does under `ruby main.rb`; and for issue #128. Requested: written by an agent and not reviewed line by line. They decide nothing: the runtime, Basket, `doc/contributors/design/phone-widgets.md`, and ADR 103 change with the code.
+> Findings of 2026-11-25 for issue #130, on whether an app's own Ruby can drive UIKit on an iPhone with nothing of Fledge's, and on what Fledge's Ruby has to change to behave there as it does under `ruby main.rb`; and for issue #128. Requested: written by an agent and not reviewed line by line. They decide nothing: the runtime, Basket, `doc/contributors/design/phone-widgets.md`, and the former ADR 103, now ADR 104, change with the code.
 
 # Pure Ruby and UIKit on an iPhone
 

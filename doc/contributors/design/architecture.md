@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Fledge's Architecture
 
-This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads the plan of record for what is left and CHANGELOG.md for what each release changed. Four ADRs hold the decisions that shape the rest: ADR 001 the shape of a desktop app, ADR 093 that desktop runtimes are prebuilt in Fledge's CI, ADR 099 that Fledge builds a phone's Ruby from source, and ADR 103 how its Ruby draws the phone's own widgets. Every other choice is in the design document for its subject.
+This document names the parts of Fledge and how they fit, points to the design document for each, and indexes the Architecture Decision Records. A contributor who knows nothing of Fledge starts here, then reads the plan of record for what is left and CHANGELOG.md for what each release changed. Four ADRs hold the decisions that shape the rest: ADR 001 the shape of a desktop app, ADR 093 that desktop runtimes are prebuilt in Fledge's CI, ADR 099 that Fledge builds a phone's Ruby from source, and ADR 104 that a phone app's Ruby drives the platform's widgets from the main thread, with only what Ruby gives every program. Every other choice is in the design document for its subject.
 
 ## The parts
 
@@ -60,5 +60,5 @@ Dated records, such as finished plans and research notes, cite ADRs by number an
 |---|---|
 | [001](../adr/001.md) | Ship an app as a small C launcher that embeds CRuby |
 | [099](../adr/099.md) | On a phone, Fledge builds Ruby from source with Ruby's own build |
-| [103](../adr/103.md) | On a phone, an app's Ruby drives the platform's own widgets from the main thread, through a bridge over Fiddle |
+| [104](../adr/104.md) | On a phone, an app's Ruby drives the platform's widgets from the main thread, with only what Ruby gives every program |
 | [093](../adr/093.md) | Prebuild Each Platform's Runtime in Fledge's CI, and Publish It with the Release |

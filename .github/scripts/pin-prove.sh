@@ -19,16 +19,20 @@
 # rest, when no run of the proof started, and when the proof was red for
 # a single pin. A red proof of several pins exits 0 with proven=false in
 # GITHUB_OUTPUT, for the workflow to prove each alone. It writes moved,
-# the names it moved as JSON, there too, and landed, the commit it put
-# on trunk, once that commit's run is green: the proof's own when it
-# landed as proven, and when it was rebased, the run its dispatch on
-# trunk started, which it waits for, and which is the newest dispatched
-# run created at or after the dispatch, whatever commit it is the head
-# of. When that run is red, is of a later commit, or never started, the
-# move has landed all the same and the script exits as if it were green,
-# with no landed, a warning, and what was found named in the summary:
-# the move passed its proof, and a red trunk is the run of ci.yml's to
-# report.
+# the names it moved as JSON, there too, and two commits of trunk: landed,
+# the move's own commit, once that commit's own run is green, and
+# release, the commit to release, whose own run passed every job. Both
+# are the move's commit when it landed as proven, whose run is the
+# proof's. When it was rebased, the script waits for the run its dispatch
+# on trunk started, the newest dispatched run created at or after the
+# dispatch, whatever commit it is the head of. Green and of the landed
+# commit, that run sets both. Green and of a later commit that descends
+# from the landed one, so that it holds the move, it sets release alone,
+# to that commit. When that run is red, is of a commit that does not
+# hold the move, or never started, the move has landed all the same and
+# the script exits as if it were green, with neither, a warning, and
+# what was found named in the summary: the move passed its proof, and a
+# red trunk is the run of ci.yml's to report.
 #
 # PIN_PROVE_LAND=false proves and lands nothing on trunk.
 # PIN_PROVE_DRY_RUN=true commits the move in the checkout and stops,
@@ -186,6 +190,7 @@ for _ in 1 2 3; do
   if git merge-base --is-ancestor FETCH_HEAD HEAD; then
     if git push --quiet origin HEAD:refs/heads/trunk; then
       echo "landed=$commit" >>"$output"
+      echo "release=$commit" >>"$output"
       echo "Landed $commit on trunk as proven." | tee -a "$summary"
       exit "$moving"
     fi
@@ -210,7 +215,8 @@ for _ in 1 2 3; do
     # on trunk found is trunk's, with what landed meanwhile, and ci.yml's
     # own failure on trunk calls a person to it. A run that never started
     # judges nothing. Neither is offered to the release, which needs a
-    # green run of the landed commit itself (runtimes.md, "The proof").
+    # commit that holds the move and whose own run is green
+    # (runtimes.md, "The proof").
     judged=0
     follow trunk || judged=$?
     if [ "$judged" -eq "$no_run" ]; then
@@ -219,20 +225,40 @@ for _ in 1 2 3; do
       exit "$moving"
     fi
     # A dispatch runs trunk's head as it is then, which is a later
-    # commit than the landed one when a push came between.
+    # commit than the landed one when a push came between. Whether that
+    # commit holds the move is git's to say once trunk is fetched; a
+    # commit git does not have, or that does not descend from the landed
+    # one, does not.
     whose=
-    if [ "$head" != "$landed" ]; then whose=", of $head, a later commit than the one landed,"; fi
+    release=$landed
+    holds=true
+    if [ "$head" != "$landed" ]; then
+      git fetch --quiet origin trunk
+      if git merge-base --is-ancestor "$landed" "$head" 2>/dev/null; then
+        whose=", of $head, a later commit that holds the move,"
+        release=$head
+      else
+        whose=", of $head, a commit that does not hold the move,"
+        holds=false
+      fi
+    fi
     if [ "$judged" -ne 0 ]; then
       echo "::warning::The move landed on trunk as $landed, and trunk's run$whose is red with what landed meanwhile: $url"
       echo "Landed, and not released: the run of ci.yml on trunk$whose is red, which is trunk's to answer for: $url" | tee -a "$summary"
       exit "$moving"
     fi
-    if [ -n "$whose" ]; then
-      echo "Landed, and not released: the run of ci.yml on trunk that judged it$whose is green: $url. The release needs a run of the landed commit's own." | tee -a "$summary"
+    if [ "$holds" != true ]; then
+      echo "::warning::The move landed on trunk as $landed, and trunk's green run$whose is of no commit that holds it: $url"
+      echo "Landed, and not released: the run of ci.yml on trunk that judged it$whose is green: $url. The release needs a run of a commit that holds the move." | tee -a "$summary"
       exit "$moving"
     fi
-    echo "landed=$landed" >>"$output"
-    echo "Green on trunk: $url" | tee -a "$summary"
+    if [ "$release" = "$landed" ]; then
+      echo "landed=$landed" >>"$output"
+      echo "Green on trunk: $url" | tee -a "$summary"
+    else
+      echo "Green on trunk, for $release, a later commit that holds the move, which the release takes: $url" | tee -a "$summary"
+    fi
+    echo "release=$release" >>"$output"
     exit "$moving"
   fi
 done

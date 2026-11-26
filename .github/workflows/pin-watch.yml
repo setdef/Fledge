@@ -99,7 +99,7 @@ jobs:
     outputs:
       moved: ${{ steps.prove.outputs.moved }}
       proven: ${{ steps.prove.outputs.proven }}
-      landed: ${{ steps.prove.outputs.landed }}
+      release: ${{ steps.prove.outputs.release }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -181,13 +181,14 @@ jobs:
           PIN_PROVE_LAND: ${{ github.event_name != 'workflow_dispatch' || inputs.land }}
         run: .github/scripts/pin-prove.sh tmp/pin-watch.json "$PIN"
 
-  # The newest move this run put on trunk: Move's, or else the last that
-  # Alone landed, found on trunk by its author and subject, since a
-  # matrix's jobs share one set of outputs.
+  # The commit to release: Move's release output, the move's own commit
+  # or a later one that holds it, whose own run is green; or else the
+  # last move that Alone landed, found on trunk by its author and
+  # subject, since a matrix's jobs share one set of outputs.
   pick:
     name: Pick the move to release
     needs: [move, alone]
-    if: always() && (needs.move.outputs.landed != '' || needs.alone.result == 'success' || needs.alone.result == 'failure')
+    if: always() && (needs.move.outputs.release != '' || needs.alone.result == 'success' || needs.alone.result == 'failure')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -206,9 +207,9 @@ jobs:
         id: pick
         env:
           GH_TOKEN: ${{ github.token }}
-          LANDED: ${{ needs.move.outputs.landed }}
+          RELEASE: ${{ needs.move.outputs.release }}
         run: |
-          commit=$LANDED
+          commit=$RELEASE
           if [ -z "$commit" ]; then
             since=$(gh run view "$GITHUB_RUN_ID" --json createdAt --jq .createdAt)
             commit=$(git log --format=%H --author='github-actions\[bot\]' --since="$since" --grep='^chore: move ' -1)

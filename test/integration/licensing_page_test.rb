@@ -132,7 +132,7 @@ class LicensingPageFromRuntimesTest < Minitest::Test
     assert_includes section(text, "Linux on x86-64 (x86_64-linux)"), "; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's;"
   end
 
-  # A phone's app is built from the project fledge build writes (ADR 012),
+  # A phone's app is built from the project fledge build writes (doc/contributors/design/phone-projects.md),
   # so the page says what of Fledge's goes into it, and that the host app
   # the developer compiles is Fledge's own code too.
   def test_it_says_what_of_fledges_a_phones_app_holds

@@ -8,7 +8,7 @@
 require "i18n"
 require_relative "mobile_app/version"
 
-# The gem-shaped app Fledge's CI ships to phones (ADR 012): its gemspec
+# The gem-shaped app Fledge's CI ships to phones (doc/contributors/design/phone-projects.md): its gemspec
 # names an executable, exe/mobile_app, and i18n, which needs
 # concurrent-ruby, both pure Ruby, so a phone's project ships them as
 # they are, set up by Bundler as bundle exec would set them up.

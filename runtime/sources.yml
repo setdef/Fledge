@@ -471,7 +471,7 @@ nsis:
 # Android Gradle plugin at agp, by its distribution's SHA-256. Xcode is
 # chosen by version on the runner (ci.yml), since Apple publishes no
 # download to pin; XcodeGen, which fledge build ios runs to write an
-# app's Xcode project (ADR 012), is pinned for CI's Mobile apps jobs, and
+# app's Xcode project (doc/contributors/design/phone-projects.md), is pinned for CI's Mobile apps jobs, and
 # no runtime holds it; so is bundletool, Google's jar that makes the APKs
 # Google Play would serve from an app's bundle, which those jobs check
 # and install, as Google publishes it on GitHub

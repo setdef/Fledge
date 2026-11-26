@@ -9,7 +9,7 @@ require_relative "test_helper"
 require "digest"
 require "yaml"
 
-# The phones fledge build writes projects for (ADR 012), where each is
+# The phones fledge build writes projects for (doc/contributors/design/phone-projects.md), where each is
 # built, and the pins of the tools their projects name, which must be the
 # ones Fledge's runtimes are built and checked with (runtime/sources.yml).
 class MobilePlatformTest < Minitest::Test

@@ -6,9 +6,43 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Phone Projects
 
-This document says what `fledge build ios` and `fledge build android` write, how a gem's extension is compiled for a phone app and carried in it, how a framework's own startup files enter the project, and what CI checks before a store would. The decision is ADR 012 (a project the developer builds and signs); the reasons for the rest are given with what each section describes. The runtime the project holds is `doc/contributors/design/phone-runtimes.md`. What a framework may rely on is `doc/contributors/design/public-interface.md`, "Phones". What a developer does with the project is in `doc/phones.md`; this document adds the internals.
+This document says what `fledge build ios` and `fledge build android` write, how a gem's extension is compiled for a phone app and carried in it, how a framework's own startup files enter the project, and what CI checks before a store would. "Why a project" gives the reasons for writing a project the developer builds and signs; the reasons for the rest are given with what each section describes. The runtime the project holds is `doc/contributors/design/phone-runtimes.md`. What a framework may rely on is `doc/contributors/design/public-interface.md`, "Phones". What a developer does with the project is in `doc/phones.md`; this document adds the internals.
 
 ## The projects
+
+### Why a project
+
+A phone's runtime is Ruby as a library: an XCFramework and an AAR (ADR 099). With only that, a developer still has to make an Xcode or Gradle project, link the runtime, copy Ruby's library and the app's code into the bundle or an asset, set up the app's gems, and write the lines that start Ruby. Each step can go wrong in a way only a phone shows.
+
+No phone builds an app, and no store takes an app that Fledge signs. The developer signs with their own Apple or Google credentials and submits the app themselves. App Store guideline 4.2.6 asks this of anything built from a template: "Apps created from a commercialized template or app generation service will be rejected unless they are submitted directly by the provider of the app's content" (`doc/contributors/research/2026-10-27-mobile.md`). So `fledge build ios` and `fledge build android` write a whole project around the runtime, with the app and its gems in it, which the developer builds, runs, signs, and submits with the platform's tools. Nothing in the project configures signing, and Fledge never submits an app.
+
+**What it has to satisfy.**
+
+- A person who runs the app never meets Ruby (precedence 1), and a developer who ships one should not have to learn how Ruby embeds.
+- The developer's own tools build, sign, and submit: Xcode, Gradle, and Android Studio, as stores expect.
+- "Code is a liability" (`decisions.md`, 2026-10-28): Fledge writes no Xcode project file or Gradle build of its own making where a maintained tool writes one.
+- Prior art: Briefcase's `briefcase create iOS` and `create android`, Flutter's `flutter create`, Tauri's `tauri ios init` and `android init`, and React Native's template all write a project the developer then builds.
+
+**The options weighed.**
+
+1. `fledge build` writes a whole project around the runtime, with the app and its gems in it, which the developer builds, runs, signs, and submits with the platform's tools. Every step the second option leaves to the developer is a step Fledge can get right once, as Briefcase, Flutter, Tauri, and React Native do.
+2. The developer integrates the runtime by hand, as CPython's iOS documentation asks: drag `Python.xcframework` into an Xcode project, turn off user script sandboxing, and add a build phase that copies the standard library. This is what the runtime alone offered, and it asked the developer to learn the runtime's layout.
+
+**What it gives and what it costs.**
+
+- A developer with a pure-Ruby app runs `fledge build ios` or `fledge build android`, opens the project, and runs it in the Simulator or an emulator.
+- The project is the developer's to change, in Xcode or Android Studio.
+- Signing and submission stay with the developer's own keys, certificates, and accounts. Fledge holds none.
+- The developer installs XcodeGen, and a JDK with the Android SDK.
+- `fledge build` writes the project afresh each time, so a change made in it by hand lasts until the next build ("What a build writes").
+- The templates are Fledge's code, and their compiled host ships in every phone app, so `doc/licensing.md` names it (MIT, decisions, 2026-11-07).
+- The store checks that need an account wait on the developer accounts, which are paid for (`decisions.md`, 2026-11-04), listed in `doc/contributors/account-tests.md`.
+
+**What is shown.** CI builds, archives, and runs the projects. No Fledge app has been through App Review or Play's review yet.
+
+**What checks it.** CI's `mobile-apps-ios` job builds every example's project with `xcodebuild` for the Simulator, archives it unsigned for devices and checks the archive (`tasks/mobile_parity/ios_archive.rb`), runs each app in the Simulator on an iPhone and an iPad, and runs the iOS integration tests of what a project holds (`test/integration/mobile_extensions_build_test.rb`), where a test skipped for want of a runtime or a tool fails the job. The `mobile-apps-android` jobs build each project with its wrapper as APKs and app bundles, check them (`tasks/mobile_parity/android.rb`), and run each app on emulators with 4 KB and 16 KB pages; they also run the Android integration tests of what a project holds and of what its native libraries export (`test/integration/mobile_extensions_build_test.rb`, `test/integration/mobile_extension_symbols_test.rb`), where a test skipped for want of a runtime, a tool, or a device fails the job. `mobile-apps-android-hosts` builds a project on macOS and Windows. `test/mobile_build_test.rb` and `test/mobile_template_contract_test.rb` test the projects' contents.
+
+What a project holds, how each file is filled, and how a framework keeps its own files across builds are in "What a build writes" and "Host files". How the app runs inside the project is `doc/contributors/design/phone-runtimes.md`, "The embedding API". What a developer does with the project is `doc/phones.md`.
 
 ### The operand
 

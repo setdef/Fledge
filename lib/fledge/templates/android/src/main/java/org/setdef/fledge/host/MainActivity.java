@@ -12,7 +12,7 @@ import java.util.function.IntConsumer;
 import org.setdef.fledge.FledgeRuby;
 
 /**
- * The app's one screen, written by fledge build (ADR 012): it shows the
+ * The app's one screen, written by fledge build (doc/contributors/design/phone-projects.md): it shows the
  * app's name and runs the app's Ruby program, as fledge.cfg in the asset
  * fledge.zip names it, with FledgeRuby, on Ruby's own thread, with no
  * arguments, since a phone has no command line. What the program prints

@@ -134,7 +134,7 @@ Windows needs a trusted code-signing certificate or a signing service, bought se
 - **Proves:** a team's signature and profile, `xcodebuild -exportArchive`, and App Store Connect's own checks accept an archive of a Fledge iOS project. CI checks everything Apple's tools check without an account (`doc/contributors/design/phone-projects.md`, "The App Store archive check").
 - **Needs:** the Apple Developer Program, and an app record in App Store Connect.
 - **Steps:** `doc/phones.md`, "The App Store" (Product > Archive, or the `xcodebuild archive` and `-exportArchive` commands there), and its "Export compliance", which is a legal claim of yours. Set a `version` in `fledge.yml` first.
-- **Passing:** the upload is accepted and the build appears under TestFlight with no validation error. If App Store Connect refuses version 0.0.0, tell an agent: `fledge build ios` should then refuse it (ADR 012).
+- **Passing:** the upload is accepted and the build appears under TestFlight with no validation error. If App Store Connect refuses version 0.0.0, tell an agent: `fledge build ios` should then refuse it (`doc/contributors/design/phone-projects.md`, "What a build writes").
 - **Status:** not run.
 - **Blocks 1.0.0?** not decided.
 

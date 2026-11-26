@@ -18,7 +18,7 @@ require_relative "ios_ruby_extensions"
 module Fledge
   class MobileProject
     # An app's Xcode project for iPhone and iPad, as Fledge::MobileProject
-    # describes it (ADR 012).
+    # describes it (doc/contributors/design/phone-projects.md).
     #
     # The project is XcodeGen's, as Tauri's iOS projects are: Fledge writes
     # XcodeGen's <tt>project.yml</tt> from its template, with the app's

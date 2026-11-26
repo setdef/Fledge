@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT
 //
-// The app's one screen, written by fledge build (ADR 012). Before UIKit
+// The app's one screen, written by fledge build (doc/contributors/design/phone-projects.md). Before UIKit
 // starts, it sends standard output and standard error to os_log, with the
 // app's bundle identifier as subsystem, and starts the app's Ruby
 // program, as fledge.cfg in the bundle's fledge/ folder names it, through

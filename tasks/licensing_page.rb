@@ -299,7 +299,7 @@ class LicensingPage
     "#{parts[0...-1].to_a.join('; ')}; and #{parts.last}"
   end
 
-  # What the page says of an app for a phone (ADR 012), which is not a
+  # What the page says of an app for a phone (doc/contributors/design/phone-projects.md), which is not a
   # copy of the runtime but an app the developer builds from the project
   # fledge build writes, around the runtime's library.
   private def phones(reports)
@@ -308,7 +308,7 @@ class LicensingPage
     <<~PHONES
       ## On iOS and Android
 
-      For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([ADR 012](contributors/adr/012.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and #{ours.name.sub(/,.*/, '')} are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so keeping the notices is all they ask of you.
+      For a phone, `fledge build ios` and `fledge build android` write a project that you build into the app ([Phones](phones.md)). The app links the runtime's library, `FledgeRuby.xcframework` on iOS and `FledgeRuby.aar` on Android, into which Ruby, OpenSSL, libyaml, on Android libffi and the NDK's own compiler support libraries, and #{ours.name.sub(/,.*/, '')} are compiled; it carries Ruby's library, its default and bundled gems, and the CA certificates as files, in its bundle's `fledge/` folder on iOS and in its asset `fledge.zip` on Android; and the project's `fledge/notices/` goes into the app with them, so the app carries `NOTICES.txt` and the SBOM as a desktop app does. Each phone's section below lists the components. None is under the LGPL, so keeping the notices is all they ask of you.
 
       **Fledge's own code** in a phone's app is #{ours.name.sub(/,.*/, '')}, compiled into the runtime's library, and the host app in the project's template, `Host/main.m` on iOS and `MainActivity.java` on Android, which you compile into the app and may change. Both are Fledge's work under the MIT License, as the desktop launcher is, and ask only that you keep the notices. The project's Gradle wrapper (`gradlew` and `gradle/wrapper/`, Gradle's, under Apache-2.0) builds the app and is not part of it.
     PHONES

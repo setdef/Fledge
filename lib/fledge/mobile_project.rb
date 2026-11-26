@@ -25,7 +25,7 @@ module Fledge
   # Briefcase's <tt>create iOS</tt> and <tt>create android</tt>, Flutter's
   # and React Native's templates, and Tauri's <tt>ios init</tt> and
   # <tt>android init</tt> write one, around the runtime's XCFramework or
-  # AAR (ADR 012). The app inside it is what the desktop's built app holds
+  # AAR (doc/contributors/design/phone-projects.md). The app inside it is what the desktop's built app holds
   # beside its launcher, in a folder named ROOT: Assembly::CONFIG, the
   # project in +app+, and the app's gems in Ruby's gem folder, which the
   # build puts beside the runtime's Ruby and the embedding API's

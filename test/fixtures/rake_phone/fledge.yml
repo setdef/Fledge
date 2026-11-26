@@ -6,6 +6,6 @@
 # extensions a Rakefile builds, not an extconf.rb. It sits inside
 # Fledge's own gem, so without this file fledge build would take
 # Fledge's Gemfile for its own. The identifier is what iOS and
-# Android know it by (ADR 012).
+# Android know it by (doc/contributors/design/phone-projects.md).
 name: RakePhone
 identifier: com.setdef.fledge.RakePhone

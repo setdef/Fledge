@@ -158,7 +158,7 @@ components:
         evidence: "ruby: could not run "
 
   # A phone's app has no Fledge launcher: the host app the project
-  # fledge build writes starts Ruby through the embedding API (ADR 012),
+  # fledge build writes starts Ruby through the embedding API (doc/contributors/design/phone-projects.md),
   # so of this component a phone's runtime holds only the RubyGems
   # defaults, in each Ruby it carries, and the bridge to the phone's own
   # widgets in Ruby's vendor folder (doc/contributors/design/phone-widgets.md).

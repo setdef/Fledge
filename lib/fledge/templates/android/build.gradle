@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT
 //
-// Written by fledge build (ADR 012): the app, with its identity from
+// Written by fledge build (doc/contributors/design/phone-projects.md): the app, with its identity from
 // fledge.yml, targeting API 36, as Google Play requires of new apps and
 // updates since 2026-08-31, and running on API 26 and later, as Fledge's
 // Android runtime does (ADR 099). Its Ruby, its program, and its gems

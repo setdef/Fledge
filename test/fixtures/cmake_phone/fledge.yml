@@ -7,7 +7,7 @@
 # it (doc/contributors/design/phone-projects.md, "CMake toolchain files").
 # It sits inside Fledge's own gem, so without this file
 # fledge build would take Fledge's Gemfile for its own. The
-# identifier is what iOS and Android know it by (ADR 012).
+# identifier is what iOS and Android know it by (doc/contributors/design/phone-projects.md).
 name: CmakePhone
 identifier: com.setdef.fledge.CmakePhone
 

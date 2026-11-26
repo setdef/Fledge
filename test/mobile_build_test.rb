@@ -13,7 +13,7 @@ require_relative "support/loopback_server"
 require "stringio"
 require "yaml"
 
-# fledge build ios and fledge build android (ADR 012), through real
+# fledge build ios and fledge build android (doc/contributors/design/phone-projects.md), through real
 # streams, with fake mobile runtimes shaped as
 # doc/contributors/design/phone-runtimes.md, "What a phone runtime holds",
 # describes them, real .gem files served at the lockfile's remote, and,

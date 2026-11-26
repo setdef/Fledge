@@ -17,7 +17,7 @@ require_relative "../mac_bundle"
 module Fledge
   class MobileProject
     # An app's Gradle project for Android, as Fledge::MobileProject
-    # describes it (ADR 012).
+    # describes it (doc/contributors/design/phone-projects.md).
     #
     # The project is one Android app module, with Gradle's own wrapper,
     # pinned to the Gradle Fledge's runtime is built with, as Briefcase's,

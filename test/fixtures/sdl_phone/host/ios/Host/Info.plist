@@ -3,7 +3,7 @@
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT
 
-  Written by fledge build (ADR 012). The name, identifier, and version
+  Written by fledge build (doc/contributors/design/phone-projects.md). The name, identifier, and version
   are the target's build settings, which fledge.yml gave.
 
   sdl_phone's copy (doc/contributors/design/phone-projects.md, "Host files"),

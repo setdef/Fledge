@@ -3,7 +3,7 @@
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT
 
-  Written by fledge build (ADR 012): the name fledge.yml gives the app.
+  Written by fledge build (doc/contributors/design/phone-projects.md): the name fledge.yml gives the app.
 -->
 <resources>
     <string name="app_name">@@NAME@@</string>

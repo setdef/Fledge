@@ -39,7 +39,7 @@ module Fledge
     # Briefcase's builds do, since each platform's app is made with that
     # platform's own tools (decisions, 2026-10-28), or, given a phone's name first
     # (<tt>fledge build ios</tt>), writes that phone's project, with
-    # Fledge::MobileProject, on a computer whose tools build it (ADR 012). It reads <tt>--out</tt> and the
+    # Fledge::MobileProject, on a computer whose tools build it (doc/contributors/design/phone-projects.md). It reads <tt>--out</tt> and the
     # program to ship from its arguments (Fledge::App), finds this
     # platform's runtime through Fledge::Runtimes, adds the gems the app's
     # Gemfile.lock locks for it (Fledge::Bundle and Fledge::AppGems),

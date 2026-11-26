@@ -11,7 +11,7 @@ require "open3"
 require "rbconfig"
 require_relative "parity"
 
-# The mobile check (ADR 012; doc/contributors/design/parity.md, "The mobile
+# The mobile check (doc/contributors/design/parity.md, "The mobile
 # parity"): apps built as a developer builds them, with fledge build ios
 # and fledge build android, their projects built with xcodebuild and
 # Gradle, and run in the iOS Simulator, on an iPhone and an iPad, and on

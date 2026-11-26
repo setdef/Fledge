@@ -7,5 +7,5 @@
 # Parity.
 #
 # Its identifier is what iOS and Android know it by, which the mobile
-# parity check's projects need (ADR 012).
+# parity check's projects need (doc/contributors/design/phone-projects.md).
 identifier: com.setdef.fledge.Parity

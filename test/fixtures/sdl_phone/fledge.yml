@@ -7,7 +7,7 @@
 # (doc/contributors/design/phone-projects.md, "A host that owns the main
 # loop"). It sits inside Fledge's own gem, so without this file fledge
 # build would take Fledge's Gemfile for its own. The identifier is what
-# iOS and Android know it by (ADR 012). Each phone's host is SDL's,
+# iOS and Android know it by (doc/contributors/design/phone-projects.md). Each phone's host is SDL's,
 # whose files fledge build copies over the project it writes: on iOS
 # SDL's main.m, Info.plist, and project.yml; on Android an SDLActivity
 # under Fledge's name, and SDL's own Java, which sdl3/build.sh android

@@ -4,6 +4,6 @@
 
 # The mobile check's app of what the mobile runtimes promise (main.rb).
 # This file makes its folder a project's root, and names it for
-# iOS and Android (ADR 012).
+# iOS and Android (doc/contributors/design/phone-projects.md).
 name: MobileHello
 identifier: com.setdef.fledge.MobileHello

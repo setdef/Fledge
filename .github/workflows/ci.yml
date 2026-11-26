@@ -38,7 +38,7 @@
 #
 # The mobile runtimes (ADR 099) build from Ruby's source, iOS's on a Mac
 # with Xcode and Android's on Linux with the NDK, and their Delivery is
-# apps built with fledge build ios and fledge build android (ADR 012),
+# apps built with fledge build ios and fledge build android (doc/contributors/design/phone-projects.md),
 # whose Xcode and Gradle projects build unsigned, the Gradle ones as APKs
 # and as the app bundles Google Play takes, run in the iOS Simulator on an
 # iPhone and an iPad and on Android emulators with 4 KB and 16 KB pages,
@@ -612,7 +612,7 @@ jobs:
           retention-days: 14
 
   # Delivery on phones (doc/contributors/design/phone-projects.md, "Parity on a
-  # phone"; ADR 012): apps built as a
+  # phone"; doc/contributors/design/phone-projects.md): apps built as a
   # developer builds them, with fledge build ios, and their Xcode projects
   # built with xcodebuild for the Simulator and, unsigned, for devices, to
   # show the device slice links and the privacy manifest names every
@@ -1067,7 +1067,7 @@ jobs:
 
   # An Android app's project is built on macOS and Windows too, as Google
   # supports its SDK there and Briefcase, Flutter, React Native, and Tauri
-  # build Android apps there (ADR 012): test/fixtures/mobile_app, written with
+  # build Android apps there (doc/contributors/design/phone-projects.md): test/fixtures/mobile_app, written with
   # fledge build android and built with its Gradle wrapper and the
   # runner's Android SDK, as an APK and as the release bundle Play takes,
   # which is signed, validated, and made into Play's APKs with bundletool.

@@ -15,7 +15,7 @@
 # (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the
 # runtime's own tools, is installed and its app run, as CI installs every
 # push's (decisions, 2026-10-28). Another job writes phones' projects from
-# the tag and builds them with Xcode and Gradle (ADR 012), and another
+# the tag and builds them with Xcode and Gradle (doc/contributors/design/phone-projects.md), and another
 # downloads every asset of the release and checks it against SHA256SUMS,
 # which must be the tag's lib/fledge/SHA256SUMS, the pins the gem ships.
 # The next jobs build the .gem from the tag and install that file instead
@@ -451,7 +451,7 @@ jobs:
           checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed &&
           checks/.github/scripts/deliver.sh "dist/MyCoolApp-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "$(cat dist/my_cool_app.expected)" --no-ruby-installed'
 
-  # A phone's project from the tag (ADR 012): fledge build ios on a Mac and
+  # A phone's project from the tag (doc/contributors/design/phone-projects.md): fledge build ios on a Mac and
   # fledge build android on Linux, installed from the tag with Bundler,
   # download that version's mobile runtime from the release, checked
   # against the gem's pins, and write the projects of examples/hello and

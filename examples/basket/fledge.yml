@@ -11,8 +11,10 @@
 name: Basket
 # What iOS and Android know it by (doc/contributors/design/phone-projects.md).
 identifier: com.setdef.fledge.Basket
-# Its Ruby draws the screen, so a phone runs that Ruby on the main thread,
-# where the widgets are made (doc/contributors/design/phone-widgets.md).
+# Its Ruby draws the screen in windows of its own, so a desktop builds
+# it as a windowed app; a phone runs its Ruby on the main thread, where
+# the widgets are made, as it runs every app's
+# (doc/contributors/design/phone-widgets.md).
 kind: windowed
 version: "1.0.0"
 publisher: setdef

@@ -9,8 +9,8 @@
 // to 64), and once the scene connects calls run_ruby on the main
 // thread, inside the run loop (lines 354 to 420 and 481 to 489), where
 // SDL's video must run. run_ruby runs the app's Ruby program there,
-// with FledgeRuby's fledge_ruby_run_app, as Fledge's host does on a
-// thread of its own, so Ruby can call SDL directly. The main thread's
+// with FledgeRuby's fledge_ruby_run_app, as Fledge's host does from
+// main, so Ruby can call SDL directly. The main thread's
 // stack is the one the executable asks for, with -Wl,-stack_size in
 // OTHER_LDFLAGS. Info.plist names SDLUIKitSceneDelegate as the scene's
 // delegate.

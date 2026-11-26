@@ -20,8 +20,8 @@
 # which fledge.yml's ios host lays over
 # Fledge's, and in which fledge build fills the same marks. Ruby runs on
 # the main thread, inside SDL_RunApp, so the project asks the linker for
-# a 64 MB main thread stack, the stack Fledge's host gives Ruby's own
-# thread; ld takes -stack_size only for the main executable, so the
+# a 64 MB main thread stack, the stack Fledge's host gives the main
+# thread too; ld takes -stack_size only for the main executable, so the
 # Debug configuration keeps the app's code in it (ENABLE_DEBUG_DYLIB).
 # The app's OTHER_LDFLAGS inherits the project's. SdlPhoneUITests taps
 # the screen once the game draws, from the app's scheme, as Fledge's CI

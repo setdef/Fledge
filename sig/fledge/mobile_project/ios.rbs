@@ -26,8 +26,6 @@ module Fledge
 
       private def tokens: () -> Hash[String, String]
 
-      private def windowed?: () -> bool
-
       private def main_thread_flags: () -> Array[String]
 
       private def extension_flags: () -> Array[String]

@@ -12,7 +12,7 @@
       "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
     },
     "kind": {
-      "description": "console (default), an app that runs in a terminal, or windowed, one that opens its own windows. On a phone, a windowed app's Ruby draws its screen with the phone's own widgets, on their thread, the main one.",
+      "description": "console (default), an app that runs in a terminal, or windowed, one that opens its own windows. A phone runs every app's Ruby on its main thread, whatever its kind.",
       "type": ["string", "null"],
       "enum": ["console", "windowed", null],
       "default": "console"

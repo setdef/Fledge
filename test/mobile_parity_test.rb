@@ -295,7 +295,7 @@ class MobileParityTest < Minitest::Test
         host = File.read(File.join(project, file))
 
         assert_includes host, loop, phone
-        assert_operator host.index(loop), :<, host.index((phone == "ios") ? "= fledge_ruby_run_app(" : "FledgeRuby.startApp("), phone
+        assert_operator host.index(loop), :<, host.index((phone == "ios") ? "= fledge_ruby_run_app(" : "FledgeRuby.startAppOnMainThread("), phone
         File.write(File.join(project, file), "")
         assert_raises(RuntimeError, phone) { MobileParity::Environment.record(phone, project) }
       end

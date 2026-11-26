@@ -171,6 +171,21 @@ class RubySpec
     ),
     Justification.new(
       examples: [
+        "core: Process.setrlimit when passed a Symbol coerces :STACK into RLIMIT_STACK",
+        "core: Process.setrlimit when passed a String coerces 'STACK' into RLIMIT_STACK",
+      ],
+      side: :app, platforms: %w[arm64-ios-simulator],
+      reason: "Each example sets RLIMIT_STACK to the limits Process.getrlimit gave (core/process/setrlimit_spec.rb, " \
+        "lines 73 and 153), and Darwin refuses that with EINVAL in a process whose executable asks for its main " \
+        "thread's stack with ld's -stack_size, which Fledge's iOS project does for the 64 MB Ruby runs with on the " \
+        "main thread (doc/contributors/design/phone-widgets.md, \"Threads\"): on a Mac, a C program that calls " \
+        "setrlimit with what getrlimit returned (cur 8372224, max 67092480) succeeds, and the same program linked " \
+        "with -Wl,-stack_size,0x4000000 gets EINVAL with the same limits. Without the flag Apple documents 1 MB for " \
+        "an iPhone's main thread, where Ruby recurses about a fifth as deep (doc/contributors/device-test.md, " \
+        "\"The stack\").",
+    ),
+    Justification.new(
+      examples: [
         "library: Etc.getlogin returns the name associated with the current login activity",
       ],
       side: :app, platforms: %w[arm64-ios-simulator],

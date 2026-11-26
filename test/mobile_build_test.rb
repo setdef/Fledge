@@ -251,22 +251,21 @@ class MobileBuildTest < Minitest::Test
     assert_includes copy, "ditto \"$PROJECT_DIR/FledgeRuby.xcframework/$slice/include\" \"$root/include\"\n", "mkmf finds Ruby's headers"
   end
 
-  # An app whose Ruby draws its screen with UIKit runs that Ruby on the
-  # main thread, with the stack Ruby has on a thread of its own
-  # (doc/contributors/design/phone-widgets.md, "Threads"); any other app
-  # keeps Ruby on its own thread.
-  def test_an_ios_app_whose_ruby_draws_its_screen_runs_it_on_the_main_thread
+  # Every app's Ruby runs on the main thread, whatever its kind, as under
+  # ruby main.rb, so every app's main thread has the 64 MB stack Ruby
+  # had on a thread of its own (doc/contributors/design/phone-widgets.md,
+  # "Threads"), and the project switches nothing by kind.
+  def test_every_ios_apps_main_thread_has_rubys_stack_whatever_its_kind
     skip "this computer has no XcodeGen" unless xcodegen?
-    settings = %w[console windowed].to_h do |kind|
+    settings = %w[console windowed].map do |kind|
       root = script_app("identifier: com.example.Hello\nkind: #{kind}\n")
       _, err, status = build("ios", root, host: "arm64-darwin-24")
       assert_equal 0, status, err
       base = YAML.safe_load_file(File.join(@dir, "dist/Hello-ios/project.yml")).dig("targets", "Hello", "settings", "base")
       FileUtils.rm_rf(File.join(@dir, "dist"))
-      [kind, base.values_at("GCC_PREPROCESSOR_DEFINITIONS", "OTHER_LDFLAGS", "ENABLE_DEBUG_DYLIB")]
+      base.values_at("GCC_PREPROCESSOR_DEFINITIONS", "OTHER_LDFLAGS", "ENABLE_DEBUG_DYLIB")
     end
-    assert_equal ["$(inherited) FLEDGE_WINDOWED=0", "$(inherited)", false], settings.fetch("console")
-    assert_equal ["$(inherited) FLEDGE_WINDOWED=1", "$(inherited) -Wl,-stack_size,0x4000000", false], settings.fetch("windowed")
+    assert_equal [[nil, "$(inherited) -Wl,-stack_size,0x4000000", false]] * 2, settings
   end
 
   def test_an_ios_app_without_an_icon_has_no_asset_catalog
@@ -392,6 +391,21 @@ class MobileBuildTest < Minitest::Test
     assert_includes read("dist/Hello-android/settings.gradle"), "rootProject.name = 'Hello'", "what the host leaves is Fledge's"
     assert_path_exists File.join(@dir, "dist/Hello-android/fledge/app/main.rb")
     refute_path_exists File.join(@dir, "dist/Hello-android/fledge/app/host/android"), "the host is the project's, not the app's"
+  end
+
+  # Every app's Ruby runs on Android's main thread, whatever its kind, as
+  # under ruby main.rb (doc/contributors/design/phone-widgets.md,
+  # "Threads"), and the activity shows nothing of its own.
+  def test_every_android_apps_ruby_starts_on_the_main_thread_whatever_its_kind
+    activities = %w[console windowed].map do |kind|
+      root = script_app("identifier: com.example.Hello\nkind: #{kind}\n")
+      assert_equal 0, build("android", root).last
+      read("dist/Hello-android/src/main/java/org/setdef/fledge/host/MainActivity.java").tap { FileUtils.rm_rf(File.join(@dir, "dist")) }
+    end
+
+    assert_equal 1, activities.uniq.size, "the kind changes nothing"
+    assert_includes activities.first, "FledgeRuby.startAppOnMainThread(this, "
+    refute_match(/FledgeRuby\.startApp\(|setContentView/, activities.first)
   end
 
   def test_a_phones_host_must_be_a_folder_in_the_project

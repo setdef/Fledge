@@ -203,7 +203,7 @@ On Windows, to sign with a certificate in a cloud or hardware service, pass `--s
 
 ### Build for a phone
 
-On a Mac, `bundle exec fledge build ios` writes an [Xcode](https://developer.apple.com/xcode/) project. On a Mac, Linux, or Windows, `bundle exec fledge build android` writes a [Gradle](https://gradle.org/) project. Fledge prints the project's path, and you build, sign, and submit it with Xcode or Gradle. First, lock the `ruby` platform (`bundle lock --add-platform ruby`), and give the app an `identifier` in `fledge.yml`. What your program prints goes to the phone's system log. To draw the app's screen with the phone's own widgets, say `kind: windowed`, and your Ruby runs on the thread they belong to. For your app's screen, gems with extensions, what a phone forbids, and the App Store and Google Play, see [iPhone, iPad, and Android](doc/phones.md).
+On a Mac, `bundle exec fledge build ios` writes an [Xcode](https://developer.apple.com/xcode/) project. On a Mac, Linux, or Windows, `bundle exec fledge build android` writes a [Gradle](https://gradle.org/) project. Fledge prints the project's path, and you build, sign, and submit it with Xcode or Gradle. First, lock the `ruby` platform (`bundle lock --add-platform ruby`), and give the app an `identifier` in `fledge.yml`. What your program prints goes to the phone's system log. Your Ruby runs on the phone's main thread, as under `ruby main.rb`, where it can draw the app's screen with the phone's own widgets. For your app's screen, gems with extensions, what a phone forbids, and the App Store and Google Play, see [iPhone, iPad, and Android](doc/phones.md).
 
 ### Publish
 

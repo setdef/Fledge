@@ -6,8 +6,6 @@ package org.setdef.fledge.host;
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Gravity;
-import android.widget.TextView;
 import org.setdef.fledge.FledgeRuby;
 
 /**
@@ -29,16 +27,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        CharSequence name = getApplicationInfo().loadLabel(getPackageManager());
-        TextView text = new TextView(this);
-        text.setText(name);
-        text.setGravity(Gravity.CENTER);
-        setContentView(text);
         synchronized (MainActivity.class) {
             if (started) return;
             started = true;
         }
+        CharSequence name = getApplicationInfo().loadLabel(getPackageManager());
         String tag = getPackageName();
-        FledgeRuby.startApp(this, "fledge.zip", new String[0], status -> Log.i(tag + ".host", name + " exited with status " + status));
+        FledgeRuby.startAppOnMainThread(this, "fledge.zip", new String[0], status -> Log.i(tag + ".host", name + " exited with status " + status));
     }
 }

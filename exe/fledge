@@ -249,10 +249,9 @@
 #     ROOT/fledge.yml    Optional, a YAML mapping of:
 #                        name: the app's name (default: the gemspec's
 #                          name, or ROOT's folder name, camelized)
-#                        kind: console (default) or windowed; on a
-#                          phone, windowed runs the app's Ruby on the
-#                          main thread, where it draws with the phone's
-#                          own widgets
+#                        kind: console (default) or windowed; a phone
+#                          runs every app's Ruby on its main thread,
+#                          whatever its kind
 #                        identifier: the app's reverse-DNS name, such as
 #                          com.example.MyCoolApp, which macOS and
 #                          Windows know it by, and the bundle identifier

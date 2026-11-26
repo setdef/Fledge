@@ -15,9 +15,10 @@
 # Basket's calls into Java over Fiddle, zlib, and digest, which Ruby
 # bundles too, on Linux through lib/basket/gtk.rb, Basket's calls into
 # GTK's C API over Fiddle, and on Windows through lib/basket/win32.rb,
-# Basket's calls into user32 and comctl32 over Fiddle. fledge.yml says
-# kind: windowed, so the app's Ruby runs on the thread those widgets
-# belong to, and on Windows runs without a console.
+# Basket's calls into user32 and comctl32 over Fiddle. The app's Ruby
+# runs on the main thread, where those widgets are made, as under ruby
+# main.rb, and fledge.yml says kind: windowed, so on Windows it runs
+# without a console.
 
 require_relative "lib/basket/data_folder"
 require_relative "lib/basket/list"

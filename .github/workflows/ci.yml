@@ -700,6 +700,20 @@ jobs:
         timeout-minutes: 50
         run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP/runtimes"
 
+      # The Xcode projects fledge build ios wrote for the examples, which
+      # the step above built, archived, and ran in the Simulator, archived
+      # for a developer's signing team (doc/contributors/design/releases.md,
+      # "The examples a release carries").
+      - name: Stage the examples' Xcode projects for a release
+        run: ruby tasks/release_examples.rb stage-ios tmp/mobile-parity/ios/projects release-examples
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: example-ios
+          path: release-examples
+          if-no-files-found: error
+          retention-days: ${{ github.ref_name == 'release-next' && 14 || 3 }}
+
       - name: Key the downloads by the files they hold
         id: downloads-key
         run: ruby .github/scripts/download_cache_key.rb
@@ -1064,6 +1078,23 @@ jobs:
             tmp/mobile-parity/android/logcat-*.txt
             tmp/mobile-parity/android/gradle-*.log
           retention-days: 3
+
+      # The debug APKs of the examples, which both emulators installed
+      # and ran above, so one target's job keeps them for a release
+      # (doc/contributors/design/releases.md, "The examples a release
+      # carries"). Gradle signs a debug APK with a debug key, which is
+      # what lets a phone install it.
+      - name: Stage the examples' APKs for a release
+        if: matrix.target == 'google_apis'
+        run: ruby tasks/release_examples.rb stage-android tmp/mobile-parity/android/apks release-examples
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: matrix.target == 'google_apis'
+        with:
+          name: example-android
+          path: release-examples
+          if-no-files-found: error
+          retention-days: ${{ github.ref_name == 'release-next' && 14 || 3 }}
 
   # An Android app's project is built on macOS and Windows too, as Google
   # supports its SDK there and Briefcase, Flutter, React Native, and Tauri
@@ -2000,6 +2031,20 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+      # The examples among them, as a release carries them, under the
+      # names it gives them (doc/contributors/design/releases.md, "The
+      # examples a release carries"). Delivery runs the apps of the
+      # artifact above, the same files, on a fresh runner.
+      - name: Stage the examples for a release
+        run: ruby tasks/release_examples.rb stage-desktop dist release-examples "${{ matrix.platform }}"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: example-${{ matrix.platform }}
+          path: release-examples
+          if-no-files-found: error
+          retention-days: ${{ github.ref_name == 'release-next' && 14 || 3 }}
+
       # The LibUI probe and Focus Timer on Windows, whose fledge.yml files
       # say windows: visual_c_runtime: local, so the apps carry the
       # runner's copies of Microsoft's Visual C++ runtime, which setdef
@@ -2151,9 +2196,10 @@ jobs:
           (cd test/fixtures/ffi_libc && bundle install)
           (cd test/fixtures/ffi_libc && bundle exec ruby main.rb) > dist/ffi_libc.expected
           cat dist/ffi_libc.expected
+          ruby tasks/release_examples.rb stage-desktop dist release-examples "$PLATFORM"
           SH
           docker run --rm -v "$GITHUB_WORKSPACE:/fledge" -v "$RUNNER_TEMP:/scripts" -w /fledge -e FLEDGE_RUNTIME_DIR=/fledge/runtimes -e FLEDGE_RUNTIME_DIR_UNCHECKED=1 \
-            -e BUNDLE_FROZEN "$ALPINE_RUBY" sh /scripts/build-apps.sh
+            -e BUNDLE_FROZEN -e PLATFORM="${{ matrix.platform }}" "$ALPINE_RUBY" sh /scripts/build-apps.sh
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -2164,6 +2210,15 @@ jobs:
             dist/*.expected
           if-no-files-found: error
           retention-days: 3
+
+      # The examples among them, staged for a release in the container
+      # above (the Build jobs of the other platforms say why).
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: example-${{ matrix.platform }}
+          path: release-examples
+          if-no-files-found: error
+          retention-days: ${{ github.ref_name == 'release-next' && 14 || 3 }}
 
   # Delivery of native_app, rust_lengths, and nokogiri_app, on a fresh
   # runner of each platform, as Delivery runs the others.

@@ -16,7 +16,7 @@
 # runtime's own tools, is installed and its app run, as CI installs every
 # push's (decisions, 2026-10-28). Another job writes phones' projects from
 # the tag and builds them with Xcode and Gradle (doc/contributors/design/phone-projects.md), and another
-# downloads every asset of the release and checks it against SHA256SUMS,
+# downloads every runtime of the release and checks it against SHA256SUMS,
 # which must be the tag's lib/fledge/SHA256SUMS, the pins the gem ships.
 # The next jobs build the .gem from the tag and install that file instead
 # of the tag on each platform, which proves what the gemspec packs; and
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Download every asset and check it
+      - name: Download every runtime and check it
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
@@ -91,7 +91,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/release"
           cd "$RUNNER_TEMP/release"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'fledge-runtime-*' --pattern SHA256SUMS
           ls -l
           sha256sum --strict -c SHA256SUMS
           gh api -H "Accept: application/vnd.github.raw" "repos/$GITHUB_REPOSITORY/contents/lib/fledge/SHA256SUMS?ref=${COMMIT:-$TAG}" |

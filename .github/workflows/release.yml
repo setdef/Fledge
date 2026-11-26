@@ -19,8 +19,19 @@
 #
 # and, once, the gem built from the tag, fledge-VERSION.gem, so that
 # Fledge can be installed from the release when RubyGems.org is down;
-# and a SHA256SUMS over all of them, which is the tagged commit's
-# lib/fledge/SHA256SUMS. fledge build at that version downloads its
+# the example apps, built and delivered by the release commit's CI run,
+# each for the platforms it targets:
+#
+#   fledge-example-NAME-VERSION-PLATFORM.EXTENSION      an archive or an
+#                                                       installer; an APK
+#                                                       on android; an
+#                                                       Xcode project, as
+#                                                       a .tar.gz, on
+#                                                       ios-project
+#
+# and a SHA256SUMS over the runtimes, which is the tagged commit's
+# lib/fledge/SHA256SUMS (the gem and the examples are not runtimes, and
+# no pin names them). fledge build at that version downloads its
 # runtimes from this release, by the names Fledge::Runtimes gives them,
 # and checks each against the SHA-256 its own gem pins. A version with
 # anything but digits and periods in it (RubyGems' prerelease form, such
@@ -35,6 +46,13 @@
 # reproducible, so this publishes the runtimes the release commit's CI
 # run built, and only when every one matches its pin
 # (doc/contributors/design/releases.md, "The pins").
+#
+# The examples come from the same CI run as the runtimes, which passed
+# on every job, Delivery's among them, and are checked against what the
+# tagged commit's tasks/release_examples.rb says a release carries
+# (doc/contributors/design/releases.md, "The examples a release
+# carries"). Only a run of the release commit on release-next keeps them
+# the two weeks a release needs.
 #
 # It does not run CI again. CI ran on both commits, on a push or a
 # dispatch (releases.md, "Which runs are a commit's"), and this looks
@@ -106,7 +124,7 @@ jobs:
   check:
     name: Check the tag and assemble its assets
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: read
       # Finding both commits' CI runs and downloading the runtimes.
@@ -218,6 +236,36 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+      # The examples that run built, staged under the names the release
+      # gives them (tasks/release_examples.rb), from the same run as the
+      # runtimes. The tagged commit's list of them says which files a
+      # release carries, as it says which runtimes (above), so a platform
+      # whose job staged none, or a stray file, fails here, before
+      # anything is published.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: example-*
+          merge-multiple: true
+          path: release-examples
+          run-id: ${{ env.RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Check the examples are exactly the tagged commit's
+        run: |
+          ruby tasks/release_examples.rb check release-examples
+          (cd release-examples && sha256sum -- * > "$RUNNER_TEMP/examples.sha256")
+          mv "$RUNNER_TEMP/examples.sha256" release-examples/SHA256SUMS
+          du -ch release-examples/fledge-example-* | tail -1
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-examples
+          path: release-examples
+          if-no-files-found: error
+          # Archives and installers are compressed already.
+          compression-level: 0
+          retention-days: 3
+
       # The .gem of the tagged commit, attached to the release beside the
       # runtimes, so that a developer can install Fledge from it when
       # RubyGems.org is down. It is no runtime asset, so it is kept apart
@@ -244,7 +292,7 @@ jobs:
     needs: check
     if: github.event_name == 'push' || inputs.publish
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       # Creating a release and uploading its assets.
       contents: write
@@ -259,8 +307,21 @@ jobs:
           name: release-gem
           path: gem
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-examples
+          path: release-examples
+
       - name: Check the assets against the pins they came with
         run: (cd release && sha256sum --strict -c SHA256SUMS)
+
+      # The examples' sums, written by the job that checked them, are
+      # no release asset: the pins are the runtimes', and the release page
+      # shows each file's digest.
+      - name: Check the examples against the sums they came with
+        run: |
+          (cd release-examples && sha256sum --strict -c SHA256SUMS)
+          rm release-examples/SHA256SUMS
 
       - name: Check the gem is this version
         env:
@@ -275,8 +336,8 @@ jobs:
           prerelease=()
           case "$VERSION" in *[!0-9.]*) prerelease=(--prerelease) ;; esac
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" --title "Fledge $TAG" \
-            --notes "Runtimes for fledge build at $TAG, one per platform, each to build that platform's apps on a computer of that platform, with its SPDX SBOM and NOTICES; and, for Linux and Windows, the source the runtime's licenses ask for: its LGPL libraries', AppImage's runtime's, and NSIS's. What Fledge puts into each platform's app and installer, and what its licenses ask of you: doc/licensing.md at $TAG. What changed: CHANGELOG.md." \
-            release/fledge-runtime-* release/SHA256SUMS "gem/fledge-$VERSION.gem"
+            --notes "Runtimes for fledge build at $TAG, one per platform, each to build that platform's apps on a computer of that platform, with its SPDX SBOM and NOTICES; and, for Linux and Windows, the source the runtime's licenses ask for: its LGPL libraries', AppImage's runtime's, and NSIS's. What Fledge puts into each platform's app and installer, and what its licenses ask of you: doc/licensing.md at $TAG. Each example app, built and delivered by CI for the platforms it targets, as fledge-example-NAME-VERSION-PLATFORM: the archive and installers of a desktop, a debug-signed APK for Android, and for iOS the Xcode project, archived, for a developer to sign with their team. What changed: CHANGELOG.md." \
+            release/fledge-runtime-* release/SHA256SUMS "gem/fledge-$VERSION.gem" release-examples/fledge-example-*
 
   installed:
     name: Installed from the tag

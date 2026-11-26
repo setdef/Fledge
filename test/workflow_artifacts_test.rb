@@ -40,6 +40,17 @@ class WorkflowArtifactsTest < Minitest::Test
     logs.each { |upload| assert_match(/\Alogs-runtime-/, upload.fetch("name")) }
   end
 
+  # release.yml downloads every artifact named example-* into one folder
+  # and expects only what tasks/release_examples.rb staged
+  # (doc/contributors/design/releases.md, "The examples a release
+  # carries"), so an artifact so named holds that folder and nothing else.
+  def test_an_artifact_named_as_an_example_holds_only_the_staged_folder
+    named = uploads("ci.yml").select { |upload| upload.fetch("name").start_with?("example-") }
+
+    refute_empty named
+    named.each { |upload| assert_equal "release-examples", upload.fetch("path"), "#{upload.fetch('name')} uploads #{upload.fetch('path')}" }
+  end
+
   private def uploads(name)
     workflow = YAML.load_file(File.join(ROOT, ".github", "workflows", name), aliases: true)
     workflow.fetch("jobs").values.flat_map do |job|

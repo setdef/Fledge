@@ -764,7 +764,7 @@ jobs:
           - leg: fledge test
             tests: test/integration/phone_test_command_test.rb
           - leg: the rest
-            tests: test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_separation_names_test.rb
+            tests: test/integration/mobile_extensions_build_test.rb,test/integration/mobile_default_gems_test.rb,test/integration/mobile_closures_test.rb,test/integration/mobile_linked_symbols_test.rb,test/integration/mobile_separation_names_test.rb
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

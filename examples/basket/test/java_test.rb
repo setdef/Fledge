@@ -15,10 +15,23 @@
 #   fledge test android test/phone.rb
 
 require "minitest/autorun"
-require_relative "../lib/basket/android/java"
+
+# Why these tests cannot run on this computer, or nil when they can: the
+# bridge is Fiddle's, which Bundler hides until a Gemfile lists it.
+JAVA_UNAVAILABLE = begin
+  require_relative "../lib/basket/android/java"
+  nil
+rescue LoadError => e
+  e.message
+end
 
 # The tests of Basket::Android::Java::Member, which need no Java.
 class MemberTest < Minitest::Test
+  # Skips where Fiddle cannot be loaded.
+  def setup
+    skip JAVA_UNAVAILABLE if JAVA_UNAVAILABLE
+  end
+
   # What Arrays.toString gives for a class's getMethods.
   LISTING = "[public static void android.os.Looper.loop(), " \
     "public boolean java.util.ArrayList.add(java.lang.Object), " \

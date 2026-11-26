@@ -95,18 +95,22 @@ module Basket
 
       # Puts the controls in the window, within the margins Microsoft's
       # guidelines give a window's content: 16 pixels, with 8 between
-      # controls, at 96 dots per inch.
+      # controls, at 96 dots per inch. The field and the buttons are 23
+      # pixels high, which Microsoft's layout guidelines give a one-line
+      # text box and a command button ("Recommended sizing and spacing"):
+      # a taller field draws its text at the top, where only a field of
+      # one line's height has it centered.
       private def place(width, height)
         margin = @window.scale(16)
         gap = @window.scale(8)
-        row = @window.scale(32)
+        row = @window.scale(23)
         button = @window.scale(88)
         @field.move(margin, margin, width - (2 * margin) - button - gap, row)
         @add_button.move(width - margin - button, margin, button, row)
         top = margin + row + gap
         bottom = height - margin - row
         @table.move(margin, top, width - (2 * margin), bottom - gap - top)
-        @table.column_width = width - (2 * margin) - @window.scale(24)
+        @table.fit_column
         @remove_button.move(width - margin - button, bottom, button, row)
       end
     end

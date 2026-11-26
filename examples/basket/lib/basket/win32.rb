@@ -66,6 +66,14 @@ module Basket
       SET_DPI_AWARENESS = function("user32.dll", "SetProcessDpiAwarenessContext", [HANDLE], INT)
       # The scale of the monitor a window is on, in dots per inch.
       WINDOW_DPI = function("user32.dll", "GetDpiForWindow", [HANDLE], UINT)
+      # The path of the file the process runs from, into a buffer.
+      MODULE_FILE_NAME = function("kernel32.dll", "GetModuleFileNameW", [HANDLE, POINTER, UINT], UINT)
+      # A system metric at a scale.
+      METRIC_FOR_DPI = function("user32.dll", "GetSystemMetricsForDpi", [INT, UINT], INT)
+      # The large and the small icon of an icon group in a file, at the
+      # sizes asked for: the large in the low word of the last argument,
+      # the small in its high word.
+      EXTRACT_ICON = function("shell32.dll", "SHDefExtractIconW", [POINTER, INT, UINT, POINTER, POINTER, UINT], INT)
       # The scale of the primary monitor.
       SYSTEM_DPI = function("user32.dll", "GetDpiForSystem", [], UINT)
       # A system setting at a scale.
@@ -129,6 +137,13 @@ module Basket
     # The +characters+ UTF-16 characters at +pointer+, as a String.
     def self.string(pointer, characters)
       pointer[0, 2 * characters].force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)
+    end
+
+    # The path of the program the process runs, which is where its icon
+    # is: Explorer and the taskbar show the first icon group of that file.
+    def self.program_path
+      path = buffer(2 * 32_768)
+      string(path, Functions::MODULE_FILE_NAME.call(0, path, 32_768))
     end
 
     # The system's message font at +dpi+, a handle, which the controls
@@ -234,7 +249,10 @@ module Basket
         handle = Functions::CREATE_WINDOW.call(0, name, Win32.wide(title), 0x00CF0000, -0x80000000, -0x80000000,
           (width * scale).round, (height * scale).round, 0, 0, instance, 0)
         handle.zero? and raise Error, "Windows made no window: error #{Fiddle.win32_last_error}"
-        new(handle, default_button).tap { |window| WINDOWS[handle] = window }
+        new(handle, default_button).tap do |window|
+          WINDOWS[handle] = window
+          window.use_program_icon
+        end
       end
 
       # Registers the class of the windows of this procedure, as a
@@ -278,6 +296,25 @@ module Basket
       # +list+, a ListView.
       def on_key_down(list, &block)
         @keys[list.handle] = block
+      end
+
+      # Gives the window the first icon of the program it runs, as WM_SETICON
+      # does for the title bar (small) and the taskbar and Alt-Tab (large),
+      # at the sizes this window's scale gives them (SM_CXSMICON and
+      # SM_CXICON). A window class with no icon, which this one has, and a
+      # window that sets none show the generic application icon, whatever
+      # icon the program's file holds.
+      def use_program_icon
+        large = Functions::METRIC_FOR_DPI.call(11, @dpi)
+        small = Functions::METRIC_FOR_DPI.call(49, @dpi)
+        icons = Win32.buffer(16)
+        found = Functions::EXTRACT_ICON.call(Win32.wide(Win32.program_path), 0, 0, icons, icons + 8, (small << 16) | large)
+        return unless found.zero?
+
+        big, little = icons[0, 16].unpack("QQ")
+        # WM_SETICON, ICON_SMALL then ICON_BIG.
+        Functions::SEND_MESSAGE.call(@handle, 0x80, 0, little)
+        Functions::SEND_MESSAGE.call(@handle, 0x80, 1, big)
       end
 
       # +pixels+ at 96 dots per inch, at this window's scale.
@@ -456,11 +493,13 @@ module Basket
         item[0, 12] = [0x1, count, 0].pack("Lll")
         item[24, 8] = [shown.to_i].pack("Q")
         send_message(INSERT, 0, item.to_i)
+        fit_column
       end
 
       # Takes the row at +index+ away.
       def remove(index)
         send_message(DELETE, index)
+        fit_column
       end
 
       # The index of the selected row, or nil.
@@ -478,9 +517,15 @@ module Basket
         send_message(STATE, index, item.to_i)
       end
 
-      # Makes the column +width+ pixels wide.
-      def column_width=(width)
-        send_message(COLUMN_WIDTH, 0, width)
+      # Makes the column as wide as the list's inside, which a vertical
+      # scroll bar narrows, so that a selected row's highlight, which
+      # spans its columns, reaches the list's edge. It is the list's
+      # inside, not the window's width less a guess at the borders and
+      # the scroll bar, that Windows lays the column in.
+      def fit_column
+        inside = Win32.buffer(16)
+        Functions::CLIENT_RECT.call(@handle, inside)
+        send_message(COLUMN_WIDTH, 0, inside[0, 16].unpack("l4")[2])
       end
     end
   end

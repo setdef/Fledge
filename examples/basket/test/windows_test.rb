@@ -46,6 +46,12 @@ class WindowsScreenTest < Minitest::Test
   CLICK = 0xF5
   # VK_RETURN
   RETURN_KEY = 0x0D
+  # WM_GETICON
+  WM_GETICON = 0x7F
+  # ICON_SMALL, which WM_GETICON asks for the caption's icon with.
+  ICON_SMALL = 0
+  # ICON_BIG, which it asks for Alt+Tab's with.
+  ICON_BIG = 1
   # The id of the command each test posts last, which ends the message loop.
   DONE = 9999
 
@@ -180,6 +186,71 @@ class WindowsScreenTest < Minitest::Test
 
     assert_equal ["Milk"], @list.items
     assert_equal 1, @screen.rows
+  end
+
+  # Microsoft's layout guidelines give a single-line text box and a
+  # command button 23 relative pixels of height ("Recommended sizing and
+  # spacing"), in which an edit control draws its text centered; a taller
+  # box draws it at the top.
+  def test_the_field_and_the_buttons_are_the_standard_height
+    standard = @screen.window.scale(23)
+
+    assert_equal standard, height_of(@screen.field)
+    assert_equal standard, height_of(@screen.add_button)
+    assert_equal standard, height_of(@screen.remove_button)
+  end
+
+  # The title bar and the taskbar show the window's icon, which Windows
+  # takes from the window and not from the program's file: a window that
+  # sets none gets the generic one.
+  def test_the_window_has_the_programs_icon
+    big = ask(@screen.window.handle, WM_GETICON, ICON_BIG)
+    small = ask(@screen.window.handle, WM_GETICON, ICON_SMALL)
+
+    refute_equal 0, big, "no large icon, which the taskbar and Alt-Tab show"
+    refute_equal 0, small, "no small icon, which the title bar shows"
+  end
+
+  # A selected row's highlight spans the row, so the one column fills the
+  # list's inside, with a scroll bar, which narrows it, and without.
+  def test_the_selection_spans_the_list
+    open_screen
+
+    assert_equal client_width(@screen.table), column_width(@screen.table)
+
+    open_screen(*Array.new(60) { |number| "Item #{number}" })
+
+    assert_equal client_width(@screen.table), column_width(@screen.table)
+
+    @screen.table.remove(0) until @screen.rows.zero?
+
+    assert_equal client_width(@screen.table), column_width(@screen.table)
+  end
+
+  # What +handle+'s window answers to a message.
+  def ask(handle, message, word = 0)
+    Basket::Win32::Functions::SEND_MESSAGE.call(handle, message, word, 0)
+  end
+
+  # The height of +control+'s window, in pixels.
+  def height_of(control)
+    rectangle = Basket::Win32.buffer(16)
+    window_rect = Basket::Win32::Functions.function("user32.dll", "GetWindowRect", [Fiddle::TYPE_INTPTR_T, Fiddle::TYPE_VOIDP], Fiddle::TYPE_INT)
+    window_rect.call(control.handle, rectangle)
+    _left, top, _right, bottom = rectangle[0, 16].unpack("l4")
+    bottom - top
+  end
+
+  # The width of +control+'s inside, in pixels.
+  def client_width(control)
+    rectangle = Basket::Win32.buffer(16)
+    Basket::Win32::Functions::CLIENT_RECT.call(control.handle, rectangle)
+    rectangle[0, 16].unpack("l4")[2]
+  end
+
+  # The width of the first column of +list+, by LVM_GETCOLUMNWIDTH.
+  def column_width(list)
+    list.send_message(0x101D, 0)
   end
 
   # The controls are Common Controls 6's: only they take a text field's

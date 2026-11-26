@@ -10,9 +10,9 @@
 # its own widgets, UIKit's on iOS and Android's views on Android, which
 # this Ruby makes and drives: on iOS through lib/basket/objc.rb, Basket's
 # few lines over Fiddle, which Ruby bundles, and on Android through
-# the bridge that phone's runtime carries, Fledge::JNI, to Java.
-# fledge.yml says kind: windowed, so the app's Ruby runs on the thread
-# those widgets belong to.
+# lib/basket/android/, Basket's calls into Java over Fiddle, zlib, and
+# digest, which Ruby bundles too. fledge.yml says kind: windowed, so the
+# app's Ruby runs on the thread those widgets belong to.
 
 require_relative "lib/basket/list"
 

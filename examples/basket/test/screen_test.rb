@@ -72,7 +72,7 @@ elsif RUBY_PLATFORM.include?("android")
 
     # The screen of the test's list, drawn on the app's activity.
     def screen
-      Basket::Android::Screen.new(Fledge::JNI.import("org.setdef.fledge.FledgeRuby").activity, @list)
+      Basket::Android::Screen.new(Basket::Android::Activities.first, @list)
     end
 
     # The list shows a row for each of its items.
@@ -86,12 +86,12 @@ elsif RUBY_PLATFORM.include?("android")
     # empties the field.
     def test_adding_puts_what_the_field_holds_in_the_list_and_empties_the_field
       shown = screen
-      shown.field.setText("Milk")
+      shown.field.call("setText", "(Ljava/lang/CharSequence;)V", "Milk")
       shown.add
 
       assert_equal ["Milk"], @list.items
       assert_equal 1, shown.rows
-      assert_equal "", shown.field.getText.to_s
+      assert_equal "", shown.field.call("getText", "()Landroid/text/Editable;").to_s
     end
 
     # Taking an item out takes its row away.

@@ -238,6 +238,32 @@ Step 'probe' {
   if (Test-Path -LiteralPath $env:PROBE_OUT) { Say (Get-Content -LiteralPath $env:PROBE_OUT -Raw) } else { Say '(the probe wrote no report)' }
 }
 
+Section "The same main.rb under RubyInstaller's ruby.exe, as ruby main.rb with bundler/setup runs it"
+Step 'ruby.exe' {
+  $ruby = Join-Path $folder 'ruby\bin\ruby.exe'
+  $env:PROBE_OUT = Join-Path $Out 'probe-main-rubyexe.txt'
+  $env:BUNDLE_GEMFILE = Join-Path $folder 'app\Gemfile'
+  $env:APPDATA = Join-Path $Work 'appdata-rubyexe'
+  $stdout = Join-Path $Out 'rubyexe.out'
+  $stderr = Join-Path $Out 'rubyexe.err'
+  $process = Start-Process -FilePath $ruby -ArgumentList @('-rbundler/setup', (Join-Path $folder 'app\main.rb')) -WorkingDirectory (Join-Path $folder 'app') -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+  $null = $process.Handle
+  if (-not $process.WaitForExit(90000)) {
+    Say 'ruby.exe still ran after 90 seconds, so it is ended'
+    $process.Kill()
+    [void] $process.WaitForExit(10000)
+  } else {
+    Say "ruby.exe exited with $($process.ExitCode)"
+  }
+  foreach ($file in $stdout, $stderr) {
+    Say "-- $(Split-Path -Leaf $file)"
+    if (Test-Path -LiteralPath $file) { Say (Get-Content -LiteralPath $file -Raw) }
+  }
+  Say '-- the probe report'
+  if (Test-Path -LiteralPath $env:PROBE_OUT) { Say (Get-Content -LiteralPath $env:PROBE_OUT -Raw) } else { Say '(the probe wrote no report)' }
+  Remove-Item Env:BUNDLE_GEMFILE -ErrorAction SilentlyContinue
+}
+
 # ---------------------------------------------------------------------
 Section 'Event logs since the probe began'
 foreach ($log in 'Application', 'System', 'Microsoft-Windows-AppModel-Runtime/Admin', 'Microsoft-Windows-AppXDeploymentServer/Operational', 'Microsoft-Windows-TWinUI/Operational') {

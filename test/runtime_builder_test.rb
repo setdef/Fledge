@@ -101,8 +101,8 @@ class RuntimeBuilderTest < Minitest::Test
   end
 
   # Windows on ARM64 takes RubyInstaller's ARM64 build of the same day,
-  # signed with the same key (ADR 102;
-  # doc/contributors/design/runtimes.md, "Windows on ARM64").
+  # signed with the same key (doc/contributors/design/runtimes.md,
+  # "Windows on ARM64").
   def test_windows_on_arm_pins_rubyinstallers_arm64_build_signed_by_the_same_key
     platforms = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms")
     arm = platforms.fetch("aarch64-mingw-ucrt")

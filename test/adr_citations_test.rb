@@ -32,6 +32,7 @@ class AdrCitationsTest < Minitest::Test
     "doc/contributors/plan/001.md" => "a finished plan",
     "doc/contributors/plan/002.md" => "a finished plan",
     "doc/contributors/drafts/tokra.md" => "a dated draft to Tokra, never sent",
+    "doc/contributors/decisions.md" => "the decision log, frozen, whose Applied-in pointers name ADRs as they stood",
     "test/adr_digest_test.rb" => "its fixtures are ADRs numbered past any real one",
   }.freeze
 

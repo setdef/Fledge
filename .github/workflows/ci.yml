@@ -324,7 +324,7 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
           # Cross-compiled; the runner's 7z unpacks RubyInstaller's archive
-          # and its gpgv checks the signature. Windows on ARM64 too (ADR 102).
+          # and its gpgv checks the signature. Windows on ARM64 too (doc/contributors/design/runtimes.md, "Windows on ARM64").
           - os: ubuntu-24.04
             platform: x64-mingw-ucrt
           - os: ubuntu-24.04
@@ -1368,7 +1368,7 @@ jobs:
       full: ${{ needs.changes.outputs.release == 'true' }}
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
-  # Ruby, which the runtime ships too (ADR 102): the very build the
+  # Ruby, which the runtime ships too (doc/contributors/design/runtimes.md, "Where each platform's Ruby comes from"): the very build the
   # runtime came from, with the DLLs it lacks and the MSYS2 that compiles
   # gems for it, which mise installs at mise.toml's pins, as on a
   # contributor's Windows computer (matrix.mise names those tools).
@@ -1403,7 +1403,7 @@ jobs:
           - platform: x64-mingw-ucrt
             os: windows-latest
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2
-          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (ADR 102).
+          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (doc/contributors/design/runtimes.md, "Windows on ARM64").
           - platform: aarch64-mingw-ucrt
             os: windows-11-arm
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2
@@ -2046,7 +2046,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows on ARM64 (ADR 102) builds no my_cool_app: sqlite3
+          # Windows on ARM64 (doc/contributors/design/runtimes.md, "Windows on ARM64") builds no my_cool_app: sqlite3
           # publishes no aarch64-mingw-ucrt build and its source does not
           # configure there, mini_portile2 passing configure clang's name
           # for the target (doc/contributors/design/gems.md, "Examples that
@@ -3022,7 +3022,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Natively on Windows 11 on ARM64 (ADR 102).
+          # Natively on Windows 11 on ARM64 (doc/contributors/design/runtimes.md, "Windows on ARM64").
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
     env:

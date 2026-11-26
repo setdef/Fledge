@@ -76,7 +76,7 @@ class WorkflowRubyBuildsTest < Minitest::Test
   end
 
   def test_the_image_is_pinned_by_digest
-    assert_match(/^IMAGE=ubuntu:22\.04@sha256:\h{64}$/, script)
+    assert_match(/^IMAGE=docker\.io\/library\/ubuntu:22\.04@sha256:\h{64}$/, script)
   end
 
   def test_every_package_apt_installs_is_pinned_by_version

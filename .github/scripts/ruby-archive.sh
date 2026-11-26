@@ -10,7 +10,8 @@
 #
 #   .github/scripts/ruby-archive.sh PLATFORM
 #
-# runs the build in the image with docker, on a computer of PLATFORM's
+# runs the build in the image with docker, or with the program set in
+# FLEDGE_CONTAINER (podman, say), on a computer of PLATFORM's
 # architecture (x86_64-linux or aarch64-linux), and leaves the archive
 # in tmp/ruby-archive/ruby-VERSION-PLATFORM.tar.gz, with its build logs
 # in tmp/ruby-archive/PLATFORM/logs. The downloads the task makes are
@@ -32,8 +33,9 @@
 
 set -euo pipefail
 
-# ubuntu:22.04, the index of every architecture's image, from Docker Hub.
-IMAGE=ubuntu:22.04@sha256:f64b2ffc2f10ab8f8505aa56b2664bd846cbb9df87c7e2532e30f7667021c0e6
+# ubuntu:22.04, the index of every architecture's image, from Docker Hub,
+# named with its registry so that podman needs no list of them.
+IMAGE=docker.io/library/ubuntu:22.04@sha256:f64b2ffc2f10ab8f8505aa56b2664bd846cbb9df87c7e2532e30f7667021c0e6
 
 # What the task builds Ruby with: a C toolchain, Perl for OpenSSL's
 # build, patchelf and binutils' readelf for bin/ruby's RPATH, xz and
@@ -129,12 +131,18 @@ in_image() {
 
 on_host() {
   same_machine
-  local root cache
+  local root cache container owner=()
   root=$(cd "$(dirname "$0")/../.." && pwd)
   cache=${XDG_CACHE_HOME:-$HOME/.cache}/fledge/downloads
+  container=${FLEDGE_CONTAINER:-docker}
   mkdir -p "$cache"
-  docker run --rm -v "$root:/fledge" -v "$cache:/cache/fledge/downloads" -w /fledge \
-    -e XDG_CACHE_HOME=/cache -e FLEDGE_OWNER="$(id -u):$(id -g)" "$IMAGE" \
+  # Docker's root is the computer's root, so the build hands back what it
+  # wrote. Rootless podman's root is the account that runs it, so what the
+  # build wrote is the account's, and a chown to the account's ID,
+  # which is another user's inside its user namespace, would take it away.
+  [ "$(basename "$container")" = podman ] || owner=(-e "FLEDGE_OWNER=$(id -u):$(id -g)")
+  "$container" run --rm -v "$root:/fledge" -v "$cache:/cache/fledge/downloads" -w /fledge \
+    -e XDG_CACHE_HOME=/cache ${owner[@]+"${owner[@]}"} "$IMAGE" \
     .github/scripts/ruby-archive.sh --in-image "$platform"
 }
 

@@ -53,9 +53,7 @@ class RuntimeBuilder
     end
 
     def finish(stage)
-      Dir.glob(File.join(stage, "lib", "ruby", "**", "*.so")).each do |extension|
-        @builder.run("strip", "--strip-debug", extension)
-      end
+      Pruning.strip_extensions(@builder, File.join(stage, "lib", "ruby"))
       copy_appimage_runtime(File.join(stage, "tools", "appimage-runtime"))
     end
 

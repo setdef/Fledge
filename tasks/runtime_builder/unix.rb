@@ -192,7 +192,7 @@ class RuntimeBuilder
         copy = File.join(stage, "lib", File.basename(library))
         FileUtils.cp(library, copy)
         FileUtils.chmod("u+w", copy)
-        @builder.run("strip", "-S", copy)
+        Pruning.strip_libruby(@builder, copy)
       end
     end
   end

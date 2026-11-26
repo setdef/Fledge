@@ -59,10 +59,15 @@ class LicenseAudit
   # The largest file whose words the audit reads.
   TEXT_LIMIT = 4_000_000
 
-  attr_reader :platform, :tree, :map, :sources
+  attr_reader :platform, :tree, :map, :sources, :archive
 
-  def initialize(platform:, tree:, map: MAP, sources: SOURCES, fledge_version: nil, readers: LicenseAudit.readers)
+  # With +archive+, +tree+ is the Ruby prefix of Fledge's own Ruby archive
+  # (tasks/ruby_archive.rb), which the audit reads as that build of Ruby
+  # whatever the platform's Ruby pin names, and without the files only a
+  # runtime holds (LicenseAudit.entries).
+  def initialize(platform:, tree:, map: MAP, sources: SOURCES, fledge_version: nil, readers: LicenseAudit.readers, archive: false)
     @platform = platform
+    @archive = archive
     @readers = readers
     @tree = File.expand_path(tree)
     @map = YAML.safe_load_file(map)
@@ -181,20 +186,23 @@ class LicenseAudit
   # runtime, given +sources+, the pins of runtime/sources.yml: those whose
   # platforms name it and whose ruby_build, if any, is or lists the
   # build of Ruby the platform's Ruby pin names (upstream, unless the pin
-  # says build: jdx or build: fledge). So a runtime made from rv-ruby's
+  # says build: jdx or build: fledge), or, with +archive+, Fledge's own,
+  # without the entries marked archive: false, which describe what only
+  # a runtime holds (the launcher, AppImage). So a runtime made from rv-ruby's
   # Ruby must hold what that build compiled in, one made from jdx/ruby's
   # what jdx's compiled in, and one made from Fledge's own build what
   # Fledge's compiled in, each by its own evidence, and a pin that moves
   # from one to another moves the audit with it. Each entry has an id of
   # its own, since a pin's move finds the entries it rewrites by id
   # (tasks/pin_move.rb): a map that gives two entries one id is refused.
-  def self.entries(map, sources, platform)
+  def self.entries(map, sources, platform, archive: false)
     shared = map.fetch("components").map { |entry| entry.fetch("id") }.tally.select { |_id, count| count > 1 }.keys
     raise ArgumentError, "runtime/licenses.yml gives more than one entry the id #{shared.join(', ')}" if shared.any?
 
-    build = sources.dig("ruby", "platforms", platform, "build") || "upstream"
+    build = archive ? "fledge" : (sources.dig("ruby", "platforms", platform, "build") || "upstream")
     map.fetch("components").select do |entry|
-      entry.fetch("platforms").include?(platform) && Array(entry.fetch("ruby_build", build)).include?(build)
+      entry.fetch("platforms").include?(platform) && Array(entry.fetch("ruby_build", build)).include?(build) &&
+        !(archive && entry["archive"] == false)
     end
   end
 

@@ -35,8 +35,9 @@ class LicenseAudit
     # Where in a runtime, and so in an app, the sources are.
     FOLDER = "notices/sources"
 
-    def initialize(platform:, version:, map: MAP, sources: SOURCES, downloads: DownloadCache.folder)
+    def initialize(platform:, version:, map: MAP, sources: SOURCES, downloads: DownloadCache.folder, archive: false)
       @platform = platform
+      @archive = archive
       @version = version
       @map = YAML.safe_load_file(map)
       @sources = YAML.safe_load_file(sources)
@@ -45,7 +46,7 @@ class LicenseAudit
 
     # The components that ship on the platform with a source pin.
     def components
-      LicenseAudit.entries(@map, @sources, @platform).select { |entry| entry["source"] && entry.fetch("kind") != "source" }
+      LicenseAudit.entries(@map, @sources, @platform, archive: @archive).select { |entry| entry["source"] && entry.fetch("kind") != "source" }
     end
 
     # Writes each component's folder into the runtime folder +runtime+,

@@ -45,13 +45,59 @@ class RubyArchive
     @builder = builder
   end
 
-  # Builds, checks, and archives the Ruby, and returns the archive's path.
+  # Builds, prunes, checks, audits, and archives the Ruby, and returns the
+  # archive's path.
   def call
     FileUtils.rm_rf(build_dir)
     top = File.join(build_dir, "ruby")
     prefix = build(File.join(top, version))
+    prune(prefix)
     check(prefix)
+    license(prefix)
     ReleaseArchive.pack(top, File.join(@work, "ruby-#{version}-#{@platform.name}.tar.gz"), top: "ruby")
+  end
+
+  # Removes from +prefix+ what a runtime removes from the Ruby it copies,
+  # with the code the runtimes use (RuntimeBuilder::Pruning), since no
+  # program reads it and the license audit then need not account for it:
+  # debug symbols, the static libraries and headers of gems under
+  # lib/ruby, documentation, the Java sources of JRuby's nkf, and a gem
+  # that Ruby's source does not bundle, with its executables. Debug
+  # information goes too, from the extensions on Linux and from the
+  # static libruby. What mkmf and a gem's compile read stays: the headers
+  # in include/, the static libruby, Ruby's pkg-config file, and the
+  # libraries beside them.
+  def prune(prefix)
+    ruby = File.join(prefix, "lib", "ruby")
+    removed = RuntimeBuilder::Pruning.prune(ruby, bundled_gems)
+    RuntimeBuilder::Pruning.prune_bin(File.join(prefix, "bin"), removed)
+    RuntimeBuilder::Pruning.strip_extensions(@builder, ruby) if linux?
+    Dir.glob(File.join(prefix, "lib", "libruby*-static.a")).each { |library| RuntimeBuilder::Pruning.strip_libruby(@builder, library) }
+  end
+
+  # The bundled gems of the Ruby this archive is built from, as its own
+  # source lists them (gems/bundled_gems), and not as runtime/sources.yml
+  # lists those of the Ruby a runtime copies: the archive's Ruby may be
+  # newer, and pruning by the older list would remove a gem it bundles.
+  def bundled_gems
+    File.foreach(File.join(build_dir, "sources", "ruby", "gems", "bundled_gems")).filter_map { |line| line[/\A[^#\s]+/] }
+  end
+
+  # Audits +prefix+ against the license policy as the runtimes are, and
+  # writes into it notices/NOTICES.txt, notices/sbom.spdx.json, and the
+  # source of each component whose license asks for it,
+  # notices/sources/ (LicenseAudit::SourceBundle), so that the archive,
+  # which a developer unpacks and conveys, carries what its licenses ask
+  # for. Raises LicenseAudit::Failure when the archive breaks the policy.
+  def license(prefix, bundle: source_bundle, readers: LicenseAudit.readers)
+    bundle.copy_into(prefix)
+    @builder.license(prefix, readers:, archive: true)
+  end
+
+  # The source bundle of the archive's LGPL library, from the build's pins
+  # and download cache.
+  def source_bundle
+    LicenseAudit::SourceBundle.new(platform: @platform.name, version: Fledge::VERSION, downloads: @builder.downloads, archive: true)
   end
 
   def version

@@ -64,8 +64,8 @@ class RuntimeBuilder
     # outside the runtime.
     # Then puts AppImage's released runtime into tools/.
     def finish(stage)
+      Pruning.strip_extensions(@builder, File.join(stage, "lib", "ruby"))
       Dir.glob(File.join(stage, "lib", "ruby", "**", "*.so")).each do |extension|
-        @builder.run("strip", "--strip-debug", extension)
         @builder.run("patchelf", "--remove-rpath", extension) unless @builder.capture("patchelf", "--print-rpath", extension).strip.empty?
       end
       copy_appimage_runtime(File.join(stage, "tools", "appimage-runtime"))

@@ -91,6 +91,25 @@ class RuntimeBuilder
       end
     end
 
+    # Strips the debug sections from each extension under +ruby+, a
+    # lib/ruby folder, with +builder+'s strip: no running code reads them
+    # and no link does, and on Linux, where Ruby's C is compiled with
+    # DWARF, they are most of each file. macOS keeps its debug
+    # information in .dSYM folders, which prune removes, so a Mac's
+    # extensions are not stripped.
+    def self.strip_extensions(builder, ruby)
+      Dir.glob(File.join(ruby, "**", "*.so")).each { |extension| builder.run("strip", "--strip-debug", extension) }
+    end
+
+    # Strips the debug information from the static libruby +library+ with
+    # +builder+'s strip -S, which GNU's strip and Apple's both take for
+    # debug information only, and leaves each object's code, data,
+    # symbols, and relocations, everything a link reads, and the archive's
+    # index. mkmf links against it (Unix#copy_static_libruby).
+    def self.strip_libruby(builder, library)
+      builder.run("strip", "-S", library)
+    end
+
     # Removes from +bin+ the executables of gems prune removed, which
     # would fail without their gem.
     def self.prune_bin(bin, executables)

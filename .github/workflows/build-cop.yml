@@ -9,7 +9,8 @@
 # first bad commit's run again, so that a flaky job blames nobody; and
 # when they fail again and its parent passed, reverts that commit on
 # trunk and starts a full run there to judge the revert
-# (.github/scripts/build-cop.sh, tasks/build_cop.rb).
+# (.github/scripts/build-cop.sh, tasks/build_cop.rb). It pushes with a
+# token of the release's GitHub App, which may push workflow files.
 #
 # It keeps no state of its own: each run reads the runs as they are and
 # takes one step. It runs when a run of CI on trunk or on a bisect branch
@@ -53,24 +54,43 @@ jobs:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.event != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # Limited to trunk, it holds the App's ID and private key, which the
+    # release uses to push workflow files (releases.md, "The push token").
+    environment: release
     permissions:
-      # Pushing bisect/* branches and a revert to trunk.
-      contents: write
+      contents: read
       # Reading runs and jobs, starting ci.yml, and running jobs again.
       actions: write
     steps:
-      # Every commit, for the revert; git pushes with this checkout's
-      # credentials.
+      # Every commit, for the revert. No credentials kept: the pushes
+      # name their own token, and the repository is public to fetch from.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: trunk
           fetch-depth: 0
+          persist-credentials: false
+
+      # This run's own token may not push a commit whose tree holds a
+      # workflow file no branch holds, and GitHub refused the push of
+      # every bisect branch for it (issue 96). A dry run pushes nothing.
+      # The App's ID is a number, which this release of the action still
+      # takes as app-id and calls deprecated in favor of client-id.
+      - name: Mint a token for the pushes
+        if: github.event_name != 'workflow_dispatch' || !inputs.dry-run
+        id: push-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
 
       # The runner's own Ruby, which every GitHub-hosted Ubuntu image has:
       # the task needs only Ruby's standard library.
       - name: Take the next step
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_COP_PUSH_TOKEN: ${{ steps.push-token.outputs.token }}
           BUILD_COP_REVERT: ${{ vars.BUILD_COP_REVERT }}
           BUILD_COP_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
         run: .github/scripts/build-cop.sh

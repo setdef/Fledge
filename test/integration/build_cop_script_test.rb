@@ -53,6 +53,8 @@ class BuildCopScriptTest < Minitest::Test
   WITH_DISPATCH = "name: CI\non:\n  push:\n    branches: [trunk]\n  workflow_dispatch:\n"
   WITHOUT_DISPATCH = "name: CI\non:\n  push:\n    branches: [trunk]\n"
 
+  TOKEN_URL = "https://x-access-token:app-token@github.example/setdef/Fledge"
+
   def setup
     @dir = Dir.mktmpdir("build-cop")
     @origin = File.join(@dir, "origin.git")
@@ -138,6 +140,30 @@ class BuildCopScriptTest < Minitest::Test
     assert_includes gh_log, "workflow run ci.yml --ref bisect/#{bad}"
   end
 
+  # Issue 96: GitHub refused the push of a bisect branch made with the
+  # run's own token, "refusing to allow a GitHub App to create or update
+  # workflow .github/workflows/ci.yml without workflows permission".
+  def test_it_pushes_with_the_apps_token_only
+    bad = bisect_commit(WITH_DISPATCH)
+
+    out, status = cop_bisecting(bad, "BUILD_COP_PUSH_TOKEN" => "")
+
+    refute_predicate status, :success?
+    assert_match(/BUILD_COP_PUSH_TOKEN is not set/, out)
+    assert_empty origin_branches.strip
+    refute_includes gh_log, "workflow run"
+  end
+
+  def test_it_deletes_the_bisect_branches_when_nothing_is_red
+    bad = bisect_commit(WITH_DISPATCH)
+    git(@work, "push", "--quiet", "origin", "#{bad}:refs/heads/bisect/#{bad}")
+
+    out, status = cop(bad, "none")
+
+    assert_predicate status, :success?, out
+    assert_empty origin_branches.strip
+  end
+
   # A commit from before ci.yml could be started by hand cannot be run
   # on a branch: GitHub refuses the dispatch, and the cop's own run
   # would go red every half hour.
@@ -220,15 +246,31 @@ class BuildCopScriptTest < Minitest::Test
     git(@dir, "--git-dir", @origin, "branch", "--list", "bisect/*")
   end
 
-  private def cop_bisecting(commit)
-    cop(commit, "bisect", env: { "BUILD_COP_LIST_TRIES" => "1", "BUILD_COP_LIST_PAUSE" => "0" })
+  private def cop_bisecting(commit, extra = {})
+    cop(commit, "bisect", env: { "BUILD_COP_LIST_TRIES" => "1", "BUILD_COP_LIST_PAUSE" => "0" }.merge(extra))
   end
 
   private def cop(commit, action, env: {})
     File.write(File.join(@work, "tasks", "build_cop.rb"),
       "puts \"action=#{action}\", \"commit=#{commit}\", \"run=1\", \"reason=a test\"\n")
-    env = GIT_ENV.merge("PATH" => "#{File.join(@dir, 'bin')}:#{ENV.fetch('PATH')}").merge(env)
+    env = GIT_ENV.merge(pushes_by_token, "PATH" => "#{File.join(@dir, 'bin')}:#{ENV.fetch('PATH')}").merge(env)
     Open3.capture2e(env, "bash", SCRIPT, chdir: @work)
+  end
+
+  # The run's own credentials may not push a workflow file, so a push
+  # to the remote the clone knows as origin goes nowhere, and only the
+  # App's token, in the URL the script builds, reaches the origin.
+  private def pushes_by_token
+    {
+      "GITHUB_SERVER_URL" => "https://github.example",
+      "GITHUB_REPOSITORY" => "setdef/Fledge",
+      "BUILD_COP_PUSH_TOKEN" => "app-token",
+      "GIT_CONFIG_COUNT" => "2",
+      "GIT_CONFIG_KEY_0" => "url.#{@origin}.insteadOf",
+      "GIT_CONFIG_VALUE_0" => TOKEN_URL,
+      "GIT_CONFIG_KEY_1" => "remote.origin.pushurl",
+      "GIT_CONFIG_VALUE_1" => File.join(@dir, "nowhere.git"),
+    }
   end
 
   private def commit(message, files)

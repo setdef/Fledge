@@ -15,12 +15,19 @@
 #   stuck   says why, for a person
 #
 # BUILD_COP_DRY_RUN=true says what it would do and does nothing. GH_TOKEN
-# is the token gh uses; git pushes with the checkout's credentials.
+# is the token gh uses. Every push, of a branch, a revert, or a deletion,
+# is made with BUILD_COP_PUSH_TOKEN, a token of the GitHub App that may
+# push workflow files: the run's own token may not, and GitHub refuses a
+# push of a commit whose tree holds a workflow file no branch holds with
+# "refusing to allow a GitHub App to create or update workflow" (issue
+# 96; releases.md, "The push token"). The checkout keeps no credentials.
 set -euo pipefail
 
 dry=${BUILD_COP_DRY_RUN:-false}
 output=${GITHUB_OUTPUT:-/dev/null}
 summary=${GITHUB_STEP_SUMMARY:-/dev/null}
+server=${GITHUB_SERVER_URL:-https://github.com}
+repository=${GITHUB_REPOSITORY:-setdef/Fledge}
 bot=(-c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com")
 
 mkdir -p tmp
@@ -39,10 +46,17 @@ if [ "$dry" = true ]; then
   exit 0
 fi
 
+# Pushes to the repository with the App's token, which the step before
+# has just minted.
+push() {
+  : "${BUILD_COP_PUSH_TOKEN:?BUILD_COP_PUSH_TOKEN is not set}"
+  git push --quiet "https://x-access-token:${BUILD_COP_PUSH_TOKEN}@${server#https://}/$repository" "$@"
+}
+
 # Deletes every bisect/* branch, which only this script writes.
 clean() {
   git ls-remote --heads origin 'bisect/*' | while read -r _ ref; do
-    git push --quiet origin --delete "${ref#refs/heads/}"
+    push --delete "${ref#refs/heads/}"
   done
 }
 
@@ -73,12 +87,12 @@ bisect)
       echo "The run of ci.yml on $branch is not listed yet; not starting it again." | tee -a "$summary"
       exit 0
     fi
-    git push --quiet origin --delete "$branch"
+    push --delete "$branch"
   fi
-  git push --quiet origin "$commit:refs/heads/$branch"
+  push "$commit:refs/heads/$branch"
   # A branch with no run to come would make every later call wait.
   if ! gh workflow run ci.yml --ref "$branch"; then
-    git push --quiet origin --delete "$branch"
+    push --delete "$branch"
     echo "::error::GitHub did not start ci.yml on $branch"
     exit 1
   fi
@@ -139,11 +153,12 @@ with the fix.
 
 Provenance: requested
 EOF
-    if git push --quiet origin HEAD:refs/heads/trunk; then
+    if push HEAD:refs/heads/trunk; then
       reverted=$(git rev-parse HEAD)
       echo "Reverted $commit on trunk as $reverted." | tee -a "$summary"
-      # A push with this workflow's token starts no run, so the revert's
-      # full run is started by hand, in a group of its own on trunk.
+      # The push starts the usual run on trunk, which the next push
+      # replaces while it waits; the revert's full run is started by
+      # hand too, in a group of its own on trunk.
       gh workflow run ci.yml --ref trunk
       clean
       exit 0

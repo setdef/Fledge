@@ -11,8 +11,8 @@
 # and on Android emulators (tasks/ruby_spec/phone.rb), and for all seven
 # desktop platforms too on a release commit ("chore: release X.Y.Z"),
 # whose run a release publishes from. Every night, and when
-# run by hand, it runs all of them on the runtimes of trunk's newest run
-# of ci.yml that passed. A desktop run costs about 3 to 4 minutes on
+# run by hand, it runs all of them on the runtimes of the newest commit
+# on trunk with a green run of ci.yml. A desktop run costs about 3 to 4 minutes on
 # Linux and macOS and 12 to 16 on Windows (experiment/ruby-spec, run
 # 41776558621).
 
@@ -31,7 +31,7 @@ on:
 
 permissions:
   contents: read
-  # Downloading the runtimes of trunk's newest green run, at night.
+  # Downloading the runtimes of trunk's newest green commit's run, at night.
   actions: read
 
 defaults:
@@ -43,8 +43,8 @@ env:
 
 jobs:
   # Which platforms, and whose runtimes: the calling run's, or, when this
-  # workflow runs by itself at night or by hand, trunk's newest run of
-  # ci.yml that passed.
+  # workflow runs by itself at night or by hand, the newest commit on
+  # trunk with a green run of ci.yml.
   plan:
     name: ruby/spec's platforms and runtimes
     runs-on: ubuntu-24.04
@@ -53,6 +53,22 @@ jobs:
       run: ${{ steps.plan.outputs.run }}
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
+      # Run by itself, the plan walks trunk's first-parent line, which
+      # needs the commits, and asks tasks/ci_runs.rb which of them passed.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.workflow == 'ruby/spec'
+        with:
+          persist-credentials: false
+          ref: trunk
+          fetch-depth: 100
+
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        if: github.workflow == 'ruby/spec'
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
+          version: 2026.10.11
+          install_args: ruby
+
       - name: Choose
         id: plan
         env:
@@ -68,17 +84,23 @@ jobs:
           run=""
           if [ "$BY_ITSELF" = true ]; then
             FULL=true
-            # A pin commit's short run passes too, and holds no runtimes: take
-            # the newest passing run that has them.
-            for candidate in $(gh run list --repo "$REPOSITORY" --workflow ci.yml --branch trunk --event push --status success \
-              --limit 20 --json databaseId --jq '.[].databaseId'); do
+            # The newest commit on trunk's first-parent line with a green
+            # run of ci.yml, as tasks/ci_runs.rb counts runs: a push's or
+            # a dispatch's, on any branch, so a pin move that landed as
+            # proven, whose only run is the proof's on pin-move, counts. A
+            # pin commit's short run passes too, and holds no runtimes: take
+            # the newest commit whose green run has them. GITHUB_ACTIONS is
+            # unset for ci_runs.rb so that a commit without a green run is
+            # skipped, not annotated as an error.
+            for commit in $(git rev-list --first-parent -n 50 trunk); do
+              candidate=$(env -u GITHUB_ACTIONS ruby tasks/ci_runs.rb green "$commit" 2>/dev/null) || continue
               if [ "$(gh api "repos/$REPOSITORY/actions/runs/$candidate/artifacts" \
                 --jq '[.artifacts[]|select(.name=="runtime-x86_64-linux" and .expired==false)]|length')" != 0 ]; then
                 run=$candidate
                 break
               fi
             done
-            [ -n "$run" ] || { echo "::error::trunk has no run of ci.yml that passed and still holds its runtimes"; exit 1; }
+            [ -n "$run" ] || { echo "::error::none of trunk's newest 50 commits has a green run of ci.yml that still holds its runtimes"; exit 1; }
             echo "Runtimes of $GITHUB_SERVER_URL/$REPOSITORY/actions/runs/$run"
           fi
           # macos-26, the macOS floor, runs a Mac's built app

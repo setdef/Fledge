@@ -162,4 +162,4 @@ Otherwise the parity check does not see restarts, because its child Rubies run `
 
 ### Where it runs
 
-`.github/workflows/ruby-spec.yml` runs it. `ci.yml` calls it on every push for `x86_64-linux` and `arm64-darwin` and on the phones, and for all seven desktop platforms too on a release commit; every night, and when run by hand, it runs all of them on the runtimes of trunk's newest run of `ci.yml` that passed.
+`.github/workflows/ruby-spec.yml` runs it. `ci.yml` calls it on every push for `x86_64-linux` and `arm64-darwin` and on the phones, and for all seven desktop platforms too on a release commit; every night, and when run by hand, it runs all of them on the runtimes of the newest commit on trunk's first-parent line with a green run of `ci.yml`, as `tasks/ci_runs.rb` counts runs, that still holds them.

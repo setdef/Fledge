@@ -127,7 +127,7 @@ foreach ($folder in $frameworks.Keys) {
       $manifest = $zip.GetEntry('AppxManifest.xml')
       $target = Join-Path $Out "AppxManifest-$folder.xml"
       [IO.Compression.ZipFileExtensions]::ExtractToFile($manifest, $target, $true)
-      Say "-- the framework package of $folder: $($names.Count) files"
+      Say "-- the framework package of ${folder}: $($names.Count) files"
       [xml] $xml = Get-Content -LiteralPath $target -Raw
       $identity = $xml.SelectSingleNode("//*[local-name()='Identity']")
       Say "  Identity: $($identity.OuterXml)"

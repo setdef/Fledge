@@ -90,10 +90,11 @@ module ReleaseExamples
   end
 
   # The phone apps of the examples: the apps of the parity check that
-  # live under examples/ (tasks/mobile_parity.rb), the ones every phone
-  # job builds and runs.
-  def self.phones(root: ROOT)
-    MobileParity::APPS.select { |app| app.path.start_with?("examples/") }.map do |app|
+  # live under examples/ (tasks/mobile_parity.rb), the ones a phone
+  # job builds and runs. Each is carried for the phones it runs on
+  # (MobileParity::App#phones), +phone+ if it is given.
+  def self.phones(phone = nil, root: ROOT)
+    MobileParity::APPS.select { |app| app.path.start_with?("examples/") && (phone.nil? || app.phones.include?(phone)) }.map do |app|
       [app, Fledge::App.at(File.join(root, app.path)).name]
     end
   end
@@ -101,8 +102,9 @@ module ReleaseExamples
   # Every file a release of +version+ carries, sorted.
   def self.assets(version: Fledge::VERSION, root: ROOT)
     desktop = Fledge::Platform.names.flat_map { |platform| desktop(platform, version:, root:).map(&:last) }
-    phones = phones(root:).flat_map { |_, name| [asset(name, version, "android", ".apk"), asset(name, version, "ios-project", ".tar.gz")] }
-    (desktop + phones).sort
+    android = phones("android", root:).map { |_, name| asset(name, version, "android", ".apk") }
+    ios = phones("ios", root:).map { |_, name| asset(name, version, "ios-project", ".tar.gz") }
+    (desktop + android + ios).sort
   end
 
   # The name of the file of the app +name+, on +platform+, with +suffix+
@@ -128,7 +130,7 @@ module ReleaseExamples
   # which CI's Android job names after the app's identifier
   # (MobileParity::Android::APKS).
   def self.stage_android(apks, out, version: Fledge::VERSION, root: ROOT)
-    found = phones(root:).map do |app, name|
+    found = phones("android", root:).map do |app, name|
       [File.join(apks, "#{app.identifier}.apk"), asset(name, version, "android", ".apk")]
     end
     missing = found.map(&:first).reject { |file| File.file?(file) }
@@ -145,7 +147,7 @@ module ReleaseExamples
   # wrote for each phone example, found under +projects+ as the folder
   # that holds NAME.xcodeproj, into a <tt>.tar.gz</tt> of the folder.
   def self.stage_ios(projects, out, version: Fledge::VERSION, root: ROOT)
-    found = phones(root:).map do |_, name|
+    found = phones("ios", root:).map do |_, name|
       [Dir.glob(File.join(projects, "{*,*/*}", "#{name}.xcodeproj")).map { |path| File.dirname(path) }.first, name]
     end
     missing = found.select { |folder, _| folder.nil? }.map(&:last)

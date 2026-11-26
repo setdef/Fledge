@@ -9,7 +9,10 @@
 # SHA-256 pinned here (the release's SHA256SUMS, and the project's
 # Gemfile.lock holds the same), and, for a phone, unpacks the host
 # Lota's source gem carries, the startup files SDL3 needs, into the
-# project's host folder, where its fledge.yml names it.
+# project's host folder, where its fledge.yml names it, and the Rice
+# gem, which a phone's build compiles Lota's extension with when its
+# phone Ruby is not the one Lota's release built the extension against
+# (README.md, "Build it with Fledge").
 #
 #   lota-pop.sh PROJECT [GEM_PLATFORM]
 #
@@ -20,6 +23,10 @@
 set -eu
 
 version=0.8.0
+# Rice, a C++ library of headers, at the version Lota's extconf.rb pins,
+# and the SHA-256 that rubygems.org lists for its gem.
+rice_version=4.12.0
+rice_sha256=672c369ca706ff5be46695537f51e1a3db262c1b789af5b967ef477f25111dfd
 base="https://github.com/setdef/Lota/releases/download/v$version"
 
 project=${1:?usage: lota-pop.sh PROJECT [GEM_PLATFORM]}
@@ -61,4 +68,18 @@ if [ -z "$platform" ]; then
   rm -rf "$project/host"
   cp -R "$unpacked/lota-$version/ext/lota/phone/host" "$project/host"
   rm -rf "$unpacked"
+
+  # Rice goes under vendor/cache, which fledge build never puts in the
+  # app, for the build option --with-rice-dir to name.
+  work=$(mktemp -d)
+  curl -fsSL --retry 3 -o "$work/rice-$rice_version.gem" "https://rubygems.org/downloads/rice-$rice_version.gem"
+  if command -v sha256sum > /dev/null; then
+    have=$(sha256sum "$work/rice-$rice_version.gem" | cut -d' ' -f1)
+  else
+    have=$(shasum -a 256 "$work/rice-$rice_version.gem" | cut -d' ' -f1)
+  fi
+  [ "$have" = "$rice_sha256" ] || { echo "::error::rice-$rice_version.gem is $have, not the pinned $rice_sha256" >&2; exit 1; }
+  rm -rf "$project/vendor/cache/rice-$rice_version"
+  gem unpack "$work/rice-$rice_version.gem" --target "$project/vendor/cache" > /dev/null
+  rm -rf "$work"
 fi

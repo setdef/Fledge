@@ -12,6 +12,12 @@
 # POP_QUIT_AFTER=SECONDS makes the game print its score and quit after
 # that many seconds, so that a check can run it with nobody at the
 # screen.
+#
+# Each dot that appears is also reported on standard error, as "Pop: 3
+# dots, 0 popped". A phone gives an app no environment variable to set,
+# so there the line is how anyone reading the system log sees that the
+# game is running and drawing. It goes to standard error so that the
+# score on standard output stays the one line a desktop check reads.
 
 # The radius of a dot, in pixels.
 RADIUS = 36
@@ -39,6 +45,7 @@ module Lota
       @since = 0.0
       width, height = Lota::Graphics.dimensions
       @dots << [rand(RADIUS..(width - RADIUS)), rand((RADIUS + 40)..(height - RADIUS))]
+      warn "Pop: #{@dots.size} #{(@dots.size == 1) ? 'dot' : 'dots'}, #{@score} popped"
     end
     return unless @quit_after && @elapsed >= @quit_after
 

@@ -81,7 +81,15 @@ class MobileParity
   # field, presses Enter, and long-presses its row, and the iOS check's
   # UI test types it, presses Return, and swipes its row away; whether
   # SDL3 is built for the phone first, for an app whose gem links it
-  # (+sdl3+, test/fixtures/sdl_phone/sdl3/build.sh); and the line of an
+  # (+sdl3+, test/fixtures/sdl_phone/sdl3/build.sh); a command, run from
+  # the repository's root, that lays the app's project out before it is
+  # built (+prepare+, as .github/scripts/lota-pop.sh lays out Pop's host
+  # from Lota's gem); the options a gem's build takes, by gem name, as
+  # Bundler's build options, with the app's folder where %<app>s is
+  # (+build_options+); whether the app hides the system bars
+  # (+fullscreen+), which makes Android cover it with a confirmation
+  # until a person taps "Got it", so that the Android check confirms it
+  # first, as it does for an app that takes a touch; and the line of an
   # app that waits for a touch (+touches+, +touched+): the Android check
   # taps the screen once the app has logged the line +touches+ matches,
   # and again every few seconds until it has logged the one +touched+
@@ -89,9 +97,9 @@ class MobileParity
   # before the app's window takes input); on iOS the app's own UI test,
   # host/ios/UITests/TapTest.m, launches the app and taps it, so there
   # the lines only say the app takes a touch.
-  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open, :adds, :sdl3, :touches, :touched)
+  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open, :adds, :sdl3, :touches, :touched, :prepare, :build_options, :fullscreen)
     def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil, stays_open: false, adds: nil,
-      sdl3: false, touches: nil, touched: nil
+      sdl3: false, touches: nil, touched: nil, prepare: nil, build_options: {}, fullscreen: false
     )
       super
     end
@@ -157,6 +165,13 @@ class MobileParity
       prints: /\ASdlDemo runs Ruby on (?:the main thread with a stack of 65536|a thread of its own with a stack of 6[5-9]\d{3}) KB, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android) with SDL 3\.\d+\.\d+\z/,
       touches: /\ASdlDemo drew 60 frames\z/, touched: SDL_TOUCH,
       also: [/\ASdlDemo recurses [1-9]\d{3} levels deep\z/, SDL_TOUCH, /\ASdlDemo drew \d+ frames in all, after a touch\z/]),
+    # Not on iOS yet: Lota 0.8.0's host there is for the iOS runtime of Fledge
+    # v0.16.0, whose Ruby is not a framework, and fledge build refuses it
+    # (doc/contributors/design/phone-projects.md, "A host that owns the main
+    # loop"). Pop joins the iOS job when Lota has a host for this runtime.
+    App.new(path: "examples/lota_pop", name: "Pop", identifier: "com.setdef.fledge.Pop", prepare: [".github/scripts/lota-pop.sh", "examples/lota_pop"],
+      build_options: { "lota" => "--with-rice-dir=%<app>s/vendor/cache/rice-4.12.0" },
+      prints: /\APop: 3 dots, \d+ popped\z/, stays_open: true, fullscreen: true, phones: %w[android]),
   ].freeze
 
   # The line the host app of every project fledge build writes logs when
@@ -191,8 +206,12 @@ class MobileParity
     fledge = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), File.join(ROOT, "exe", "fledge")]
     sdl3 = nil
     apps.to_h do |app|
+      system(*app.prepare, chdir: ROOT, exception: true) if app.prepare
       own = { "FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes), "FLEDGE_RUNTIME_DIR_UNCHECKED" => "1" }
       own["BUNDLE_BUILD__SDL_DEMO"] = "--with-sdl3-builds=#{sdl3 ||= build_sdl3(app, phone, File.join(ROOT, 'tmp', 'sdl3', phone))}" if app.sdl3
+      app.build_options.each do |name, options|
+        own["BUNDLE_BUILD__#{name.upcase.tr('-', '_')}"] = format(options, app: File.expand_path(app.path, ROOT))
+      end
       printed, logged, status = Open3.capture3(env.merge(own), *fledge, "build", phone,
         "-o", out, File.expand_path(app.path, ROOT), chdir: ROOT)
       raise "fledge build #{phone} #{app.path} failed:\n#{printed}#{logged}" unless status.success?

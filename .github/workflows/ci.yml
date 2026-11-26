@@ -921,7 +921,9 @@ jobs:
   # runner's C compiler. test/fixtures/sdl_phone's SDL3 is built with
   # the NDK above and its script, and the check taps the game's screen
   # on each emulator (doc/contributors/design/phone-projects.md, "A
-  # host that owns the main loop"). The Android
+  # host that owns the main loop"). examples/lota_pop, a Lota game, is
+  # laid out from Lota's gem, compiled with the NDK, CMake and Rice, and
+  # must log its third dot on each emulator. The Android
   # integration tests run here too, the one job with the Android runtime,
   # the NDK, CMake, Rust's Android targets, and an emulator: those that
   # need no device once, before the emulator starts, and
@@ -937,7 +939,10 @@ jobs:
     name: Mobile apps (Android emulator, API 36, ${{ matrix.target }})
     needs: [runtime, runtime-mobile]
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # The job took 21 and 25 minutes before test/fixtures/sdl_phone and
+    # Pop joined it. Pop's build, which compiles Lota's extension with
+    # the NDK for both ABIs, took 3 to 7 minutes on a build node.
+    timeout-minutes: 55
     strategy:
       fail-fast: false
       matrix:

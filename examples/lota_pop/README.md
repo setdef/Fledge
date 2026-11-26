@@ -13,6 +13,7 @@ Lota (github.com/setdef/Lota) is a Ruby library for 2D games, built on the engin
 - **A game that is only Ruby.** [`game/main.rb`](game/main.rb) draws circles and reads clicks, and [`game/conf.rb`](game/conf.rb) names the window. [`main.rb`](main.rb) starts the game as Lota's own fuser does. No file in the folder is C, Objective-C, Swift, Java, or Kotlin.
 - **A gem that is not on RubyGems.org.** Lota publishes its gems with each release on GitHub. The `Gemfile` asks for `lota` at one version, and the build takes the gem from `vendor/cache`, checked against the SHA-256 in `Gemfile.lock` ([Gems in a Fledge app](../../doc/gems.md)).
 - **A framework's own host on a phone.** SDL3 owns a phone's screen and starts the app its own way, so Lota brings the startup files that run Ruby inside SDL. `fledge.yml`'s `ios: host:` and `android: host:` name the folder, and `fledge build` lays those files over the project it writes (`doc/contributors/design/phone-projects.md`, "Host files"). You do not write them: they come in Lota's gem.
+- **A game that says it is running.** Each dot that appears prints a line on standard error, such as `Pop: 3 dots, 0 popped`, which a phone's system log shows, since a phone gives an app no environment variable to end it with. The score line on standard output is the one a desktop's check reads.
 - **A windowed app.** `kind: windowed` in `fledge.yml` makes a double-clickable app on each desktop, with no console.
 
 ## Get Lota's gems
@@ -46,7 +47,7 @@ gem unpack vendor/cache/lota-0.8.0.gem --target tmp
 cp -R tmp/lota-0.8.0/ext/lota/phone/host host
 ```
 
-`vendor/cache` and `host` are the project's own files and are kept out of git, since they are Lota's.
+`vendor/cache` and `host` are the project's own files and are kept out of git, since they are Lota's. For a phone the script also unpacks Rice into `vendor/cache`, as "Build it with Fledge" says.
 
 ## Run it with Ruby
 
@@ -74,7 +75,14 @@ bundle exec fledge build ios ~/Fledge/examples/lota_pop
 bundle exec fledge build android ~/Fledge/examples/lota_pop
 ```
 
-Lota's phone engines come prebuilt with its release, and the source gem pins them, so a phone build compiles no SDL3. Open `dist/Pop-ios/Pop.xcodeproj` in Xcode, or run `./gradlew assembleDebug` in `dist/Pop-android`, to build the app. [iPhone, iPad, and Android](../../doc/phones.md) says what each project needs and how to sign and submit it.
+Lota's phone engines come prebuilt with its release, and the source gem pins them, so a phone build compiles no SDL3 and none of LÖVE. The gem pins Lota's extension prebuilt too, but only for the phone Ruby of one Fledge release (v0.16.0 for Lota 0.8.0). Under any other phone Ruby, such as the one a build of this checkout uses, the build stops and asks for Rice, the C++ library that Lota's extension compiles with, and for CMake on your `PATH`. The phone script of `.github/scripts/lota-pop.sh` unpacks Rice 4.12.0, which Lota pins, into `vendor/cache`, which `fledge build` never puts in the app. Name it in the gem's build option:
+
+```sh
+export BUNDLE_BUILD__LOTA="--with-rice-dir=$HOME/Fledge/examples/lota_pop/vendor/cache/rice-4.12.0"
+bundle exec fledge build android ~/Fledge/examples/lota_pop
+```
+
+Run `./gradlew assembleDebug` in `dist/Pop-android` to build the Android app. Lota 0.8.0's iOS host is for the iOS runtime of Fledge v0.16.0, whose Ruby is not a framework, so `fledge build ios` stops on a runtime of this checkout until Lota has a host for it (issue 164). [iPhone, iPad, and Android](../../doc/phones.md) says what each project needs and how to sign and submit it.
 
 ## Read the code
 

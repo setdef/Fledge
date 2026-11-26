@@ -167,12 +167,13 @@ class MobileParityTest < Minitest::Test
   # An app runs on the phones it names, and every app names both but
   # MobileCommands, which runs a gem's command, a program iOS lets no app
   # run: the libraries for ffi that ffi_library_phone's gems build reach
-  # an iOS app as they reach an Android one.
+  # an iOS app as they reach an Android one. Pop runs on Android alone,
+  # until Lota has an iOS host for this runtime.
   def test_each_phone_builds_and_runs_every_app_but_a_command_where_none_runs
     ios = MobileParity.apps("ios").map(&:name)
 
     assert_includes ios, "FfiLibraryPhone"
-    assert_equal MobileParity.apps("android").map(&:name) - ["MobileCommands"], ios
+    assert_equal MobileParity.apps("android").map(&:name) - %w[MobileCommands Pop], ios
     assert_includes MobileParity.apps("android").map(&:name), "MobileCommands"
   end
 
@@ -702,6 +703,54 @@ class MobileParityTest < Minitest::Test
       assert_raises(RuntimeError) { parity.check(app, ended, "an emulator") }
       refute app.finished?(["running"])
       refute MobileParity::APPS.fetch(0).finished?(["Hello from Ruby 4.1.0 on arm64-darwin"])
+    end
+  end
+
+  # Pop, a Lota game, stays open on a phone, which has no environment
+  # variable to end it with, so it passes once its third dot is on the
+  # screen, and fails if it ended, if it never reached three dots, and
+  # (on Android) unless Android was told first that a person has
+  # confirmed full-screen mode, as it is for every SDL game.
+  def test_pop_passes_once_it_has_three_dots_and_fails_when_it_ended_or_has_fewer
+    app = MobileParity::APPS.find { |each| each.name == "Pop" }
+    parity = MobileParity.new(target: "x86_64-linux-android", work: Dir.tmpdir, out: StringIO.new)
+    running = ["Pop: 1 dot, 0 popped", "Pop: 2 dots, 0 popped", "Pop: 3 dots, 0 popped"]
+
+    assert_equal "examples/lota_pop", app.path
+    assert_equal [".github/scripts/lota-pop.sh", "examples/lota_pop"], app.prepare
+    assert_equal %w[android], app.phones, "Lota 0.8.0's iOS host does not fit this runtime yet"
+    refute_includes MobileParity.apps("ios").map(&:name), "Pop"
+    assert parity.check(app, MobileParity::Logged.new(entries: running, output: []), "an emulator")
+    refute app.finished?(running.first(2))
+    assert app.finished?(running)
+    assert_raises(RuntimeError) { parity.check(app, MobileParity::Logged.new(entries: [*running, "Pop exited with status 0"], output: []), "an emulator") }
+    assert_raises(RuntimeError) { parity.check(app, MobileParity::Logged.new(entries: running.first(2), output: []), "an emulator") }
+    refute_match app.prints, "Pop: 3 popped"
+  end
+
+  def test_a_game_that_hides_the_system_bars_has_its_confirmation_given_before_it_starts
+    app = MobileParity::APPS.find { |each| each.name == "Pop" }
+    Dir.mktmpdir do |work|
+      emulator = Emulator.new(app, work:, finishes: 2, said: ["Pop: 3 dots, 0 popped"])
+      emulator.launch(app, timeout: 60, interval: 0)
+
+      assert_equal [%w[secure immersive_mode_confirmations confirmed]], emulator.settings
+      assert_empty emulator.taps, "Pop needs no touch to say that it runs"
+    end
+  end
+
+  # An app whose project needs files laid out first has the command that
+  # lays them out run before fledge build, so a command that fails stops
+  # the check there, with the command's own status.
+  def test_a_command_that_lays_an_app_out_runs_first_and_stops_the_build_when_it_fails
+    Dir.mktmpdir do |dir|
+      app = MobileParity::App.new(path: "examples/lota_pop", name: "Pop", identifier: "com.setdef.fledge.Pop", prints: nil,
+        prepare: ["sh", "-c", "echo laid out > \"$0\"; exit 3", File.join(dir, "marker")])
+
+      error = assert_raises(RuntimeError) { MobileParity.projects("ios", runtimes: dir, out: dir, apps: [app]) }
+
+      assert_match(/exit 3/, error.message)
+      assert_equal "laid out\n", File.read(File.join(dir, "marker"))
     end
   end
 

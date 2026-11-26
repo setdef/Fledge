@@ -431,7 +431,7 @@ class MobileParity
     # before ActivityManager has started the process, so the first look
     # can find neither the line nor a process pidof knows by name.
     def launch(app, timeout: TIMEOUT, interval: 2)
-      confirm_immersive_mode if app.touches
+      confirm_immersive_mode if app.touches || app.fullscreen
       adb("logcat", "-c")
       adb("shell", "am", "start", "-W", "-n", "#{app.identifier}/#{ACTIVITY}")
       pid = nil

@@ -73,7 +73,8 @@ class ReleaseExamplesTest < Minitest::Test
   end
 
   def test_the_phone_examples_are_those_the_phone_jobs_build_from_examples
-    assert_equal %w[Hello Basket], ReleaseExamples.phones.map(&:last)
+    assert_equal %w[Hello Basket Pop], ReleaseExamples.phones.map(&:last)
+    assert_equal %w[Hello Basket], ReleaseExamples.phones("ios").map(&:last), "Pop has no iOS host yet"
   end
 
   def test_names_tell_example_platform_and_version_apart_and_are_never_a_runtimes
@@ -83,6 +84,8 @@ class ReleaseExamplesTest < Minitest::Test
     assets.each { |name| assert_match(/\Afledge-example-[a-z0-9-]+-1\.2\.3-[a-z0-9_-]+\.[A-Za-z.]+\z/, name) }
     assert_includes assets, "fledge-example-basket-1.2.3-android.apk"
     assert_includes assets, "fledge-example-hello-1.2.3-ios-project.tar.gz"
+    assert_includes assets, "fledge-example-pop-1.2.3-android.apk"
+    refute_includes assets, "fledge-example-pop-1.2.3-ios-project.tar.gz"
     assert_empty assets & RuntimeBuilder.release_assets(version: VERSION)
     assert_equal Fledge::Platform.names.size, assets.grep(/-hello-/).grep(/(?<!project)\.(tar\.gz|zip)\z/).size
   end
@@ -113,11 +116,11 @@ class ReleaseExamplesTest < Minitest::Test
 
   def test_android_stages_each_debug_apk_by_the_apps_name
     in_tmp do |dir|
-      apks = populate(dir, "apks", %w[com.setdef.fledge.Hello.apk com.setdef.fledge.Basket.apk com.setdef.fledge.Parity.apk com.setdef.fledge.Hello.apks])
+      apks = populate(dir, "apks", %w[com.setdef.fledge.Hello.apk com.setdef.fledge.Basket.apk com.setdef.fledge.Pop.apk com.setdef.fledge.Parity.apk com.setdef.fledge.Hello.apks])
 
       staged = ReleaseExamples.stage_android(apks, File.join(dir, "out"), version: VERSION)
 
-      assert_equal %w[fledge-example-hello-1.2.3-android.apk fledge-example-basket-1.2.3-android.apk], staged
+      assert_equal %w[fledge-example-hello-1.2.3-android.apk fledge-example-basket-1.2.3-android.apk fledge-example-pop-1.2.3-android.apk], staged
       assert_equal "com.setdef.fledge.Basket.apk", File.read(File.join(dir, "out", "fledge-example-basket-1.2.3-android.apk"))
       assert_raises(ReleaseExamples::Mismatch) { ReleaseExamples.stage_android(File.join(dir, "empty"), File.join(dir, "out2"), version: VERSION) }
     end
@@ -126,7 +129,7 @@ class ReleaseExamplesTest < Minitest::Test
   def test_ios_archives_each_projects_folder
     in_tmp do |dir|
       projects = File.join(dir, "projects")
-      %w[Hello Basket Parity].each do |name|
+      %w[Hello Basket Pop Parity].each do |name|
         FileUtils.mkdir_p(File.join(projects, name, "#{name}.xcodeproj"))
         File.write(File.join(projects, name, "#{name}.xcodeproj", "project.pbxproj"), name)
       end

@@ -712,7 +712,7 @@ jobs:
           name: example-ios
           path: release-examples
           if-no-files-found: error
-          retention-days: ${{ github.ref_name == 'release-next' && 14 || 3 }}
+          retention-days: 14
 
       - name: Key the downloads by the files they hold
         id: downloads-key
@@ -1094,7 +1094,7 @@ jobs:
           name: example-android
           path: release-examples
           if-no-files-found: error
-          retention-days: ${{ github.ref_name == 'release-next' && 14 || 3 }}
+          retention-days: 14
 
   # An Android app's project is built on macOS and Windows too, as Google
   # supports its SDK there and Briefcase, Flutter, React Native, and Tauri
@@ -2043,7 +2043,7 @@ jobs:
           name: example-${{ matrix.platform }}
           path: release-examples
           if-no-files-found: error
-          retention-days: ${{ github.ref_name == 'release-next' && 14 || 3 }}
+          retention-days: 14
 
       # The LibUI probe and Focus Timer on Windows, whose fledge.yml files
       # say windows: visual_c_runtime: local, so the apps carry the
@@ -2218,7 +2218,7 @@ jobs:
           name: example-${{ matrix.platform }}
           path: release-examples
           if-no-files-found: error
-          retention-days: ${{ github.ref_name == 'release-next' && 14 || 3 }}
+          retention-days: 14
 
   # Delivery of native_app, rust_lengths, and nokogiri_app, on a fresh
   # runner of each platform, as Delivery runs the others.

@@ -171,7 +171,7 @@ class MobileRubyProgramTest < Minitest::Test
     program = File.join(@root, "bin", "ruby")
     sources = [
       File.join(@dir, "main.c"),
-      File.join(MOBILE, "fledge_ruby.c"),
+      *%w[fledge_ruby.c output.c].map { |file| File.join(MOBILE, file) },
       *%w[locale.c config.c bundler.c].map { |file| File.join(LAUNCHER, file) },
     ]
     libraries = "#{config.fetch('LIBRUBYARG')} #{config.fetch('LIBS')} #{config.fetch('MAINLIBS', '')}".split

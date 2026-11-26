@@ -22,7 +22,8 @@
 # the names it moved as JSON, there too, and two commits of trunk: landed,
 # the move's own commit, once that commit's own run is green (a run
 # red only for jobs no runner took is run again, up to twice, and its
-# last attempt judges, as "A job no runner took" of releases.md says), and
+# newest attempt judges, whoever started the attempts, as "A job no
+# runner took" of releases.md says), and
 # release, the commit to release, whose own run passed every job. Both
 # are the move's commit when it landed as proven, whose run is the
 # proof's. When it was rebased, the script waits for the run its dispatch
@@ -39,6 +40,13 @@
 # PIN_PROVE_LAND=false proves and lands nothing on trunk.
 # PIN_PROVE_DRY_RUN=true commits the move in the checkout and stops,
 # pushing and starting nothing. GH_TOKEN is the token gh uses.
+#
+# Its waits take their lengths from the environment, so that a test can
+# shorten them; each default is what the workflow runs with.
+# PIN_PROVE_START_TRIES (60) is how many times it looks for the run a
+# dispatch started, PIN_PROVE_START_SECONDS (10) the seconds between
+# those looks, and PIN_PROVE_RUN_SECONDS (60) the seconds between its
+# looks at a run that has not ended.
 set -euo pipefail
 
 report=$1
@@ -46,6 +54,9 @@ only=${2:-}
 branch=pin-move
 land=${PIN_PROVE_LAND:-true}
 dry=${PIN_PROVE_DRY_RUN:-false}
+start_tries=${PIN_PROVE_START_TRIES:-60}
+start_seconds=${PIN_PROVE_START_SECONDS:-10}
+run_seconds=${PIN_PROVE_RUN_SECONDS:-60}
 output=${GITHUB_OUTPUT:-/dev/null}
 summary=${GITHUB_STEP_SUMMARY:-/dev/null}
 bot=(-c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com")
@@ -97,11 +108,11 @@ prove() {
 settle() {
   local state=-
   until [ "$state" = completed ] && [ "$attempt" -ge "$1" ]; do
-    gh run watch "$run" --interval 60 >tmp/pin-proof.txt 2>&1 || tail -n 5 tmp/pin-proof.txt
+    gh run watch "$run" --interval "$run_seconds" >tmp/pin-proof.txt 2>&1 || tail -n 5 tmp/pin-proof.txt
     state=-
     read -r state conclusion attempt < <(gh run view "$run" --json status,conclusion,attempt \
       --jq '.status + " " + (.conclusion // "-") + " " + (.attempt | tostring)') || attempt=0
-    { [ "$state" = completed ] && [ "$attempt" -ge "$1" ]; } || sleep 60
+    { [ "$state" = completed ] && [ "$attempt" -ge "$1" ]; } || sleep "$run_seconds"
   done
 }
 
@@ -131,7 +142,7 @@ follow() {
   run=
   head=
   url=
-  for _ in $(seq 60); do
+  for _ in $(seq "$start_tries"); do
     if [ -n "${2:-}" ]; then
       found=$(gh run list --workflow ci.yml --branch "$1" --event workflow_dispatch --commit "$2" \
         --json databaseId,headSha --jq '.[0] | select(.) | "\(.databaseId) \(.headSha)"')
@@ -145,7 +156,7 @@ follow() {
       head=${found#* }
       break
     fi
-    sleep 10
+    sleep "$start_seconds"
   done
   if [ -z "$run" ]; then
     echo "::error::No run of ci.yml started on $1 for ${2:-a dispatch made at $since}"
@@ -163,8 +174,17 @@ follow() {
   # A run red only because no runner took a job has failed nothing:
   # runnerless_runs.rb, the rule runnerless.yml uses, says so and runs
   # the failed jobs again, at most twice, and the new attempt is judged.
-  while [ "$conclusion" = failure ] && rerun_if_no_runner; do
-    settle $((attempt + 1))
+  # When it leaves the run because it is on a later attempt now, as when
+  # runnerless.yml ran the failed jobs again first, that attempt is the
+  # one to judge, and the task's cap of attempts counts it.
+  while [ "$conclusion" = failure ]; do
+    if rerun_if_no_runner; then
+      settle $((attempt + 1))
+      continue
+    fi
+    latest=$(gh run view "$run" --json attempt --jq '.attempt') || latest=$attempt
+    [ "$latest" -gt "$attempt" ] || break
+    settle "$latest"
   done
   if [ "$conclusion" = success ]; then return 0; fi
   # What the summary says of a red run: each job that failed, and its

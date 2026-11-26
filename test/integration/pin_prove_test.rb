@@ -17,6 +17,18 @@ require_relative "../../tasks/runnerless_runs"
 # two things that need GitHub or the pins' upstreams standing in: gh,
 # which answers each run of ci.yml with the conclusion the test gives
 # it, and the move itself, which changes one file.
+#
+# A test takes two to six seconds, and no more can be cut without
+# changing what the script does. The script's waits are set to nothing
+# (PIN_PROVE_START_TRIES, PIN_PROVE_START_SECONDS, and
+# PIN_PROVE_RUN_SECONDS), the repositories are copied from ones made
+# once, and the gh stand-in uses shell builtins. What is left is the
+# script's commands: a proof that lands a move runs about fifteen
+# git commands, a commit and a push among them, and each takes between a
+# tenth and a quarter of a second on a Mac, as a process start does
+# (bash, jq, and Ruby for the rerun task take a twentieth to a tenth).
+# The test that proves a move once for each of two kinds of head runs
+# the script twice, and takes twice that.
 class PinProveTest < Minitest::Test
   SCRIPT = File.expand_path("../../.github/scripts/pin-prove.sh", __dir__)
 
@@ -162,6 +174,39 @@ class PinProveTest < Minitest::Test
     assert_equal "base", result[:trunk_version]
   end
 
+  # runnerless.yml, or a person, may run the failed jobs again before the
+  # script asks: the task then finds the run "on attempt 2 now", and
+  # leaves it. The script waits for that attempt and judges it as it
+  # judges one it started.
+  def test_a_proof_someone_else_ran_again_is_judged_by_the_newest_attempt
+    result = prove(branch_run: ["completed failure", "completed success"], causes: [:runnerless], others: [1])
+
+    assert_equal 0, result[:status], result[:stderr]
+    assert_empty result[:reruns][1]
+    assert_includes result[:output], "proven=true"
+    assert_equal "changed", result[:trunk_version]
+  end
+
+  def test_a_proof_someone_else_ran_again_that_is_red_is_judged_red
+    result = prove(branch_run: ["completed failure"] * 2, causes: [:real], others: [1])
+
+    assert_equal 1, result[:status]
+    assert_empty result[:reruns][1]
+    assert_includes result[:output], "proven=false"
+    assert_equal "base", result[:trunk_version]
+  end
+
+  # The two reruns are of the run, whoever starts them: one attempt of
+  # someone else's leaves the script one.
+  def test_the_cap_of_two_reruns_counts_the_attempts_someone_else_started
+    result = prove(branch_run: ["completed failure"] * 3, causes: [:runnerless] * 3, others: [1])
+
+    assert_equal 1, result[:status]
+    assert_equal 1, result[:reruns][1].size
+    assert_includes result[:output], "proven=false"
+    assert_equal "base", result[:trunk_version]
+  end
+
   # A real failure beside a job no runner took leaves the run red.
   def test_a_proof_with_a_real_failure_beside_a_job_no_runner_took_is_not_run_again
     result = prove(branch_run: "completed failure", causes: [:both])
@@ -199,23 +244,16 @@ class PinProveTest < Minitest::Test
     none: "[]",
   }.freeze
 
-  private def prove(trunk_run: "completed success", branch_run: "completed success", trunk_list: :own, branch_list: :own, causes: [:real], trunk_causes: [:real])
+  private def prove(trunk_run: "completed success", branch_run: "completed success", trunk_list: :own, branch_list: :own, causes: [:real], trunk_causes: [:real], others: [])
     Dir.mktmpdir do |dir|
       work = File.join(dir, "work")
       checkout = File.join(dir, "checkout")
       bin = File.join(dir, "bin")
       FileUtils.mkdir_p(bin)
-      git(dir, "init", "--quiet", "--bare", "-b", "trunk", File.join(dir, "origin.git"))
-      git(dir, "clone", "--quiet", File.join(dir, "origin.git"), work)
-      File.write(File.join(work, ".gitignore"), "tmp/\n")
-      commit(work, "version", "base")
-      git(work, "push", "--quiet", "origin", "HEAD:trunk")
-      git(dir, "clone", "--quiet", File.join(dir, "origin.git"), checkout)
-      commit(work, "other", "landed meanwhile")
-      git(work, "push", "--quiet", "origin", "HEAD:trunk")
-      File.write(File.join(dir, "ancestor-sha"), git(work, "rev-parse", "HEAD"))
+      copy_repositories(dir)
       write_shims(bin, dir, work)
       server = github({ 1 => [branch_run, causes, "pin-move"], 2 => [trunk_run, trunk_causes, "trunk"] }, dir)
+      others.each { |number| FileUtils.touch(File.join(dir, "other-#{number}")) }
       { 1 => branch_list, 2 => trunk_list }.each { |number, kind| File.write(File.join(dir, "list-#{number}.json"), RUN_LISTS.fetch(kind).gsub("%d", number.to_s)) }
       env = {
         "PATH" => "#{bin}:#{ENV.fetch('PATH')}",
@@ -225,6 +263,9 @@ class PinProveTest < Minitest::Test
         "GITHUB_REPOSITORY" => "setdef/Fledge",
         "GITHUB_API_URL" => server.url(""),
         "GH_TOKEN" => "secret",
+        "PIN_PROVE_START_TRIES" => "2",
+        "PIN_PROVE_START_SECONDS" => "0",
+        "PIN_PROVE_RUN_SECONDS" => "0",
       }
       FileUtils.touch([env["GITHUB_OUTPUT"], env["GITHUB_STEP_SUMMARY"]])
       out, err, status = Open3.capture3(env, "bash", SCRIPT, "report.json", chdir: checkout)
@@ -241,6 +282,51 @@ class PinProveTest < Minitest::Test
       }
     ensure
       server&.stop
+    end
+  end
+
+  # The repositories every test starts from, made once with real git:
+  # a bare origin whose trunk holds a base commit and one that landed
+  # after the checkout was cloned, the clone a test's work runs in (at
+  # the base), and a clone that pushes the later commits. Git takes
+  # about a tenth of a second a command here, so a test copies them
+  # (each remote's path rewritten to the copy's) where building them took
+  # nearly two seconds of its time.
+  def self.repositories
+    @repositories ||= Dir.mktmpdir.tap do |root|
+      Minitest.after_run { FileUtils.rm_rf(root) }
+      work = File.join(root, "work")
+      git_in(root, "init", "--quiet", "--bare", "-b", "trunk", File.join(root, "origin.git"))
+      git_in(root, "clone", "--quiet", File.join(root, "origin.git"), work)
+      File.write(File.join(work, ".gitignore"), "tmp/\n")
+      write_commit(work, "version", "base")
+      git_in(work, "push", "--quiet", "origin", "HEAD:trunk")
+      git_in(root, "clone", "--quiet", File.join(root, "origin.git"), File.join(root, "checkout"))
+      write_commit(work, "other", "landed meanwhile")
+      git_in(work, "push", "--quiet", "origin", "HEAD:trunk")
+      File.write(File.join(root, "ancestor-sha"), git_in(work, "rev-parse", "HEAD"))
+    end
+  end
+
+  def self.git_in(dir, *)
+    out, status = Open3.capture2e("git", *, chdir: dir)
+    raise out unless status.success?
+
+    out
+  end
+
+  def self.write_commit(dir, file, text)
+    File.write(File.join(dir, file), "#{text}\n")
+    git_in(dir, "add", "--all")
+    git_in(dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", text)
+  end
+
+  private def copy_repositories(dir)
+    root = self.class.repositories
+    FileUtils.cp_r(File.join(root, "."), dir)
+    %w[work checkout].each do |name|
+      config = File.join(dir, name, ".git", "config")
+      File.write(config, File.read(config).gsub(root, dir))
     end
   end
 
@@ -299,14 +385,16 @@ class PinProveTest < Minitest::Test
       echo "moved zlib"
     SH
     shim(bin, "bundle", ": # rake licensing")
-    shim(bin, "sleep", ":")
+    # Builtins only where they can be: each process is a tenth of a
+    # second here, and the script asks gh for every look at a run.
     shim(bin, "gh", <<~SH)
+      attempt_of() { a=1; while read -r _; do a=$((a + 1)); done < #{dir}/reruns-$1; }
       case "$1 $2" in
         "workflow run")
-          n=$(($(cat #{dir}/runs 2>/dev/null || echo 0) + 1)); echo $n > #{dir}/runs
+          n=0; [ -e #{dir}/runs ] && n=$(<#{dir}/runs); n=$((n + 1)); echo $n > #{dir}/runs
           # A push that lands between the move's and the dispatch, which
           # the run then takes as its head.
-          if [ $n = 2 ] && grep -q LATER #{dir}/list-2.json; then
+          if [ $n = 2 ] && [[ $(<#{dir}/list-2.json) == *LATER* ]]; then
             git -C #{work} pull --quiet origin trunk
             echo later > #{work}/later
             git -C #{work} add --all
@@ -320,14 +408,21 @@ class PinProveTest < Minitest::Test
             case "$1" in --jq) expr=$2 ;; --commit) commit=$2 ;; esac
             shift
           done
-          sed -e "s/HERE/$(git rev-parse HEAD)/" -e "s/LATER/$(cat #{dir}/later-sha 2>/dev/null)/" -e "s/ANCESTOR/$(cat #{dir}/ancestor-sha)/" #{dir}/list-$(cat #{dir}/runs).json |
-            jq --arg c "$commit" 'map(select($c == "" or .headSha == $c))' | jq -r "$expr" ;;
+          list=$(<#{dir}/list-$(<#{dir}/runs).json)
+          later=; [ -e #{dir}/later-sha ] && later=$(<#{dir}/later-sha)
+          list=${list//HERE/$(git rev-parse HEAD)}; list=${list//LATER/$later}; list=${list//ANCESTOR/$(<#{dir}/ancestor-sha)}
+          echo "$list" | jq -r --arg c "$commit" 'map(select($c == "" or .headSha == $c)) | '"$expr" ;;
         "run view")
+          n=$(<#{dir}/runs); attempt_of $n
           case "$*" in
             *status,conclusion*)
-              n=$(cat #{dir}/runs); a=$(wc -l < #{dir}/reruns-$n); a=$((a + 1))
-              line=$(sed -n "${a}p" #{dir}/outcome-$n); line=${line:-completed failure}
-              case "$*" in *conclusion,attempt*) echo "$line $a" ;; *) echo "$line" ;; esac ;;
+              line=; i=0
+              while read -r each; do i=$((i + 1)); if [ $i = $a ]; then line=$each; fi; done < #{dir}/outcome-$n
+              line=${line:-completed failure}
+              case "$*" in *conclusion,attempt*) echo "$line $a" ;; *) echo "$line" ;; esac
+              # Someone else runs the failed jobs again once this answer is given.
+              if [ -e #{dir}/other-$n ]; then rm #{dir}/other-$n; echo rerun >> #{dir}/reruns-$n; fi ;;
+            *json\\ attempt*) echo $a ;;
           esac ;;
       esac
     SH
@@ -337,12 +432,6 @@ class PinProveTest < Minitest::Test
     path = File.join(bin, name)
     File.write(path, "#!/usr/bin/env bash\n#{body}")
     File.chmod(0o755, path)
-  end
-
-  private def commit(dir, file, text)
-    File.write(File.join(dir, file), "#{text}\n")
-    git(dir, "add", "--all")
-    git(dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", text)
   end
 
   private def git(dir, *)

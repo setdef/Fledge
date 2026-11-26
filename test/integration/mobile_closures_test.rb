@@ -24,7 +24,8 @@ require_relative "../support/ios"
 class MobileClosuresTest < Minitest::Test
   include IOSRequired
 
-  # The symbol that decides which of fiddle's two paths a closure takes.
+  # The symbol whose presence in fiddle.bundle makes a closure take libffi's
+  # trampoline table, not the mprotect path.
   ALLOCATOR = "_ffi_closure_alloc"
 
   def setup

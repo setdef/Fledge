@@ -11,7 +11,7 @@ This file is binding for every agent that works in this repository. It holds the
 
 Fledge (the `fledge` gem, https://github.com/setdef/Fledge) ships a Ruby app to people who don't have Ruby. It copies the program a developer already runs, with its project and the gems its `Gemfile.lock` locks, into a relocatable CRuby runtime for the platform it runs on, with a small C launcher that starts the program as `bundle exec` would, and archives the result. Each platform's app is built on a computer of that platform, with that platform's own tools. Framework wrappers (Lota, Tokra, Rooibos) call Fledge; Fledge depends on no wrapper's repository. A developer writes their app in Ruby, with whatever front end their framework uses, on every platform, phones included, and never the native code a platform needs: Fledge supplies every line of C, Objective-C, Swift, Java, Kotlin, or any other language an app needs, in its runtime, launcher, and templates, and no example asks for one.
 
-Pre-1.0, zero external users. Prefer good design over backward compatibility; record every breaking change in CHANGELOG.md.
+Pre-1.0, zero external users. Prefer good design over backward compatibility; record every breaking change in CHANGELOG.md. A 0.X release may break Lota, Tokra, or Rooibos when the wrapper can fix it by upgrading. Fledge is never held back for want of a wrapper's release, and no release leaves a wrapper unable to work once it upgrades.
 
 The repository keeps no running account of the project's state (decisions, 2026-11-21): what changed is in CHANGELOG.md and `git log`, and the rest is where the list below says.
 
@@ -21,7 +21,7 @@ The repository keeps no running account of the project's state (decisions, 2026-
 - `CONTRIBUTING.md`: how to put a question to the maintainer, setup, the tests, checking a change before and after its push, and reading CI.
 - `doc/contributors/decisions.md`: the project's decisions that shape what Fledge is and does, each dated.
 - The open issues of the milestone "1.0.0 release candidate" at github.com/setdef/Fledge: the work left, each issue written so that an agent can start from it. `doc/contributors/plan/003.md`, the plan of record, holds the stories and the direction behind them.
-- `doc/contributors/design/`: how each part works, and why. `architecture.md` is the overview, indexes the few ADRs, and says when one is written and how it changes; `releases.md` says how a release is made, and `license-audit.md` how the license policy is enforced.
+- `doc/contributors/design/`: Fledge's internal design: how each part works, each choice with its reasons, the options weighed, and the prior art, and never how an example app is built. `architecture.md` is the overview, indexes the few ADRs, and says when one is written and how it changes; `releases.md` says how a release is made, and `license-audit.md` how the license policy is enforced.
 - `doc/contributors/documentation_style.md`: how to write prose, RDoc, and the READMEs.
 
 ## Design precedence
@@ -37,6 +37,7 @@ When two parts of the design pull apart, these decide, in this order. `doc/contr
 ## How to work
 
 - Research before designing: read the part's design document, and the prior art's source or documentation. Never guess at a reference's contents; cite the file and lines you relied on.
+- Read a web page, or a document a source cites, exactly: download it (with `curl`, say) into a scratch folder and read the file. A tool that summarizes a page, such as WebFetch, is for pages where a summary risks nothing, never for what a design, a doc, or a commit cites.
 - Root-cause every fix. If you cannot explain why a change fixed the symptom, it is not a fix.
 - Write tests first. A test must fail if the code it covers is deleted or mutated, and must exercise real collaborators, not stubs that hide missing behavior. The acceptance test for a build is a built app run on a fresh machine with no Ruby.
 - Code is a liability (decisions, 2026-10-28): never write a tool that a maintained, pinnable tool or gem provides, and pin every external input by version and, where it is downloaded, by SHA-256 (`architecture.md`, "What the design answers to", says both in full). Build each target on its own operating system with that system's tools, never one platform's app on another (decisions, 2026-10-28). Before adding a platform, first check whether a maintained project already publishes a portable Ruby for it (decisions, 2026-11-22).
@@ -60,6 +61,7 @@ When two parts of the design pull apart, these decide, in this order. `doc/contr
 - The help `fledge --help` prints is the comment header in `exe/fledge`, between the `####` and `###` lines: change it with the CLI.
 - `lib/fledge/config.schema.json` describes `fledge.yml`: change it with `Fledge::Config`; a test fails when they disagree.
 - No file in `lib/` may be rated F by RubyCritic, which itself fails nothing. Read its report after a change; when a file falls toward F, give the responsibility it took on a class of its own.
+- Durable documents (design documents, ADRs, the READMEs, and the docs for developers) hold no detail that drifts with the code, such as a line count, a file size, a test count, or a run ID.
 - Generated files, `doc/licensing.md` among them, say so in their header and are never edited by hand: change the generator.
 
 ## Commands
@@ -76,6 +78,8 @@ When two parts of the design pull apart, these decide, in this order. `doc/contr
 Everything in Fledge is *requested*: an agent built it with little or no review, as against *written* by the maintainer's hand or *wrought* with the maintainer's review of every change (decisions, 2026-11-02, later again). That holds for ADRs, plans, this file, the README, the code, the tests, and the workflows. Because no one reviews this work line by line, the gates review it, and Delivery most of all: a built app run on a fresh machine that has never seen Ruby. Never weaken a gate to make requested work pass. Every commit carries a `Provenance: requested` trailer.
 
 Everything in the repository but `doc/contributors/decisions.md`, this file included, was written by agents, who change it as long as it stays true to decisions.md.
+
+A document is wrought only while the maintainer has approved every change to it. An agent that changes a wrought document without the maintainer's approval of that change removes its claim to be wrought, since the document is then requested.
 
 The maintainer's conversations with agents are private. Nothing public (a file here, an issue, a comment, a commit message) quotes him, paraphrases him, or says what he said, asked, wanted, suggested, preferred, ruled, or decided, and nothing public carries private details of his setup, his machines, or his accounts, or his informal remarks about other projects, people, or controversies. Work and its reasons are stated as the project's own. A statement of who does what (that a person publishes to RubyGems.org, or opens an account) stays, said without reporting what anyone said. An issue or comment that breaks this is deleted, not edited, since an edit keeps its history.
 
@@ -96,6 +100,7 @@ Fledge is MIT, copyright setdef (decisions, 2026-11-07); released tags through `
 
 - **Code or prose adapted from elsewhere** (Ruby's sources, RubyGems, RubyInstaller, rv-ruby, Lota, Tokra, a spike, the maintainer's own projects too) sits between `SPDX-SnippetBegin` and `SPDX-SnippetEnd`, with the source's `SPDX-License-Identifier`, an `SPDX-SnippetCopyrightText` naming its authors, and an `SPDX-SnippetComment` naming the source file and its commit or tag. Add the source's license text to `LICENSES/`; `reuse lint` checks both.
 - **Fledge's runtime carries no copyleft obligation beyond keeping notices** (decision 8), and Fledge never asks an app developer for their app's source or object files. GPL or AGPL third-party code in a runtime, and LGPL code linked into Fledge's launcher or into any binary whose source Fledge does not publish, are bugs to remove. `doc/contributors/design/license-audit.md` says what a runtime may hold, and how its build refuses the rest; a component's license and notice are recorded in `runtime/licenses.yml` before it lands in `runtime/sources.yml`.
+- **Fledge and setdef comply with every license and law that applies to what setdef publishes and does, and take on no liability risk.** A route whose terms are unclear is not taken. The gems an app depends on stay the app developer's, as the next item says.
 - **This policy applies to Fledge's runtimes only.** The gems an app depends on are the app developer's choice and responsibility, licenses and all (decisions, 2026-10-28): `fledge build` judges no gem by its license, and refuses one only when it would not run where the app goes (`doc/contributors/design/gems.md`, "Checks that are not about licenses").
 
 ## Committing

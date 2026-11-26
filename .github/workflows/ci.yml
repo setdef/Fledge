@@ -1684,6 +1684,16 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: ruby -I lib exe/fledge build -o dist examples/basket
 
+      # And on Windows, where Basket's Ruby draws its screen with Win32's
+      # common controls, which every Windows has, and fledge.yml says
+      # nothing of. Delivery starts it and does what a person does.
+      - name: Build Basket for ${{ matrix.platform }}
+        if: runner.os == 'Windows'
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
+        run: ruby -I lib exe/fledge build -o dist examples/basket
+
       # test/fixtures/rust_lengths, a Rust gem on rb-sys alone, which says
       # how its bindings declare rb_len_t and calls two functions whose
       # results differ when that is not the runtime's Ruby's
@@ -2993,6 +3003,15 @@ jobs:
       - name: Start Hello Window.exe as Explorer would
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/delivered/Hello Window-$env:PLATFORM.zip"
+
+      # Basket, whose window Delivery types an item into, presses Return
+      # in, and removes the item from, as a person does, and which must
+      # log that it added and removed it, draw with Common Controls 6, and
+      # be aware of each monitor's scale
+      # (.github/scripts/check-basket-window.ps1).
+      - name: Start Basket.exe, add an item, and remove it
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/check-basket-window.ps1 -Archive "$env:RUNNER_TEMP/delivered/Basket-$env:PLATFORM.zip"
 
       # test/fixtures/programs: a GUI and a console program from one
       # folder, with one project and one Ruby, sharing one save

@@ -44,7 +44,14 @@ class FileDropTest < Minitest::Test
       out, err, status = Open3.capture3({ "FLEDGE_RUNTIME_DIR" => @runtimes }, RbConfig.ruby, "-I", LIB, EXE, "build", "-o", dir, EXAMPLE)
       assert_predicate status, :success?, err
 
-      gemfile = { "BUNDLE_GEMFILE" => File.join(EXAMPLE, "Gemfile"), "PORT" => free_port.to_s }
+      # BUNDLER_VERSION is unset because a gate that sets it runs whichever
+      # Bundler its Ruby has, which turns off Bundler's switch to the one
+      # Drop's Gemfile.lock names (Bundler::SelfManager#autoswitching_applies?),
+      # and bundle install then writes that Bundler into the committed
+      # lockfile: CI's full run rewrote BUNDLED WITH from 4.0.20 to Ruby
+      # 4.1.0-preview1's 4.1.0.beta2, and ExamplesLockfilesTest, which ran
+      # after this test, failed (lectern_test.rb has the same).
+      gemfile = { "BUNDLE_GEMFILE" => File.join(EXAMPLE, "Gemfile"), "BUNDLER_VERSION" => nil, "PORT" => free_port.to_s }
       Bundler.with_unbundled_env do
         installed, status = Open3.capture2e(gemfile, RbConfig.ruby, "-S", "bundle", "install", "--quiet")
         assert_predicate status, :success?, installed

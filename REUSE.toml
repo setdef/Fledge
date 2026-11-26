@@ -248,7 +248,7 @@ SPDX-License-Identifier = "MIT"
 # program shows and a .deb installs as they are, so a header in them
 # would be shown and installed too.
 [[annotations]]
-path = ['test/fixtures/windowed_app/LICENSE.txt', 'test/fixtures/windowed_app/CHANGES.txt', 'examples/libui_app/LICENSE.txt', 'examples/markdown_to_html/LICENSE.txt']
+path = ['test/fixtures/windowed_app/LICENSE.txt', 'test/fixtures/windowed_app/CHANGES.txt', 'examples/libui_app/LICENSE.txt', 'examples/markdown_to_html/LICENSE.txt', 'examples/basket/LICENSE.txt']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 

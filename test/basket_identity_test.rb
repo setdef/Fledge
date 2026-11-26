@@ -7,9 +7,10 @@
 
 require_relative "test_helper"
 
-# What examples/basket tells each system about itself: the icon files
-# that fledge.yml's icon key points to, each the size in its file name,
-# so that every build of Basket, for a phone or a desktop, has an icon.
+# What examples/basket tells each system about itself: its fledge.yml
+# keys, and the icon files that fledge.yml's icon key points to, each the
+# size in its file name, so that every build of Basket, for a phone or a
+# desktop, has an icon and the fields a developer sees.
 class BasketIdentityTest < Minitest::Test
   ROOT = File.expand_path("../examples/basket", __dir__)
 
@@ -18,6 +19,31 @@ class BasketIdentityTest < Minitest::Test
   def setup
     @config = Fledge::Config.load(ROOT)
     @icon = File.join(ROOT, @config.icon)
+  end
+
+  def test_it_says_who_makes_it_and_what_it_is
+    assert_equal "Basket", @config.name
+    assert_equal "com.setdef.fledge.Basket", @config.identifier
+    assert_equal "1.0.0", @config.version
+    assert_equal "setdef", @config.publisher
+    assert_equal "© 2026 setdef", @config.copyright
+    assert_equal "Keeps a shopping list", @config.description
+    assert_includes @config.long_description, "Type an item and add it"
+    assert_equal "https://github.com/setdef/Fledge/tree/trunk/examples/basket", @config.homepage
+  end
+
+  def test_its_license_is_a_file_of_the_project
+    assert_equal "LICENSE.txt", @config.license_file
+    assert_includes File.read(File.join(ROOT, @config.license_file)), "MIT No Attribution"
+  end
+
+  def test_it_asks_for_every_installer_a_desktop_makes
+    assert_equal %w[dmg nsis appimage deb msix], @config.installers
+  end
+
+  def test_its_msix_package_has_a_test_identity
+    assert_equal "setdef.Basket", @config.windows.msix_name
+    assert_equal "CN=setdef", @config.windows.msix_publisher
   end
 
   def test_every_png_an_icon_asks_for_is_the_size_its_name_claims

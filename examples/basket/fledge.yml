@@ -2,15 +2,41 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# Basket's Gemfile lists etcetera, which finds the folder each system
-# keeps an app's data in, and fiddle, which each system's screen reaches
-# its widgets with. The identifier is what iOS and Android know it by
-# (doc/contributors/design/phone-projects.md). kind: windowed says that its
-# Ruby draws the app's screen, so a phone runs that Ruby on the main thread,
-# where the widgets are made (doc/contributors/design/phone-widgets.md).
+# Basket's name, version, icon, and license, as each system shows them in
+# a Dock, a Start menu, a launcher, an installer, and an app store. The
+# Gemfile lists etcetera, which finds the folder each system keeps an
+# app's data in, and fiddle, which each system's screen reaches its
+# widgets with.
+
 name: Basket
+# What iOS and Android know it by (doc/contributors/design/phone-projects.md).
 identifier: com.setdef.fledge.Basket
+# Its Ruby draws the screen, so a phone runs that Ruby on the main thread,
+# where the widgets are made (doc/contributors/design/phone-widgets.md).
 kind: windowed
-# The files in icons/, which icons/render.rb draws from icons/icon.svg:
-# icon.icns, icon.ico, and the PNGs each system takes.
+version: "1.0.0"
+publisher: setdef
+copyright: © 2026 setdef
+description: Keeps a shopping list
+long_description: |
+  Basket keeps a shopping list. Type an item and add it, and remove it
+  once it is in the cart; the list is still there when you open Basket
+  again.
+
+  Each system draws Basket with that system's widgets: UIKit on iOS,
+  Android's views on Android, GTK 4 with libadwaita on Linux, and Win32's
+  common controls on Windows. It is an example of Fledge, which makes an
+  app of its Ruby for each of them.
+homepage: https://github.com/setdef/Fledge/tree/trunk/examples/basket
+# The Windows setup program shows it, and a .deb installs it.
+license_file: LICENSE.txt
+# The files in icons/, which icons/render.rb draws from icons/icon.svg.
 icon: icons/icon
+# Every installer a desktop makes: a disk image, a setup program, an
+# AppImage, a .deb, and an MSIX package.
+installers: [dmg, nsis, appimage, deb, msix]
+windows:
+  # A test identity for the MSIX package. A submission to the Microsoft
+  # Store replaces both with the identity Partner Center assigns.
+  msix_name: setdef.Basket
+  msix_publisher: CN=setdef

@@ -310,7 +310,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Component | Version | License | How it ships |
 |---|---|---|---|
 | Fledge's embedding API, and the library and packages it is built into | 0.17.0 | `MIT` | FledgeRuby.framework in each slice of FledgeRuby.xcframework, with fledge.links beside it, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/4.1.0+5/arm64-darwin/openssl.so |
-| Fledge's RubyGems defaults and widget bridges | 0.17.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts; and lib/ruby/vendor_ruby/fledge/objc.rb on iOS and lib/ruby/vendor_ruby/fledge/jni.rb on Android, which an app requires to reach the phone's widgets |
+| Fledge's RubyGems defaults and Android widget bridge | 0.17.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts; and lib/ruby/vendor_ruby/fledge/jni.rb on Android, which an app requires to reach the phone's widgets |
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin/digest/blake3.bundle |
 | libffi, compiled into the mobile runtimes' fiddle extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libyaml, compiled into the mobile runtimes' psych extension | 0.2.6 | `MIT` | compiled into lib/ruby/4.1.0+5/arm64-darwin/psych.bundle |
@@ -336,7 +336,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Component | Version | License | How it ships |
 |---|---|---|---|
 | Fledge's embedding API, and the library and packages it is built into | 0.17.0 | `MIT` | FledgeRuby.framework in each slice of FledgeRuby.xcframework, with fledge.links beside it, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/openssl.so |
-| Fledge's RubyGems defaults and widget bridges | 0.17.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts; and lib/ruby/vendor_ruby/fledge/objc.rb on iOS and lib/ruby/vendor_ruby/fledge/jni.rb on Android, which an app requires to reach the phone's widgets |
+| Fledge's RubyGems defaults and Android widget bridge | 0.17.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts; and lib/ruby/vendor_ruby/fledge/jni.rb on Android, which an app requires to reach the phone's widgets |
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/digest/blake3.so |
 | libffi, compiled into the mobile runtimes' fiddle extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
 | libyaml, compiled into the mobile runtimes' psych extension | 0.2.6 | `MIT` | compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/psych.so |

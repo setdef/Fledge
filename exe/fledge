@@ -252,7 +252,7 @@
 #                        kind: console (default) or windowed; on a
 #                          phone, windowed runs the app's Ruby on the
 #                          main thread, where it draws with the phone's
-#                          own widgets (Fledge::ObjC, Fledge::JNI)
+#                          own widgets
 #                        identifier: the app's reverse-DNS name, such as
 #                          com.example.MyCoolApp, which macOS and
 #                          Windows know it by, and the bundle identifier

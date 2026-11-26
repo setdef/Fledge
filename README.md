@@ -68,7 +68,7 @@ The archive is 29 MB, and 88 MB unpacked. Anyone with an Apple silicon Mac on ma
 | Runs in a terminal (the default) | a `.tar.gz` | a `.zip` | a `.tar.gz` |
 | Opens windows | a `.app` bundle, and a `.dmg` | a `.zip`, a setup program that installs without an administrator, and an [`.msix`](https://learn.microsoft.com/windows/msix/overview) for the [Microsoft Store](https://apps.microsoft.com/) if you ask for one | a `.tar.gz` with a [desktop entry](https://specifications.freedesktop.org/desktop-entry-spec/latest/), an [AppImage](https://appimage.org/), and a [`.deb`](https://manpages.debian.org/deb.5) if you ask for one |
 
-For iPhone, iPad, and Android, Fledge writes an [Xcode](https://developer.apple.com/xcode/) or [Gradle](https://gradle.org/) project that you build, sign, and submit as you would any other phone app. Your Ruby draws the app's screen with each phone's own widgets, UIKit's on iOS and Android's views on Android, through a bridge in the phone's Ruby. Fledge compiles your gems' C, C++, and Rust extensions for the phone, and the [`ffi`](https://github.com/ffi/ffi) gem and Ruby's [`fiddle`](https://github.com/ruby/fiddle) work there.
+For iPhone, iPad, and Android, Fledge writes an [Xcode](https://developer.apple.com/xcode/) or [Gradle](https://gradle.org/) project that you build, sign, and submit as you would any other phone app. Your Ruby draws the app's screen with each phone's own widgets, UIKit's on iOS, which your Ruby reaches with Ruby's own `fiddle`, and Android's views on Android, through a bridge in Android's Ruby. Fledge compiles your gems' C, C++, and Rust extensions for the phone, and the [`ffi`](https://github.com/ffi/ffi) gem and Ruby's [`fiddle`](https://github.com/ruby/fiddle) work there.
 
 ## How Fledge compares
 

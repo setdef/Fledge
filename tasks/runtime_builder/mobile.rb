@@ -387,7 +387,7 @@ class RuntimeBuilder
       prefix
     end
 
-    # Puts the phone's bridge to its own widgets, +name+.rb in
+    # Puts Android's bridge to its own widgets, +name+.rb in
     # MOBILE/vendor_ruby/fledge, where Ruby's vendor folder +lib_ruby+
     # (+lib/ruby+) holds it, on the load path as under any Ruby whose
     # distributor puts its own libraries there

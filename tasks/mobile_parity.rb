@@ -20,8 +20,9 @@ require_relative "parity"
 # it to (os_log, logcat).
 #
 # The apps (APPS) are examples/hello; examples/basket, a shopping list
-# whose Ruby draws it with each phone's own widgets, through the bridge
-# each phone's runtime carries (doc/contributors/design/phone-widgets.md),
+# whose Ruby draws it with each phone's own widgets, through its own
+# bridge to UIKit on iOS and the runtime's to Java on Android
+# (doc/contributors/design/phone-widgets.md),
 # and which stays open, as a real app does; test/fixtures/mobile_app, whose pure-Ruby
 # gems Bundler sets up; test/fixtures/native_phone, whose gem has a C and C++
 # extension compiled for the phone

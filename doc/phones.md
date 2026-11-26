@@ -15,15 +15,15 @@ A phone's Ruby has the standard library and gems of a desktop's, `fiddle` among 
 
 ## Your app's screen
 
-Draw your app's screen in Ruby with each phone's own widgets, so that it looks and behaves as the phone's own apps do: UIKit's views on iOS, Android's views on Android. Each phone's Ruby carries a bridge to them. You make the platform's own objects and send them the platform's own messages, as Apple's and Google's documentation names them; Fledge adds no widgets of its own.
+Draw your app's screen in Ruby with each phone's own widgets, so that it looks and behaves as the phone's own apps do: UIKit's views on iOS, Android's views on Android. You make the platform's own objects and send them the platform's own messages, as Apple's and Google's documentation names them; Fledge adds no widgets of its own. On iOS your Ruby reaches UIKit as it would under `ruby` on a Mac, with Ruby's own `fiddle`; Android's runtime carries a bridge to Java.
 
 Say `kind: windowed` in `fledge.yml`. A phone's widgets belong to its main thread, so an app of that kind runs its Ruby there, and your program hands the thread back to the phone when its screen is ready. An app without it runs its Ruby on a thread of its own and shows its name, as before.
 
-On iOS, `require "fledge/objc"`. A class of UIKit's is a constant of `Fledge::ObjC`, a message is a method whose keywords spell the rest of its selector, and `name = value` sends `setName:`. Write your delegates as Ruby classes that inherit from UIKit's, with `objc_method` for each method UIKit calls. Name one `SceneDelegate`, which the app's `Info.plist` names, and end your program with `Fledge::ObjC.application_main(AppDelegate)`:
+On iOS, your Ruby calls the Objective-C runtime through `fiddle`, which Ruby bundles, and ends by calling `UIApplicationMain`. [`examples/basket/lib/basket/objc.rb`](../examples/basket/lib/basket/objc.rb) is a bridge of about 400 lines of Ruby that you can copy into your app and change: a class of UIKit's is a constant of `Basket::ObjC`, a message is a method whose keywords spell the rest of its selector, and `name = value` sends `setName:`. Write your delegates as Ruby classes that inherit from UIKit's, with `objc_method` for each method UIKit calls. Name one `SceneDelegate`, which the app's `Info.plist` lists, and end your program with `ObjC.application_main(AppDelegate)`:
 
 ```ruby
-require "fledge/objc"
-ObjC = Fledge::ObjC
+require_relative "lib/objc" # examples/basket/lib/basket/objc.rb, copied
+ObjC = Basket::ObjC
 
 class AppDelegate < ObjC::UIResponder
   objc_protocols "UIApplicationDelegate"
@@ -59,7 +59,7 @@ activity.setContentView(label)
 JNI.loop
 ```
 
-Both bridges use `fiddle`: if your app has a `Gemfile`, add `gem "fiddle"` to it. [`examples/basket`](../examples/basket) is a shopping list drawn this way on both phones, its screen for each in a file of its own. The bridges cannot yet pass a struct such as `CGRect`, make an Objective-C block, or subclass a Java class such as `View`; lay a screen out with Auto Layout's anchors on iOS, and implement listeners' interfaces on Android. Touch the widgets only from the main thread, as in any phone app: a Ruby thread of your own posts its work there.
+Both use `fiddle`: if your app has a `Gemfile`, add `gem "fiddle"` to it. [`examples/basket`](../examples/basket) is a shopping list drawn this way on both phones, its screen for each in a file of its own. Basket's iOS bridge does not pass a struct such as `CGRect` or make an Objective-C block, which it has no need of, and lays its screen out with Auto Layout's anchors; Fledge's Android bridge cannot subclass a Java class such as `View`, so implement listeners' interfaces there. Touch the widgets only from the main thread, as in any phone app: a Ruby thread of your own posts its work there.
 
 ## Test your app on a Simulator or emulator
 

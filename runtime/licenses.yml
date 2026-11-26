@@ -160,10 +160,10 @@ components:
   # A phone's app has no Fledge launcher: the host app the project
   # fledge build writes starts Ruby through the embedding API (doc/contributors/design/phone-projects.md),
   # so of this component a phone's runtime holds only the RubyGems
-  # defaults, in each Ruby it carries, and the bridge to the phone's own
-  # widgets in Ruby's vendor folder (doc/contributors/design/phone-widgets.md).
+  # defaults, in each Ruby it carries, and on Android the bridge to its
+  # own widgets in Ruby's vendor folder (doc/contributors/design/phone-widgets.md).
   - id: fledge-mobile
-    name: Fledge's RubyGems defaults and widget bridges
+    name: Fledge's RubyGems defaults and Android widget bridge
     version: "{fledge_version}"
     license: MIT
     first_party: true
@@ -171,11 +171,10 @@ components:
     supplier: "Organization: setdef"
     download: https://github.com/setdef/Fledge
     notice: fledge
-    ships: lib/ruby/{abi}/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts; and lib/ruby/vendor_ruby/fledge/objc.rb on iOS and lib/ruby/vendor_ruby/fledge/jni.rb on Android, which an app requires to reach the phone's widgets
+    ships: lib/ruby/{abi}/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts; and lib/ruby/vendor_ruby/fledge/jni.rb on Android, which an app requires to reach the phone's widgets
     platforms: [ios, android]
     files:
       - {glob: "{prefix}lib/ruby/{abi}/rubygems/defaults/operating_system.rb", contains: "Fledge's RubyGems defaults"}
-      - {glob: "{prefix}lib/ruby/vendor_ruby/fledge/objc.rb", contains: "module ObjC"}
       - {glob: "{prefix}lib/ruby/vendor_ruby/fledge/jni.rb", contains: "module JNI"}
 
   # The mobile runtimes' one library (ADR 099): Fledge's embedding API

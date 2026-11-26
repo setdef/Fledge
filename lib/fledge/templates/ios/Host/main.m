@@ -16,10 +16,10 @@
 // An app whose Ruby draws its own screen with UIKit (kind: windowed in
 // fledge.yml, which compiles this with FLEDGE_WINDOWED=1) is the other
 // way round: UIKit's objects are the main thread's alone, so its Ruby
-// runs there, and its program hands that thread to UIKit itself, with
-// Fledge::ObjC.application_main, as an Objective-C app's main function
-// calls UIApplicationMain, with the delegates it defines in Ruby,
-// SceneDelegate among them, as Info.plist names it
+// runs there, and its program hands that thread to UIKit itself, by
+// calling UIApplicationMain as an Objective-C app's main function does,
+// with the delegates it defines in Ruby, SceneDelegate among them, as
+// Info.plist lists it
 // (doc/contributors/design/phone-widgets.md).
 @import FledgeRuby;
 @import UIKit;

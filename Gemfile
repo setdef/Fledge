@@ -29,7 +29,7 @@ gem "rdoc", "~> 8.1"
 # (doc/contributors/design/public-interface.md). Development only: nothing Fledge ships loads it.
 gem "json_schemer", "~> 2.5", group: :development
 
-# Lets test/objc_bridge_test.rb load the iOS runtime's bridge to the
+# Lets test/basket_bridge_test.rb load Basket's bridge to the
 # Objective-C runtime, which needs fiddle, a gem Ruby bundles and Bundler
 # hides until a Gemfile names it. Development only, and only on a Mac,
 # the one system with that runtime, so that no other computer compiles

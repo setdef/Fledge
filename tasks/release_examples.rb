@@ -68,9 +68,6 @@ module ReleaseExamples
       "x64-mingw-ucrt" => "Focus Timer's app there carries Microsoft's Visual C++ runtime (fledge.yml's windows: visual_c_runtime: local), " \
         "which nothing setdef publishes may carry (decisions, 2026-11-21), so ci.yml builds it outside dist and uploads none of it",
     },
-    "lota_pop" => %w[x64-mingw-ucrt aarch64-mingw-ucrt].to_h do |platform|
-      [platform, "Delivery does not check Pop there yet: on GitHub's Windows runners, which have no GPU, its window is 0x0 and the game never ends itself (issue 163)"]
-    end,
   }.freeze
 
   # The files of the desktop examples on +platform+, each as the pair of

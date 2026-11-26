@@ -13,7 +13,7 @@
 # mouse messages for clicks, popped a dot, and ended the game and the
 # process cleanly.
 #
-#   pwsh -NoProfile -File deliver-pop.ps1 -Archive ARCHIVE [-Work FOLDER]
+#   pwsh -NoProfile -File deliver-pop.ps1 -Archive ARCHIVE [-Mesa FOLDER] [-Work FOLDER]
 #
 # ARCHIVE is "Pop-x64-mingw-ucrt.zip", or aarch64-mingw-ucrt's. The
 # clicks are the messages a mouse sends (WM_MOUSEMOVE, WM_LBUTTONDOWN,
@@ -21,9 +21,21 @@
 # input. Pop is a GUI program, so its output is its standard output
 # redirected to a file. WORK is the one folder the script writes in:
 # RUNNER_TEMP on a runner, and the system's temporary folder elsewhere.
+#
+# A runner has no GPU, so Pop draws with OpenGL, not Vulkan, and the
+# opengl32.dll in System32 gives OpenGL 1.1, which Lota's renderer cannot
+# use, so Pop's window stays 0x0 and its loop never runs. MESA is a
+# folder holding Mesa's opengl32.dll, its driver, and the DLLs they need
+# (ci.yml's x64 step copies four from mesa-dist-win; gather-mesa.sh gathers
+# ARM64's). The script puts those beside Pop.exe, where Windows finds the
+# opengl32.dll SDL3 loads by name before System32's, and asks Mesa for
+# llvmpipe, its software renderer, as Lota's CI does for the games it
+# delivers. The app's files, its Ruby, and its code are as Fledge built
+# them.
 
 param(
   [Parameter(Mandatory)] [string] $Archive,
+  [string] $Mesa,
   [string] $Work = $(if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [IO.Path]::GetTempPath() })
 )
 
@@ -67,6 +79,17 @@ New-Item -ItemType Directory -Force $place | Out-Null
 Expand-Archive -LiteralPath $Archive -DestinationPath $place
 $app = Join-Path (Join-Path $place $name) 'Pop.exe'
 if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing after unpacking $Archive" }
+if ($Mesa) {
+  foreach ($dll in Get-ChildItem -LiteralPath $Mesa -Filter '*.dll') {
+    $beside = Join-Path (Split-Path $app) $dll.Name
+    if (Test-Path -LiteralPath $beside) { Write-Host "$($dll.Name): already beside Pop.exe" } else { Copy-Item -LiteralPath $dll.FullName $beside }
+  }
+  if (-not (Test-Path -LiteralPath (Join-Path (Split-Path $app) 'opengl32.dll'))) { Fail "$Mesa holds no opengl32.dll" }
+  $env:GALLIUM_DRIVER = 'llvmpipe'
+  # llvmpipe's linear rasterizer, from Mesa 25, reads the wrong uniform
+  # array and matrix elements; Lota's CI turns it off.
+  $env:LP_PERF = 'no_rast_linear'
+}
 
 # The runner has Rubies; the app's PATH keeps only the system's folders.
 $system = $env:SystemRoot
@@ -103,8 +126,16 @@ while ($window -eq [IntPtr]::Zero) {
   if ([DateTime]::UtcNow -gt $deadline) { Fail "Pop showed no window titled Pop in 30 seconds`n$(Show-Log)" }
   Start-Sleep -Milliseconds 200
 }
+# SDL sizes the window after it shows it, so the client area is read
+# until it has one.
 $rect = New-Object Fledge.Pop+RECT
-[void] [Fledge.Pop]::GetClientRect($window, [ref] $rect)
+do {
+  [void] [Fledge.Pop]::GetClientRect($window, [ref] $rect)
+  if ($rect.Right -gt 0) { break }
+  if ($process.HasExited) { Fail "Pop ended before its window had a client area`n$(Show-Log)" }
+  Start-Sleep -Milliseconds 200
+} while ([DateTime]::UtcNow -lt $deadline)
+if ($rect.Right -le 0 -or $rect.Bottom -le 0) { Fail "Pop's window is $($rect.Right)x$($rect.Bottom) 30 seconds after the start`n$(Show-Log)" }
 Write-Host "ok: Pop's window is $($rect.Right)x$($rect.Bottom)"
 
 # A dot appears each second, up to five: after six, there are five.
@@ -124,6 +155,9 @@ $line = ((Get-Content -LiteralPath $out -Raw) -replace '\s+$', '')
 if ($line -notmatch '^Pop: (\d+) popped$') { Fail "Pop printed '$line', not 'Pop: N popped'`n$(Show-Log)" }
 if ([int] $Matches[1] -lt 1) { Fail "Pop printed '$line' after the sweep, which popped no dot" }
 Write-Host "ok: Pop ended with status 0 and printed '$line'"
+# Pop reports each dot that appears on standard error, as "Pop: 3 dots,
+# 0 popped" (examples/lota_pop/game/main.rb); anything else is a fault.
 $errors = ((Get-Content -LiteralPath $err -Raw) -replace '\s+$', '')
-if ($errors -ne '') { Fail "Pop wrote to standard error: $errors" }
+$other = @($errors -split '\r?\n' | Where-Object { $_ -ne '' -and $_ -notmatch '^Pop: \d+ dots?, \d+ popped$' })
+if ($other.Count -gt 0) { Fail "Pop wrote to standard error: $($other -join '; ')" }
 Write-Host 'Delivered: Pop popped a dot and ended cleanly, on Windows'

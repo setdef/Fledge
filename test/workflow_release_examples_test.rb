@@ -47,13 +47,37 @@ class WorkflowReleaseExamplesTest < Minitest::Test
 "delivery-games-arm64-darwin" => %w[deliver-focus-timer.sh deliver-pop.sh],
 "delivery-games-x86_64-linux" => %w[deliver-focus-timer.sh deliver-pop.sh],
 "delivery-games-aarch64-linux" => %w[deliver-focus-timer.sh deliver-pop.sh],
+"delivery-windows-x64-mingw-ucrt" => %w[deliver-pop.ps1],
+"delivery-windows-aarch64-mingw-ucrt" => %w[deliver-pop.ps1],
 }.each do |name, scripts|
       run = runs(jobs("ci.yml").fetch(name)).join("\n")
       scripts.each { |script| assert_includes run, script, "#{name} does not run #{script}" }
     end
+  end
+
+  # The runners of Windows have no GPU, and the OpenGL in System32 is 1.1,
+  # which Lota's renderer cannot use, so Pop's window was 0x0 and its loop
+  # never ran (issue 163). Each Windows Delivery job gathers Mesa's
+  # software OpenGL before the Pop step and hands that step its folder.
+  def test_the_windows_delivery_jobs_give_pop_mesas_software_opengl_before_its_step
     %w[delivery-windows-x64-mingw-ucrt delivery-windows-aarch64-mingw-ucrt].each do |name|
-      refute_includes runs(jobs("ci.yml").fetch(name)).join("\n"), "deliver-pop.ps1", "#{name} runs a Pop check that fails on GitHub's runners (issue 163), and a release carries no Pop there"
+      steps = jobs("ci.yml").fetch(name).fetch("steps")
+      pop = steps.index { |step| step["run"].to_s.include?("deliver-pop.ps1") }
+      mesa = steps.index { |step| ["Download Mesa's OpenGL for Pop", "Gather Mesa's OpenGL for Pop"].include?(step["name"]) }
+
+      refute_nil pop, "#{name} runs no Pop step"
+      refute_nil mesa, "#{name} gathers no Mesa"
+      assert_operator mesa, :<, pop, "#{name} gathers Mesa after Pop's step"
+      assert_includes steps[pop]["run"], '-Mesa "$env:RUNNER_TEMP/mesa"'
     end
+    download = jobs("ci.yml").fetch("delivery-windows-x64-mingw-ucrt").fetch("steps").find { |step| step["name"] == "Download Mesa's OpenGL for Pop" }
+
+    assert_match(/\A\h{64}\z/, download.dig("env", "MESA_SHA256"))
+    assert_includes download["run"], "Get-FileHash"
+    msys2 = jobs("ci.yml").fetch("delivery-windows-aarch64-mingw-ucrt").fetch("steps").select { |step| step["uses"].to_s.start_with?("msys2/setup-msys2@") }
+
+    refute_empty msys2
+    msys2.each { |step| assert_match(/@\h{40}\z/, step["uses"]) }
   end
 
   def test_the_musl_jobs_stage_inside_the_container_that_built_them_and_know_their_platform

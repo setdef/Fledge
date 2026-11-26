@@ -1847,9 +1847,8 @@ jobs:
       # examples/lota_pop, Pop, a game written with Lota, whose gem is
       # not on RubyGems.org: the script takes it from Lota's release,
       # checked against the SHA-256 it pins, into the project's
-      # vendor/cache. Delivery plays it on a Mac and on Linux
-      # (.github/scripts/deliver-pop.sh), and a release carries it there; on
-      # Windows, deliver-pop.ps1 waits for issue 163. Not on
+      # vendor/cache. Delivery plays it (.github/scripts/deliver-pop.sh
+      # and deliver-pop.ps1), and a release carries it. Not on
       # musl Linux (build-musl): Lota publishes no gem for it.
       - name: Build Pop, a Lota game, for ${{ matrix.platform }}
         shell: bash
@@ -3252,6 +3251,69 @@ jobs:
       - name: Start Basket.exe's Win32 screen, add an item, and remove it
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/check-basket-window.ps1 -Archive "$env:RUNNER_TEMP/delivered/Basket-$env:PLATFORM.zip"
+
+      # Pop draws with Vulkan on a computer that has a GPU and with
+      # OpenGL where Vulkan has no device, as LÖVE does. A runner has no
+      # GPU, and the opengl32.dll in System32 gives OpenGL 1.1, which Lota's
+      # renderer cannot use, so Pop's window stayed 0x0 and its loop never
+      # ran (issue 163). Lota's CI gives its games Mesa's software OpenGL,
+      # llvmpipe, beside their program, where SDL3's
+      # LoadLibrary("OPENGL32.DLL") finds it before System32's: x64 takes
+      # mesa-dist-win's release 24.2.4, as LÖVE's CI and Lota's windows.yml
+      # do, checked by its SHA-256, with the DLLs that opengl32.dll and
+      # libgallium_wgl.dll import from its folder (opengl32.dll alone and
+      # its driver hang Pop at start, for want of libglapi.dll). ARM64, for
+      # which mesa-dist-win builds nothing, takes MSYS2's CLANGARM64 Mesa and
+      # the same closure, as Lota's windows.yml does (setup-msys2 downloads
+      # MSYS2's base from GitHub's releases, so a failed attempt is tried
+      # again two minutes later). Neither goes into the app: deliver-pop.ps1
+      # copies the DLLs beside the unpacked Pop.exe, so the .zip Fledge
+      # built holds none of it.
+      - name: Download Mesa's OpenGL for Pop
+        if: matrix.platform == 'x64-mingw-ucrt'
+        shell: pwsh
+        env:
+          MESA_DIST_WIN: https://github.com/pal1000/mesa-dist-win/releases/download/24.2.4/mesa3d-24.2.4-release-msvc.7z
+          MESA_SHA256: e3919de795bee231edc88e9c996f2c1851250dff3bc9b51b9121760ae2250db0
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'mesa.7z'
+          Invoke-WebRequest -Uri $env:MESA_DIST_WIN -OutFile $archive
+          $have = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash
+          if ($have -ne $env:MESA_SHA256) { throw "mesa.7z is $have, not the pinned $env:MESA_SHA256" }
+          7z x -y "-o$env:RUNNER_TEMP\mesa-dist" $archive | Out-Null
+          $folder = Join-Path $env:RUNNER_TEMP 'mesa'
+          New-Item -ItemType Directory -Force $folder | Out-Null
+          foreach ($dll in 'opengl32.dll', 'libgallium_wgl.dll', 'libglapi.dll', 'dxil.dll') { Copy-Item -LiteralPath (Join-Path "$env:RUNNER_TEMP\mesa-dist\x64" $dll) $folder }
+          Get-ChildItem $folder | Format-Table Name, Length
+
+      - id: msys2
+        if: matrix.platform == 'aarch64-mingw-ucrt'
+        continue-on-error: true
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+        with: &msys2
+          msystem: CLANGARM64
+          location: ${{ runner.temp }}/mesa-msys2
+          pacboy: mesa:p llvm-tools:p
+      - name: Wait before setting MSYS2 up again
+        if: matrix.platform == 'aarch64-mingw-ucrt' && steps.msys2.outcome == 'failure'
+        shell: pwsh
+        run: |
+          Start-Sleep -Seconds 120
+          Remove-Item -Recurse -Force "$env:RUNNER_TEMP\mesa-msys2" -ErrorAction SilentlyContinue
+      - if: matrix.platform == 'aarch64-mingw-ucrt' && steps.msys2.outcome == 'failure'
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+        with: *msys2
+      - name: Gather Mesa's OpenGL for Pop
+        if: matrix.platform == 'aarch64-mingw-ucrt'
+        shell: msys2 {0}
+        run: .github/scripts/gather-mesa.sh "$(cygpath -m "$MINGW_PREFIX/bin")" "$(cygpath -m "$RUNNER_TEMP/mesa")"
+
+      # Pop, a Lota game, started as Explorer starts it and clicked
+      # with the messages a mouse sends: it must pop a dot and end
+      # itself with its score (.github/scripts/deliver-pop.ps1).
+      - name: Start Pop.exe, click its dots, and let it end itself
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-pop.ps1 -Archive "$env:RUNNER_TEMP/delivered/Pop-$env:PLATFORM.zip" -Mesa "$env:RUNNER_TEMP/mesa"
 
       # test/fixtures/programs: a GUI and a console program from one
       # folder, with one project and one Ruby, sharing one save

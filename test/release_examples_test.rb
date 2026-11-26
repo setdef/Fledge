@@ -41,8 +41,10 @@ class ReleaseExamplesTest < Minitest::Test
     assert_equal ["Focus Timer-arm64-darwin.tar.gz", "Focus Timer-arm64-darwin.dmg"], names.("arm64-darwin", "Focus Timer")
     assert_equal ["Focus Timer-x86_64-linux.tar.gz", "Focus Timer-x86_64-linux.AppImage"], names.("x86_64-linux", "Focus Timer")
     assert_equal %w[Pop-arm64-darwin.tar.gz Pop-arm64-darwin.dmg], names.("arm64-darwin", "Pop")
+    assert_equal %w[Pop-x64-mingw-ucrt.zip Pop-x64-mingw-ucrt-setup.exe], names.("x64-mingw-ucrt", "Pop")
+    assert_equal %w[Pop-aarch64-mingw-ucrt.zip Pop-aarch64-mingw-ucrt-setup.exe], names.("aarch64-mingw-ucrt", "Pop")
     %w[x64-mingw-ucrt aarch64-mingw-ucrt x86_64-linux-musl aarch64-linux-musl].each { |platform| assert_empty names.(platform, "Focus Timer"), platform }
-    %w[x86_64-linux-musl aarch64-linux-musl x64-mingw-ucrt aarch64-mingw-ucrt].each { |platform| assert_empty names.(platform, "Pop"), platform }
+    %w[x86_64-linux-musl aarch64-linux-musl].each { |platform| assert_empty names.(platform, "Pop"), platform }
   end
 
   def test_a_desktop_example_is_its_archive_and_each_installer_its_fledge_yml_lists

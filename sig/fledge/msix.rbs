@@ -9,6 +9,7 @@ module Fledge
     ASSETS: String
     APPLICATION: String
     CONFIG: String
+    UNSIGNED_OID: String
     VISUAL_C_RUNTIME: Hash[String, String]
     NAMESPACES: Hash[String, String]
 
@@ -37,6 +38,8 @@ module Fledge
     private def package_name: () -> String
 
     private def publisher: () -> String
+
+    private def unsigned?: () -> bool
 
     private def publisher_display_name: () -> String
 

@@ -285,11 +285,12 @@ The Store takes a Windows app in two ways: as an MSIX package, which it signs fo
    windows:
      msix_name: 12345Example.MyCoolApp    # Package/Identity/Name
      msix_publisher: CN=1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D   # Package/Identity/Publisher
+     msix_allow_unsigned: false           # the Store signs the package, so it carries no OID
    ```
    <!-- SPDX-SnippetEnd -->
 
 3. Add PNGs of 44, 50, and 150 pixels beside your icon, such as `icons/app-44.png`, `icons/app-50.png`, and `icons/app-150.png`. These are the logos the Start menu, the taskbar, and the Store show.
-4. Run `bundle exec fledge build` on Windows without `--sign`. Fledge writes `NAME-PLATFORM.msix` with Microsoft's MakeAppx, which comes with the [Windows SDK](https://learn.microsoft.com/windows/apps/windows-sdk/downloads) and with Microsoft's `Microsoft.Windows.SDK.BuildTools` package. Fledge looks on your `PATH` first, then where the SDK installs it.
+4. Run `bundle exec fledge build` on Windows without `--sign`, with `msix_allow_unsigned: false` as above. Fledge writes `NAME-PLATFORM.msix` with Microsoft's MakeAppx, which comes with the [Windows SDK](https://learn.microsoft.com/windows/apps/windows-sdk/downloads) and with Microsoft's `Microsoft.Windows.SDK.BuildTools` package. Fledge looks on your `PATH` first, then where the SDK installs it.
 5. Upload the `.msix` for each architecture you build, x64 and ARM64, on the submission's Packages page.
 
 Your app runs with full trust, as it does outside a package. The package declares `runFullTrust`, a [restricted capability](https://learn.microsoft.com/windows/apps/package-and-deploy/app-capability-declarations), so Partner Center asks you why the app needs it. Write that it is a desktop program that runs Ruby, as it runs outside a package.
@@ -314,7 +315,11 @@ Fledge writes one `PackageDependency` for each entry into the package's manifest
 
 The package names Windows 10 version 1809 as the oldest Windows it installs on, though Windows 11 is the oldest Fledge's apps are tested on. Its version is your `version`'s first three numbers and a 0, because the Store keeps the fourth number for itself. The Store also refuses a version whose first number is 0, so ship `1.0.0` or later.
 
-To try the package on your own computer before you submit it, sign it with a test certificate whose subject is your `msix_publisher`, trust that certificate in the computer's Trusted People store, and install the package with `Add-AppxPackage`, as Microsoft's [signing guide](https://learn.microsoft.com/windows/msix/package/create-certificate-package-signing) says. `fledge build --sign THUMBPRINT` signs the package as it signs the setup program. Fledge's CI installs a package signed that way, runs the app from it, and removes it.
+**Install an `.msix` on your own computer.** What the package carries as its publisher depends on how it is signed:
+
+- **Unsigned, to try it.** An `.msix` that `fledge build` leaves unsigned installs on Windows 11 with `Add-AppxPackage -Path NAME-PLATFORM.msix -AllowUnsigned`, as Microsoft's [Run unsigned packages](https://learn.microsoft.com/windows/msix/package/unsigned-package) says. Microsoft requires an unsigned package to carry a special OID in its publisher, which Fledge appends to `msix_publisher`: `CN=Example, OID.2.25.311729368913984317654407730594956997722=1`. Without it Windows refuses the package. Run PowerShell as an administrator, since an unsigned package with programs in it installs for every user: from a standard account, Windows 11 refuses it with 0x80073D2B, "an unsigned package cannot include Executable activations". Microsoft means this for trying an app, not for giving it to people. An unsigned package never has the identity of a signed one, so a signed build of the same app installs beside it.
+- **Signed by Fledge.** `fledge build --sign THUMBPRINT` or `--sign-command` signs the package as it signs the setup program, and its publisher is `msix_publisher` as it stands, which must be the certificate's subject. Sign it with a test certificate, trust that certificate in the computer's Trusted People store, and install the package with `Add-AppxPackage`, as Microsoft's [signing guide](https://learn.microsoft.com/windows/msix/package/create-certificate-package-signing) says. Fledge's CI installs a package signed that way, runs the app from it, and removes it.
+- **Signed by you after the build, or by the Store.** Set `msix_allow_unsigned: false`. Fledge then writes `msix_publisher` as it stands, whether or not it signs the package: Microsoft says a package ready to be distributed must not carry the OID, and its publisher must be the certificate's subject. A package built so cannot be installed with `-AllowUnsigned`.
 
 To sideload an MSIX package without the Store, sign it with `--sign` or `--sign-command` and a certificate from a certificate authority, and set `msix_publisher` to that certificate's subject. Windows installs the package only when the subject and `msix_publisher` match.
 

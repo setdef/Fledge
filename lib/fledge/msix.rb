@@ -27,7 +27,13 @@ module Fledge
   # outside the Store only when a certificate the computer trusts has
   # signed it, so with <tt>--sign</tt> or <tt>--sign-command</tt> the
   # package is signed as the setup program is, and without them it is
-  # left unsigned, for the Store.
+  # left unsigned, for the Store or for <tt>Add-AppxPackage
+  # -AllowUnsigned</tt>. An unsigned package's publisher ends with
+  # UNSIGNED_OID, which Microsoft requires of it (Microsoft Learn, "Run
+  # unsigned packages"), unless +windows+'s +msix_allow_unsigned+ is
+  # false, for a package that the developer signs after the build or
+  # that the Store signs, whose publisher is +msix_publisher+ as it
+  # stands.
   #
   # This class writes the package's manifest, <tt>AppxManifest.xml</tt>,
   # from the app's identity, as Microsoft's "Generating MSIX package
@@ -105,6 +111,13 @@ module Fledge
       "Publisher" => "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
     }.freeze
 
+    # The OID that Microsoft's "Run unsigned packages" says an unsigned
+    # package's <tt>Identity</tt> must carry in its <tt>Publisher</tt>, or
+    # Windows will not register it, and which <tt>Add-AppxPackage
+    # -AllowUnsigned</tt> then installs. It keeps an unsigned package from
+    # having the identity of a signed one.
+    UNSIGNED_OID = "OID.2.25.311729368913984317654407730594956997722=1"
+
     # The namespaces of the manifest's elements.
     NAMESPACES = {
       "xmlns" => "http://schemas.microsoft.com/appx/manifest/foundation/windows10",
@@ -165,7 +178,7 @@ module Fledge
     # SPDX-License-Identifier: MIT-0
     #++
     #   msix.manifest[/<Identity [^>]*>/]
-    #   # => "<Identity Name=\"com.example.MyApp\" Publisher=\"CN=Example\" Version=\"1.2.3.0\" ProcessorArchitecture=\"x64\" />"
+    #   # => "<Identity Name=\"com.example.MyApp\" Publisher=\"CN=Example, OID.2.25.311729368913984317654407730594956997722=1\" Version=\"1.2.3.0\" ProcessorArchitecture=\"x64\" />"
     #--
     # SPDX-SnippetEnd
     #++
@@ -285,10 +298,19 @@ module Fledge
         "give fledge.yml's windows an msix_name, such as Partner Center's Package/Identity/Name"
     end
 
-    # The package's publisher, +msix_publisher+. Raises Fledge::Error when
+    # The package's publisher, +msix_publisher+, followed by UNSIGNED_OID
+    # when the package is unsigned. Raises Fledge::Error when
     # there is none.
     private def publisher
-      @windows&.msix_publisher || raise(Error, "an msix installer needs fledge.yml's windows: msix_publisher, such as CN=Example")
+      subject = @windows&.msix_publisher || raise(Error, "an msix installer needs fledge.yml's windows: msix_publisher, such as CN=Example")
+      unsigned? ? "#{subject}, #{UNSIGNED_OID}" : subject
+    end
+
+    # Whether Fledge leaves the package unsigned for Windows' own
+    # <tt>-AllowUnsigned</tt>: no signer signs it, and +windows+ has not
+    # said that the developer or the Store will sign it.
+    private def unsigned?
+      @signing.nil? && (@windows&.msix_allow_unsigned != false)
     end
 
     # The publisher's name as people see it: the app's publisher, which

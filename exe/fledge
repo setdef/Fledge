@@ -365,7 +365,12 @@
 #                          Store, or the subject of the certificate you
 #                          sign with; and msix_name, the package's name,
 #                          Partner Center's Package/Identity/Name
-#                          (default: the identifier). The package's
+#                          (default: the identifier); and
+#                          msix_allow_unsigned, which is true unless
+#                          the package is signed after the build or by
+#                          the Store (default: true), and which lets Add-AppxPackage
+#                          -AllowUnsigned install an unsigned package.
+#                          The package's
 #                          version is the version's first three numbers
 #                          and a 0. And visual_c_runtime, how the app
 #                          comes by Microsoft's Visual C++ runtime when
@@ -542,10 +547,13 @@
 #                        MakeAppx packs: the app's folder as a full-trust
 #                        desktop app for Windows 10 1809 and newer, with
 #                        its logos and windows: msix_publisher. Unsigned
-#                        unless --sign or --sign-command signs it, it is
-#                        what the Microsoft Store takes, and signs with
-#                        Microsoft's certificate; signed, Windows
-#                        installs it where the certificate is trusted.
+#                        unless --sign or --sign-command signs it, it
+#                        carries the OID that Add-AppxPackage
+#                        -AllowUnsigned needs, unless windows:
+#                        msix_allow_unsigned is false, as it is for the
+#                        Microsoft Store, which signs with Microsoft's
+#                        certificate; signed, Windows installs it where
+#                        the certificate is trusted.
 #     DIR/FILE.sha256    Beside the archive and each installer, its
 #                        SHA-256, as sha256sum prints it: the hash, two
 #                        spaces, and FILE's name. In DIR,

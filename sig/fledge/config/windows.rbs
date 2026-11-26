@@ -11,6 +11,7 @@ module Fledge
 
       attr_reader msix_name: String?
       attr_reader msix_publisher: String?
+      attr_reader msix_allow_unsigned: bool
       attr_reader msix_dependencies: Array[Dependency]
       attr_reader visual_c_runtime: String?
 
@@ -25,13 +26,15 @@ module Fledge
         def self.new: (name: String, publisher: String, min_version: String) -> instance
       end
 
-      def self.new: (msix_name: String?, msix_publisher: String?, msix_dependencies: Array[Dependency], visual_c_runtime: String?) -> instance
+      def self.new: (msix_name: String?, msix_publisher: String?, msix_allow_unsigned: bool, msix_dependencies: Array[Dependency], visual_c_runtime: String?) -> instance
 
       def self.from: (Hash[Object, Object] data, String file) -> Windows?
 
       private def self.package_name: (Object value, String file) -> String?
 
       private def self.package_publisher: (Object value, String file) -> String?
+
+      private def self.allow_unsigned: (Object value, String file) -> bool
 
       private def self.dependencies: (Object value, String file) -> Array[Dependency]
 

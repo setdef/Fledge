@@ -136,7 +136,7 @@ if (Get-Command ruby -ErrorAction SilentlyContinue) { Fail "Get-Command still fi
 
 if (Get-AppxPackage -Name $Identifier) { Fail "$Identifier is installed before the install" }
 
-# What the unsigned package holds, as the Store takes it.
+# What the unsigned package holds, as the Store or Add-AppxPackage -AllowUnsigned takes it, with the OID that Microsoft requires in its publisher.
 $entries = Entries $Package
 foreach ($entry in 'AppxManifest.xml', 'AppxBlockMap.xml', 'Assets/StoreLogo.png', 'Assets/Square44x44Logo.png', 'Assets/Square150x150Logo.png', 'fledge.cfg', 'app/main.rb') {
   if ($entries -notcontains $entry) { Fail "the package has no $entry" }
@@ -146,7 +146,7 @@ if ($entries -contains 'AppxSignature.p7x') { Fail 'the unsigned package has a s
 Write-Host 'ok: the unsigned package holds the manifest, the logos, the program, and the app, and no signature'
 [xml] $manifest = EntryText $Package 'AppxManifest.xml'
 $identity = $manifest.Package.Identity
-Expect 'the identity' "$($identity.Name) $($identity.Publisher) $($identity.Version) $($identity.ProcessorArchitecture)" "$Identifier $Publisher 1.2.3.0 $architecture"
+Expect 'the identity' "$($identity.Name) $($identity.Publisher) $($identity.Version) $($identity.ProcessorArchitecture)" "$Identifier $Publisher, OID.2.25.311729368913984317654407730594956997722=1 1.2.3.0 $architecture"
 Expect 'the display name' $manifest.Package.Properties.DisplayName $appName
 Expect 'the publisher display name' $manifest.Package.Properties.PublisherDisplayName 'setdef'
 if ((EntryText $Package 'fledge.cfg') -match '(?m)^identifier') { Fail "the package's fledge.cfg names an identifier" }
@@ -154,6 +154,28 @@ Write-Host "ok: the package's fledge.cfg leaves the process the package's AppUse
 $refusal = Refused $Package
 if (-not $refusal) { Fail 'Windows installed the unsigned package' }
 Write-Host "ok: Windows refuses the unsigned package: $($refusal.Trim())"
+
+# With the OID in its publisher, Add-AppxPackage -AllowUnsigned must
+# install it (Microsoft Learn, "Run unsigned packages"), which a
+# package that holds programs needs an administrator for. It is removed
+# at once, since the signed package has the same name.
+if (-not $UntrustedOnly) {
+  try {
+    try {
+      Add-AppxPackage -Path $Package -AllowUnsigned
+    } catch {
+      Fail "Windows refused the unsigned package with -AllowUnsigned: $($_.Exception.Message.Trim())"
+    }
+    $unsigned = Get-AppxPackage -Name $Identifier
+    if (-not $unsigned) { Fail "Get-AppxPackage finds no $Identifier after the -AllowUnsigned install" }
+    Expect 'the unsigned package''s installed publisher' $unsigned.Publisher "$Publisher, OID.2.25.311729368913984317654407730594956997722=1"
+  } finally {
+    $left = Get-AppxPackage -Name $Identifier
+    if ($left) { Remove-AppxPackage -Package $left.PackageFullName -ErrorAction SilentlyContinue }
+  }
+  if (Get-AppxPackage -Name $Identifier) { Fail "$Identifier is still installed after the unsigned package's removal" }
+  Write-Host 'ok: the unsigned package installs with -AllowUnsigned and is removed'
+}
 
 # The signed package: refused until its certificate is trusted.
 if ((Entries $Signed) -notcontains 'AppxSignature.p7x') { Fail 'the signed package has no signature' }

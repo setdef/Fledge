@@ -16,6 +16,8 @@ class MsixTest < Minitest::Test
   X64 = Fledge::Platform.find("x64-mingw-ucrt")
   ARM64 = Fledge::Platform.find("aarch64-mingw-ucrt")
   PUBLISHER = "CN=Example, O=Example, C=US"
+  UNSIGNED_PUBLISHER = "#{PUBLISHER}, OID.2.25.311729368913984317654407730594956997722=1"
+  SIGNER = Struct.new(:signed) { def sign(path) = signed << path }
 
   def setup
     @dist = Dir.mktmpdir("msix-test")
@@ -43,12 +45,12 @@ class MsixTest < Minitest::Test
       long_description: nil, homepage: nil, file_associations:)
   end
 
-  def windows(msix_name: nil, msix_publisher: PUBLISHER, msix_dependencies: [])
-    Fledge::Config::Windows.new(msix_name:, msix_publisher:, msix_dependencies:, visual_c_runtime: nil)
+  def windows(msix_name: nil, msix_publisher: PUBLISHER, msix_dependencies: [], msix_allow_unsigned: true)
+    Fledge::Config::Windows.new(msix_name:, msix_publisher:, msix_dependencies:, msix_allow_unsigned:, visual_c_runtime: nil)
   end
 
-  def msix(identity: self.identity, windows: self.windows, platform: X64, env: {})
-    Fledge::Msix.new(identity:, windows:, folder: @folder, platform:, to: "#{@folder}.msix", env:)
+  def msix(identity: self.identity, windows: self.windows, platform: X64, env: {}, signing: nil)
+    Fledge::Msix.new(identity:, windows:, folder: @folder, platform:, to: "#{@folder}.msix", env:, signing:)
   end
 
   def manifest(**) = REXML::Document.new(msix(**).manifest)
@@ -61,10 +63,23 @@ class MsixTest < Minitest::Test
   def test_the_identity_is_the_packages
     identity = first(manifest, "/m:Package/m:Identity")
 
-    assert_equal ["com.example.MyApp", PUBLISHER, "1.2.3.0", "x64"], %w[Name Publisher Version ProcessorArchitecture].map { |key| identity.attributes[key] }
+    assert_equal ["com.example.MyApp", UNSIGNED_PUBLISHER, "1.2.3.0", "x64"], %w[Name Publisher Version ProcessorArchitecture].map { |key| identity.attributes[key] }
     named = first(manifest(windows: windows(msix_name: "12345Example.MyApp"), platform: ARM64), "/m:Package/m:Identity")
     assert_equal %w[12345Example.MyApp arm64], [named.attributes["Name"], named.attributes["ProcessorArchitecture"]]
     assert_equal "7.0.0.0", first(manifest(identity: identity(version: "7")), "/m:Package/m:Identity").attributes["Version"]
+  end
+
+  # Microsoft's "Run unsigned packages" says an unsigned package must
+  # carry the OID in its Identity's Publisher, or Windows will not
+  # register it. A package Fledge signs keeps its certificate's subject,
+  # which Windows requires the Publisher to equal, and so does one that
+  # the developer says will be signed after the build or by the Store.
+  def test_an_unsigned_package_carries_the_oid_microsoft_requires_of_it
+    publisher = -> (**options) { first(manifest(**options), "/m:Package/m:Identity").attributes["Publisher"] }
+
+    assert_equal UNSIGNED_PUBLISHER, publisher.call
+    assert_equal PUBLISHER, publisher.call(signing: SIGNER.new([]))
+    assert_equal PUBLISHER, publisher.call(windows: windows(msix_allow_unsigned: false))
   end
 
   # A desktop app packaged by hand, as Microsoft's "Generating MSIX

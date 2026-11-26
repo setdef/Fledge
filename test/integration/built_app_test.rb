@@ -1383,7 +1383,7 @@ class BuiltAppTest < Minitest::Test
     assert_predicate status, :success?, extracted
     manifest = File.read(File.join(into, "AppxManifest.xml"))
     architecture = Fledge::Msix::ARCHITECTURES.fetch(@platform.name)
-    assert_includes manifest, %(<Identity Name="com.setdef.fledge.HelloWindow" Publisher="CN=Fledge Test Signing" Version="1.2.3.0" ProcessorArchitecture="#{architecture}" />)
+    assert_includes manifest, %(<Identity Name="com.setdef.fledge.HelloWindow" Publisher="CN=Fledge Test Signing, #{Fledge::Msix::UNSIGNED_OID}" Version="1.2.3.0" ProcessorArchitecture="#{architecture}" />)
     refute_includes File.read(File.join(into, "fledge.cfg")), "identifier"
   end
 

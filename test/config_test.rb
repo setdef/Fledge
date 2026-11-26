@@ -96,7 +96,8 @@ class ConfigTest < Minitest::Test
 
     assert_equal %w[nsis msix], config.installers
     assert_equal Fledge::Config::Windows.new(msix_name: "12345Example.Hello", msix_publisher: "CN=1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D",
-      msix_dependencies: [], visual_c_runtime: nil), config.windows
+      msix_dependencies: [], msix_allow_unsigned: true, visual_c_runtime: nil), config.windows
+    refute load("windows:\n  msix_allow_unsigned: false\n").windows.msix_allow_unsigned
     assert_nil load("windows:\n  msix_publisher: \"CN=Example, O=Example, C=US\"\n").windows.msix_name
     assert_equal "local", load("windows:\n  visual_c_runtime: local\n").windows.visual_c_runtime
     assert_equal "central", load("windows:\n  visual_c_runtime: central\n").windows.visual_c_runtime
@@ -174,10 +175,11 @@ class ConfigTest < Minitest::Test
       "installers: [dmg]\n" => /: only a windowed app has installers; a console app ships as its archive/,
       "kind: windowed\ninstallers: [msix]\n" => /: an msix installer needs windows: msix_publisher, the package's publisher: Partner Center's .* such as CN=Example\z/,
       "kind: windowed\ninstallers: [msix]\nwindows: {}\n" => /: an msix installer needs windows: msix_publisher/,
-      "windows: CN=Example\n" => /: windows must be a mapping of msix_name, msix_publisher, msix_dependencies, and visual_c_runtime, such as windows: \{ msix_publisher: CN=Example \}\z/,
-      "windows:\n  publisher: CN=Example\n" => /: windows has 'publisher', which Fledge does not know\. It knows msix_name, msix_publisher, msix_dependencies, and visual_c_runtime\.\z/,
+      "windows: CN=Example\n" => /: windows must be a mapping of msix_name, msix_publisher, msix_allow_unsigned, msix_dependencies, and visual_c_runtime, such as windows: \{ msix_publisher: CN=Example \}\z/,
+      "windows:\n  publisher: CN=Example\n" => /: windows has 'publisher', which Fledge does not know\. It knows msix_name, msix_publisher, msix_allow_unsigned, msix_dependencies, and visual_c_runtime\.\z/,
       "windows:\n  visual_c_runtime: true\n" => /: windows: visual_c_runtime must be local, to copy Microsoft's Visual C\+\+ runtime from this computer into the app, or central, for computers that have the Visual C\+\+ Redistributable, not true\z/,
       "windows:\n  visual_c_runtime: app\n" => /: windows: visual_c_runtime must be local, .* not "app"\z/,
+      "windows:\n  msix_allow_unsigned: no thanks\n" => /: windows: msix_allow_unsigned must be true or false, not "no thanks"\z/,
       "windows:\n  msix_name: ab\n" => /: windows: msix_name must be 3 to 50 letters, digits, periods, and hyphens, .* not "ab"\z/,
       "windows:\n  msix_name: My_App\n" => /: windows: msix_name must be 3 to 50/,
       "windows:\n  msix_name: #{'a' * 51}\n" => /: windows: msix_name must be 3 to 50/,

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `fledge.yml`'s `windows: msix_allow_unsigned`, true by default: set it to false for an `.msix` that you sign after the build or that the Microsoft Store signs, so that its `Publisher` is `msix_publisher` as it stands, with no OID.
 - Each release attaches the example apps, built and delivered by CI: for a desktop platform, the archive and installers `fledge build` makes, for Android a debug-signed APK, and for iOS the Xcode project, archived, to sign with your team, all named `fledge-example-NAME-VERSION-PLATFORM`.
 - `fledge.yml`'s `windows: msix_dependencies`, the framework packages an app's `.msix` depends on, such as Microsoft's Windows App Runtime for an app that draws with WinUI 3: each entry gives the package's `name`, `publisher`, and `min_version`, and `fledge build` writes a `PackageDependency` for it into the package's manifest, so the Store or App Installer installs the framework with the app. The setup program, the `.zip`, and the other installers ignore it.
 - `fledge.yml`'s `linux: deb_depends`, the packages a `.deb` depends on for the libraries an app's own Ruby opens, such as `libgtk-4-1` for GTK 4 opened with Fiddle, which no compiled file names, so `system_libraries` cannot list them: each is written as Debian Policy 7.1 writes a relationship, and goes into `Depends` after what the build found. An AppImage and a `.tar.gz` ignore it.
@@ -74,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Android, a gem's build that runs `strip`, as sassc's does, runs the NDK's, which reads Android's libraries.
 - `fledge build android` refuses a gem whose compiled file among its files, such as a library built for desktop Linux, needs a library Android does not offer an app, naming the gem, the file, and the library, where the app built and failed on the phone.
 - On Windows, a gem compiled from source against MSYS2's libffi or zlib loads in the app, as under `bundle exec`: the app's Ruby searches Ruby's architecture folder for DLLs, as RubyInstaller's start-up does, and the Windows runtimes carry the fiddle gem's `libffi-8.dll` in `ruby_builtin_dlls` too. Before, an app over ffi, and so over every gem that goes through it, or over rugged, stopped at `require` with "126: The specified module could not be found".
+- An unsigned `.msix` installs with `Add-AppxPackage -Path FILE -AllowUnsigned`: its manifest's `Publisher` now ends with the OID Microsoft requires of an unsigned package, where Windows refused it before. A signed package keeps its certificate's subject.
 
 ## [0.17.0] - 2026-11-22
 

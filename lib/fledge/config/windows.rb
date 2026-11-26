@@ -52,6 +52,8 @@ module Fledge
     #
     # This class reads the mapping: its +msix_name+, three to fifty
     # letters, digits, periods, and hyphens, its +msix_publisher+, its
+    # +msix_allow_unsigned+, which is true unless the package is signed
+    # after the build or by the Store (Fledge::Msix), its
     # +msix_dependencies+, each a Dependency, and its +visual_c_runtime+,
     # one of VISUAL_C_RUNTIME.
     #
@@ -79,7 +81,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    class Windows < Data.define(:msix_name, :msix_publisher, :msix_dependencies, :visual_c_runtime)
+    class Windows < Data.define(:msix_name, :msix_publisher, :msix_allow_unsigned, :msix_dependencies, :visual_c_runtime)
       ##
       # :attr_reader: msix_name
       # The MSIX package's name, or +nil+ for the app's identifier.
@@ -88,6 +90,13 @@ module Fledge
       # :attr_reader: msix_publisher
       # The MSIX package's publisher, a distinguished name, or +nil+ for
       # none.
+
+      ##
+      # :attr_reader: msix_allow_unsigned
+      # Whether a package Fledge leaves unsigned may be installed with
+      # <tt>Add-AppxPackage -AllowUnsigned</tt>: +true+ by default, and
+      # +false+ for a package that is signed after the build or by the
+      # Microsoft Store.
 
       ##
       # :attr_reader: msix_dependencies
@@ -102,7 +111,7 @@ module Fledge
       # that fledge build refuses such a gem.
 
       # The keys the mapping may hold.
-      KEYS = %w[msix_name msix_publisher msix_dependencies visual_c_runtime].freeze
+      KEYS = %w[msix_name msix_publisher msix_allow_unsigned msix_dependencies visual_c_runtime].freeze
 
       # A framework package an MSIX package depends on, by the three
       # attributes of the manifest's <tt>PackageDependency</tt> that name
@@ -172,17 +181,18 @@ module Fledge
         item = data["windows"]
         return nil if item.nil?
         unless item.is_a?(Hash)
-          raise Error, "#{file}: windows must be a mapping of msix_name, msix_publisher, msix_dependencies, and visual_c_runtime, " \
+          raise Error, "#{file}: windows must be a mapping of msix_name, msix_publisher, msix_allow_unsigned, msix_dependencies, and visual_c_runtime, " \
             "such as windows: { msix_publisher: CN=Example }"
         end
 
         unknown = item.keys - KEYS
         unless unknown.empty?
           raise Error, "#{file}: windows has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. " \
-            "It knows msix_name, msix_publisher, msix_dependencies, and visual_c_runtime."
+            "It knows msix_name, msix_publisher, msix_allow_unsigned, msix_dependencies, and visual_c_runtime."
         end
 
         new(msix_name: package_name(item["msix_name"], file), msix_publisher: package_publisher(item["msix_publisher"], file),
+          msix_allow_unsigned: allow_unsigned(item["msix_allow_unsigned"], file),
           msix_dependencies: dependencies(item["msix_dependencies"], file), visual_c_runtime: runtime(item["visual_c_runtime"], file))
       end
 
@@ -203,6 +213,15 @@ module Fledge
 
         raise Error, "#{file}: windows: msix_publisher must be a distinguished name, such as CN=Example: Partner Center's " \
           "Package/Identity/Publisher, or the subject of the certificate you sign with, not #{value.inspect}"
+      end
+
+      # Whether to allow unsigned installs at +value+: true or false, or
+      # +nil+, which is true.
+      private_class_method def self.allow_unsigned(value, file) # :nodoc:
+        return true if value.nil?
+        return value if value == true || value == false
+
+        raise Error, "#{file}: windows: msix_allow_unsigned must be true or false, not #{value.inspect}"
       end
 
       # The dependencies at +value+: a list of mappings of Dependency's

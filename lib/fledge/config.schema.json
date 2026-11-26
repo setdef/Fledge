@@ -216,10 +216,14 @@
           "pattern": "^[A-Za-z0-9.-]{3,50}$"
         },
         "msix_publisher": {
-          "description": "The package's publisher, a distinguished name, such as CN=Example: Partner Center's Package/Identity/Publisher for the Microsoft Store, which signs the package, or the subject of the certificate you sign it with.",
+          "description": "The package's publisher, a distinguished name, such as CN=Example: Partner Center's Package/Identity/Publisher for the Microsoft Store, which signs the package, or the subject of the certificate you sign it with. A package left unsigned gets the OID that Add-AppxPackage -AllowUnsigned requires after it, unless msix_allow_unsigned is false.",
           "type": ["string", "null"],
           "maxLength": 8192,
           "pattern": "^[A-Za-z][A-Za-z0-9.]*=\\S"
+        },
+        "msix_allow_unsigned": {
+          "description": "Whether an unsigned package carries the OID that Windows requires to install it with Add-AppxPackage -AllowUnsigned (default: true). Set it to false for a package you sign after the build, or that the Microsoft Store signs, whose publisher must be msix_publisher as it stands. A package signed by --sign or --sign-command never carries it.",
+          "type": ["boolean", "null"]
         },
         "msix_dependencies": {
           "description": "The framework packages the MSIX package depends on, such as Microsoft's Windows App Runtime for an app that draws with WinUI 3 (default: none). The Microsoft Store or App Installer installs each with the package, which carries none of their files. Only an msix installer reads it. Each entry is the dependency's PackageDependency in the package manifest: the name and publisher its package's Identity has, and the oldest version that serves.",

@@ -29,7 +29,16 @@ min_version = "2026.10.11"
 # every install of any tool, on every contributor's computer, and CI's
 # setup would have to install from it too. precompiled_url goes when
 # Fledge moves to Ruby 4.1.0.
+#
+# fetch_remote_versions_timeout is how long mise waits to list a tool's
+# versions, 20 seconds unless set, and it ends an install of Ruby with
+# "timed out after 20.00s" when the list is slow: mise-versions.jdx.dev
+# took 80 seconds to resolve Rust in the macOS job of
+# ci.yml run 45791643212, whose Ruby install then failed at 20. The
+# download is limited by http_download_timeout (30 minutes), and a
+# job's timeout-minutes bounds the whole.
 [settings]
+fetch_remote_versions_timeout = "5m"
 ruby.precompiled_url = "https://github.com/jdx/ruby/releases/download/{version}/ruby-{version}.{platform}.tar.gz"
 ruby.compile = false
 

@@ -47,3 +47,12 @@ windows:
   # Store replaces both with the identity Partner Center assigns.
   msix_name: setdef.Basket
   msix_publisher: CN=setdef
+  # Its Ruby draws with WinUI 3 where Microsoft's Windows App Runtime is
+  # on the computer (lib/basket/winui.rb), so its package depends on that
+  # framework package, which the Store installs with it.
+  # The setup program and the .zip ask for nothing, and Basket draws with
+  # Win32 on a computer that lacks the runtime.
+  msix_dependencies:
+    - name: Microsoft.WindowsAppRuntime.2
+      publisher: CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US
+      min_version: 2.7.0.0

@@ -9,6 +9,7 @@ require "rubocop/rake_task"
 require "rubycritic/rake_task"
 require "inch/rake"
 require_relative "lint_files"
+require_relative "ruby_header"
 
 RuboCop::RakeTask.new
 
@@ -71,49 +72,11 @@ namespace :reuse do
     end
   end
 
-  desc "Normalize Ruby files: frozen_string_literal at top, SPDX in #--/#++ block"
+  desc "Normalize Ruby files: frozen_string_literal at top, SPDX in #--/#++ block (tasks/ruby_header.rb)"
   task :normalize_ruby do
-    ruby_extensions = %w[rb rake gemspec].freeze
-    ruby_files = Dir.glob("**/*.{#{ruby_extensions.join(',')}}")
-      .reject { |f| f.start_with?("vendor/", "tmp/", "dist/", ".") }
-
-    fixed_count = 0
-    ruby_files.each do |file|
-      content = File.read(file)
-      original = content.dup
-
-      # Skip if no SPDX header
-      next unless content.match?(/# SPDX-/)
-
-      # Extract components
-      frozen = content.match?(/^# frozen_string_literal: true/)
-      spdx_match = content.match(/(# SPDX-FileCopyrightText:[^\n]+\n(?:#[^\n]*\n)*# SPDX-License-Identifier:[^\n]+\n)/m)
-      next unless spdx_match
-
-      spdx_block = spdx_match[1]
-
-      # Remove existing frozen_string_literal and SPDX block (and any #--/#+++)
-      cleaned = content
-        .sub(/^# frozen_string_literal: true\n+/, "")
-        .sub(/^#--\s*\n/, "")
-        .sub(spdx_block, "")
-        .sub(/^#\+\+\s*\n/, "")
-        .sub(/\A\n+/, "") # Remove leading blank lines
-
-      # Rebuild file in correct order: frozen, blank, #--, SPDX, #++, rest
-      new_content = ""
-      new_content += "# frozen_string_literal: true\n\n" if frozen
-      new_content += "#--\n#{spdx_block}#++\n\n"
-      new_content += cleaned.sub(/\A\n+/, "") # Ensure no double blank lines
-
-      if new_content != original
-        File.write(file, new_content)
-        puts "  Normalized #{file}"
-        fixed_count += 1
-      end
-    end
-
-    puts fixed_count.zero? ? "All Ruby files properly normalized!" : "Fixed #{fixed_count} files."
+    fixed = RubyHeader.fix(".", RubyHeader.files("."))
+    fixed.each { |file| puts "  Normalized #{file}" }
+    puts fixed.empty? ? "All Ruby files properly normalized!" : "Fixed #{fixed.size} files."
   end
 end
 task(:reuse) { Rake::Task["reuse:lint"].invoke }

@@ -12,7 +12,8 @@ require "stringio"
 # each commit about to be pushed (tasks/fast_check.rb), and each lint of
 # the gate's that reads a file they change, over the files it changes
 # where the lint can be narrowed so: RuboCop (on every file when its
-# configuration or version changes), shellcheck, actionlint, and
+# configuration or version changes), the shape of a Ruby file's header
+# (tasks/ruby_header.rb), shellcheck, actionlint, and
 # clang-format; then REUSE, Steep and the RBS checks when typed code
 # changes, RDoc's coverage when documented code changes, the unit
 # tests, and the package check (tasks/package.rake), which loads Fledge
@@ -24,6 +25,7 @@ desc "The fast check before a push, of the commits since BASE (default: the upst
 task :check, [:base] do |_task, arguments|
   require_relative "fast_check"
   require_relative "lint_files"
+  require_relative "ruby_header"
   require "rubocop"
 
   root = File.expand_path("..", __dir__)
@@ -42,6 +44,10 @@ task :check, [:base] do |_task, arguments|
     puts "RuboCop on #{ruby.size} changed file(s)"
     failures << "RuboCop" unless RuboCop::CLI.new.run(["--force-exclusion", *ruby]).zero?
   end
+
+  # The gate's lint:fix rewrites a header the check leaves be, and the
+  # step "Fail if the gate changed a file" then fails the run.
+  RubyHeader.check(root, check.changed).each { |problem| failures << problem }
 
   # actionlint passes without a word when it finds no shellcheck, so a
   # missing shellcheck fails here, as it does in lint:workflows.

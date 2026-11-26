@@ -757,3 +757,32 @@ This comes from Microsoft's pages and from the packages, and no run built or ins
 - The VCLibs framework dependency that the same page lists as a prerequisite for a packaged app is already one of Fledge's two cases (`visual_c_runtime: central`).
 
 The package then carries no file of Microsoft's, and `fledge build` downloads nothing: a package the Store installs gets the framework with it, and a package installed by hand needs the framework already registered or given to `Add-AppxPackage` with `-DependencyPath`, as for the Visual C++ runtime ("Deploy packaged apps", line 61). The page says the Main and Singleton packages cannot be declared as dependencies, and gives the Deployment API as the way to deploy them, which an app needs only for features outside the framework package, push notifications among them. The process of such a package has a package graph made from its manifest, so it does not call the bootstrapper, which is for unpackaged programs. Whether a Ruby process in that package finds `Microsoft.UI.Xaml.*` through the package graph with no activation context was not tried. The same computer had the framework package 2.7.0 registered for its account, in the folder the Application log shows above.
+
+## 2026-11-25: the text box in a process with package identity
+
+The section above left one hypothesis that a run could test: `Windows.ApplicationModel.LimitedAccessFeatures` needs the caller to have package identity, which a process started from `ruby.exe` lacks. One test package gave a Ruby process that identity, on the same Windows 11 computer (build 10.0.26300), on its signed-in desktop. The text box still ends the process. Each run checked, before it touched anything, that it ran as the Windows account set aside for these runs (`whoami` and `USERNAME` both named it), and would have exited without touching anything otherwise; each run passed that check.
+
+**Run 1, what the computer allowed (read only).** Developer Mode was already on (`AllowDevelopmentWithoutDevLicense` was 1 under `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock`), so a package registered from loose files needed no certificate and no setting changed. `Add-AppxPackage` has `-AllowUnsigned`, `Microsoft.WindowsAppRuntime.2` 2.7.0.0 (x64 and x86) and `Microsoft.VCLibs.140.00.UWPDesktop` 14.0.33728.0 were registered for the account, and no package named `Setdef.FledgeWinUIProbe` existed.
+
+**The package.** `Setdef.FledgeWinUIProbe` 1.0.0.0 for x64, with the manifest that `Fledge::Msix#manifest` writes for a desktop app (`runFullTrust`, `Windows.FullTrustApplication`, `Windows.Desktop` 10.0.17763.0), the VCLibs `PackageDependency` of `lib/fledge/msix.rb` (lines 183 to 186), and a second one on `Microsoft.WindowsAppRuntime.2`, `MinVersion` 2.7.0.0, with Microsoft's publisher, as the last section's MSIX subsection says. Its one application's `Executable` was `ruby\bin\ruby.exe`. The package held a copy of the Ruby installation of Appendix A (18,619 files, 334 MB) with `zlib1.dll` and `libgcc_s_seh-1.dll` beside `ruby.exe`, the probe of Appendix A, and a one-pixel logo. It carried no file of the Windows App SDK. `Add-AppxPackage -Register` registered it from the folder of loose files (`IsDevelopmentMode` True), and `Invoke-CommandInDesktopPackage` started `cmd.exe` in the package, which ran Ruby and the probe, with the probe's output sent to a file.
+
+**Run 2, the probe in the package.** The probe was Appendix A's, with the section 1 steps replaced by `RoInitialize` alone: it loaded no DLL, made no activation context, and called no bootstrapper. It also printed `GetCurrentPackageFullName` and tried to activate `XamlControlsResources` first. The run printed:
+
+```
+[probe] GetCurrentPackageFullName returned 0: Setdef.FledgeWinUIProbe_1.0.0.0_x64__j2n0ph6rme2fj
+[probe] calling Application.Start on thread 59684
+[probe] XamlControlsResources: RoActivateInstance Microsoft.UI.Xaml.Controls.XamlControlsResources failed: 0x80004005
+[probe] window activated
+[probe] UnhandledException 0x80040111: Windows.ApplicationModel.LimitedAccessFeatures
+```
+
+The process exit code was -1073741189, which is 0xC000027B, as in every earlier run.
+
+- **A packaged Ruby process starts WinUI.** `Application.Start` and `OnLaunched` ran, and WinUI's classes activated through the package graph that Windows builds from the manifest's dependencies, with no manifest of Ruby's and no bootstrapper. The window with the text box activated, and the failure came afterward, as it did without identity.
+- **Package identity does not fix the text box.** The process had an identity, and WinUI still raised `0x80040111` from `LimitedAccessFeatures` and ended the process. The hypothesis about package identity is ruled out on this computer. The runs do not show whether the feature needs more than an identity, and the other hypothesis, the build of Windows, stays open.
+- **`XamlControlsResources` fails in the package** with the same 0x80004005 as outside it, so the Fluent styles stay out of reach.
+- **Not run.** The list with Add and Remove buttons, the Return key, and the Application log's record of this fault were not tried, since the text box ended the process first. A run without the text box, which would show whether the rest of the screen works in a package, was not made either.
+
+**Removal.** The script ran `Get-AppxPackage -Name Setdef.FledgeWinUIProbe | Remove-AppxPackage` in a handler that runs when the script ends, whether or not the probe passed. Afterward `@(Get-AppxPackage -Name Setdef.FledgeWinUIProbe).Count` printed 0 and `Get-AppxPackage -Name Setdef.FledgeWinUIProbe` printed nothing. The run changed no setting and installed no certificate.
+
+WinUI 3 from pure Ruby still cannot carry Basket's screen on this computer, packaged or not: a text box ends the process in both.

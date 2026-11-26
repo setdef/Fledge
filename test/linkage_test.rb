@@ -240,6 +240,19 @@ class LinkageTest < Minitest::Test
     assert_empty windows
   end
 
+  # opengl32.dll and glu32.dll are in System32 on x64 Windows, and
+  # (tasks/windows_dlls.rb's ARM64_ADDITIONS) on Windows 11 for ARM64,
+  # as ARM64X DLLs that a native ARM64 process loads: an ARM64 DLL of a
+  # gem, fxruby's, that needs them needs nothing shipped.
+  def test_an_arm64_dll_needs_no_shipping_for_opengl
+    TestReaders.need(self, :pe)
+    dll = Binaries.pe(needed: %w[KERNEL32.dll opengl32.dll glu32.dll], cpu: "aarch64")
+    linkage = Fledge::Linkage.new(os: "windows-arm64", cpu: "aarch64", readers: TestReaders.all)
+    assert_empty linkage.problems("linked 1.0.0", { "lib/ext.so" => dll })
+    assert_includes Fledge::Linkage::SYSTEM_DLLS.fetch("windows"), "opengl32.dll"
+    assert_includes Fledge::Linkage::SYSTEM_DLLS.fetch("windows"), "glu32.dll"
+  end
+
   # LibUI's DLL, built with Visual Studio, draws with Direct2D and
   # DirectWrite, which are parts of Windows, and links Microsoft's
   # Visual C++ runtime, which is not: a computer has it only once

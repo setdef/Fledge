@@ -38,7 +38,14 @@ class WindowsDllsTest < Minitest::Test
 
   def test_the_document_is_yaml_keyed_by_what_linkage_reads
     lists = YAML.safe_load(WindowsDlls.document(SOURCE))
-    assert_equal({ "windows" => %w[d2d1.dll kernel32.dll], "windows-arm64" => %w[xinputuap.dll] }, lists)
+    assert_equal({ "windows" => %w[d2d1.dll kernel32.dll], "windows-arm64" => %w[glu32.dll opengl32.dll xinputuap.dll] }, lists)
+  end
+
+  def test_the_named_additions_join_the_arm64_list_only
+    lists = YAML.safe_load(WindowsDlls.document(SOURCE))
+    assert_equal %w[glu32.dll opengl32.dll xinputuap.dll], lists.fetch("windows-arm64")
+    assert_equal %w[d2d1.dll kernel32.dll], lists.fetch("windows")
+    assert_includes WindowsDlls.document(SOURCE), "plus the names the generator adds to\n# windows-arm64"
   end
 
   def test_only_the_pinned_file_is_read

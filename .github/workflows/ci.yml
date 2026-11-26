@@ -3108,7 +3108,7 @@ jobs:
       # log that it added and removed it, draw with Common Controls 6, and
       # be aware of each monitor's scale
       # (.github/scripts/check-basket-window.ps1).
-      - name: Start Basket.exe, add an item, and remove it
+      - name: Start Basket.exe's Win32 screen, add an item, and remove it
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/check-basket-window.ps1 -Archive "$env:RUNNER_TEMP/delivered/Basket-$env:PLATFORM.zip"
 
@@ -3186,6 +3186,22 @@ jobs:
           -Windowed "$env:RUNNER_TEMP/signed/command/Hello Window-$env:PLATFORM.zip"
           -Installer "$env:RUNNER_TEMP/signed/command/Hello Window-$env:PLATFORM-setup.exe"
           -Certificate "$env:RUNNER_TEMP/signed/certificate.cer" -Trusted
+
+      # Basket's WinUI 3 screen, which the Win32 check above leaves to
+      # Windows 11 with the Windows App Runtime: the runtime is registered
+      # for the runner's account from Microsoft's NuGet package, pinned
+      # by SHA-256, when the image has none, and the check types an item,
+      # presses Add, presses Return, and presses Remove in the WinUI
+      # window through UI Automation and posted keys. It runs last and
+      # whatever came before, so it fails apart from the Win32 step
+      # (.github/scripts/check-basket-winui.ps1). Windows PowerShell,
+      # which has UI Automation's client.
+      - name: Register the Windows App Runtime, start Basket.exe's WinUI screen, add an item, and remove it
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: >-
+          powershell -NoProfile -ExecutionPolicy RemoteSigned -File .github/scripts/check-basket-winui.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/Basket-$env:PLATFORM.zip" -Platform $env:PLATFORM
 
   delivery-windows-aarch64-mingw-ucrt:
     name: Delivery (${{ matrix.platform }})

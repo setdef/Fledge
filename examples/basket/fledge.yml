@@ -26,9 +26,10 @@ long_description: |
   again.
 
   Each system draws Basket with that system's widgets: UIKit on iOS,
-  Android's views on Android, GTK 4 with libadwaita on Linux, and Win32's
-  common controls on Windows. It is an example of Fledge, which makes an
-  app of its Ruby for each of them.
+  Android's views on Android, GTK 4 with libadwaita on Linux, and WinUI 3
+  on Windows, or Win32's common controls where Windows has no WinUI. It
+  is an example of Fledge, which makes an app of its Ruby for each of
+  them.
 homepage: https://github.com/setdef/Fledge/tree/trunk/examples/basket
 # The Windows setup program shows it, and a .deb installs it.
 license_file: LICENSE.txt

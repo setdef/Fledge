@@ -1717,8 +1717,10 @@ jobs:
         run: ruby -I lib exe/fledge build -o dist examples/basket
 
       # And on Windows, where Basket's Ruby draws its screen with Win32's
-      # common controls, which every Windows has, and fledge.yml says
-      # nothing of. Delivery starts it and does what a person does.
+      # common controls, which every Windows has, or with WinUI 3 where the
+      # Windows App Runtime is installed, which fledge.yml's
+      # msix_dependencies asks an .msix to bring. Delivery starts it and
+      # does what a person does.
       - name: Build Basket for ${{ matrix.platform }}
         if: runner.os == 'Windows'
         env:

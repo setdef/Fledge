@@ -9,13 +9,16 @@
 # Windows: type an item, add it, and remove it once it is in the cart.
 # Each draws it with that system's widgets, AppKit's on a Mac, UIKit's on
 # iOS, Android's views on Android, GTK 4 with libadwaita on Linux, and
-# Win32's common controls on Windows, which this Ruby makes and drives: on
+# WinUI 3 on a Windows that has the Windows App Runtime and Win32's
+# common controls on one that has not, which this Ruby makes and drives: on
 # a Mac and iOS through lib/basket/objc.rb, Basket's few lines over
 # Fiddle, which Ruby bundles, on Android through lib/basket/android/,
 # Basket's calls into Java over Fiddle, zlib, and digest, which Ruby
 # bundles too, on Linux through lib/basket/gtk.rb, Basket's calls into
 # GTK's C API over Fiddle, and on Windows through lib/basket/win32.rb,
-# Basket's calls into user32 and comctl32 over Fiddle. The app's Ruby
+# Basket's calls into user32 and comctl32 over Fiddle, or through
+# lib/basket/winui.rb, Basket's calls into the Windows Runtime over
+# Fiddle. The app's Ruby
 # runs on the main thread, where those widgets are made, as under ruby
 # main.rb, and fledge.yml says kind: windowed, so on Windows it runs
 # without a console.

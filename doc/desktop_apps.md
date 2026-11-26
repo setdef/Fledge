@@ -4,7 +4,7 @@
 -->
 # Desktop apps: names, windows, installers, and signing
 
-Use this guide to give an app that [Fledge](../README.md) builds the name, icon, and installers people expect on macOS, Windows, and Linux, and how to sign it. You describe the app in `fledge.yml`, an optional YAML file at the top of your project, beside your `Gemfile`. `bundle exec fledge --help` prints every key.
+Use this guide to give an app that [Fledge](../README.md) builds the name, icon, and installers people expect on macOS, Windows, and Linux, to draw its windows with each system's widgets, and to sign it. You describe the app in `fledge.yml`, an optional YAML file at the top of your project, beside your `Gemfile`. `bundle exec fledge --help` prints every key.
 
 ## Name and describe your app
 
@@ -29,7 +29,7 @@ On Windows, every program carries these, console programs too: Explorer shows th
 
 ## Make a windowed app
 
-An app that opens its own windows, through a GUI library such as [SDL](https://www.libsdl.org/), sets `kind: windowed`, with an identifier and an icon:
+An app that opens its own windows, through a GUI library such as [SDL](https://www.libsdl.org/) or through each system's widgets ([below](#draw-the-window-with-each-systems-widgets)), sets `kind: windowed`, with an identifier and an icon:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -90,9 +90,34 @@ linux:
 
 Fledge writes each entry into the `.deb`'s `Depends` as you give it, after the ones it found, and checks only its form: a package name is the distribution's, so it is the one you know. `Depends` is Debian and Ubuntu's, so use the names those two share, or give alternatives for the names that differ (`libfoo1t64 | libfoo1`). Give a package's name, not a library's file name: `libgtk-4-1`, not `libgtk-4.so.1`. An AppImage, a `.tar.gz`, and the other systems' installers ignore the key, and the app's program does not check for the library before your Ruby runs, so list under `system_libraries` any library a gem's compiled file links.
 
+### Draw the window with each system's widgets
+
+Your Ruby can draw its windows with the widgets of the system it runs on, so that the app looks and behaves as other apps for that system do. Fledge adds nothing for it: no widget, no library, no binding, and no key in `fledge.yml` that turns it on. Your Ruby opens each system's libraries with `fiddle`, which Ruby bundles, as it does under `ruby main.rb`, and runs on the process's main thread, the thread every one of these toolkits needs. [`examples/basket`](../examples/basket) is a shopping list that does so on every system Fledge builds for, with each screen in a separate file. Its Ruby files are yours to copy and change:
+
+| System | Widgets | What Basket draws | Where the widgets come from |
+| --- | --- | --- | --- |
+| macOS | AppKit | A window with a text field and an Add button above a table, and the main menu | macOS |
+| Linux | GTK 4 and libadwaita | A header bar, an entry with an Add button, a boxed list whose rows each have a remove button, and a toast that offers to undo a removal | The Linux computer, which needs both libraries |
+| Windows | WinUI 3 | A text box and an Add button above a list, and a Remove button, in Fluent's styles | The Windows App Runtime, which the computer needs |
+| Windows | Win32's common controls | The same layout, in the controls of Windows' `user32` and `comctl32` | Windows |
+| iOS, iPadOS | UIKit | A table under a large navigation title, with a text field and an Add button above it, and swipe left to delete | iOS |
+| Android | Android's views | A text field and an Add button above a list, under the app bar, with a long press to remove | Android |
+
+Basket draws WinUI 3 where the computer has the Windows App Runtime, and Win32's controls where it has not, or where WinUI fails to start. Each phone's screen is in [iPhone, iPad, and Android](phones.md#your-apps-screen).
+
+### Draw the window with AppKit on macOS
+
+Your Ruby can open AppKit itself with `fiddle`, as it does under `ruby main.rb` on a Mac, and Fledge adds nothing for it. Ruby reaches AppKit through the Objective-C runtime: [`lib/basket/objc.rb`](../examples/basket/lib/basket/objc.rb) is Basket's Ruby for it, the same file its iOS screen uses. There, a class of AppKit's is a constant of `Basket::ObjC`, a message is a method call whose keywords spell the rest of its selector, `name = value` sends `setName:`, and a Ruby class that inherits from one of AppKit's is an Objective-C class whose methods you define with `objc_method`. [`lib/basket/macos.rb`](../examples/basket/lib/basket/macos.rb) is Basket's screen, which follows Apple's Human Interface Guidelines for the Mac: a window with a text field and an Add button above a one-column table, and the menu bar the guidelines list (the app's menu, File, Edit, and Window). Add is the window's default button, which Return presses, and a row goes by Edit > Delete (Command-Delete), by its context menu, or by the Delete key, which the table's `deleteBackward:` handles.
+
+Set `kind: windowed`, so that `fledge build` makes a `.app`. The launcher runs your Ruby on the main thread, where AppKit needs it. Three things differ from a program of Objective-C:
+
+- Your Ruby sends `NSApplication` `run` itself, after it loads AppKit with `dlopen` (Basket's `ObjC.load_framework("AppKit")`). The app needs neither `NSApplicationMain` nor a principal class in its `Info.plist`.
+- A text field gets Cut, Copy, and Paste only through an Edit menu in the menu bar, so make one, and the rest of the menu bar, in your Ruby: Command-C and Command-V do not reach a field in a window with no Edit menu.
+- A Ruby exception in a method that AppKit called cannot unwind through AppKit's frames. Basket's bridge prints it as Ruby prints an exception nothing rescued, and answers zero, nil, or false. A struct that a method takes by value, such as an `NSRect` or `NSEdgeInsets`, is an Array of its numbers (`stack.edgeInsets = [20.0, 20.0, 20.0, 20.0]`), and the bridge passes structs of up to four doubles and returns none, which is all Basket's screen asks of it.
+
 ### Draw the window with GTK 4 on Linux
 
-Your Ruby can open GTK 4 and libadwaita itself with `fiddle`, which Ruby bundles, as it does under `ruby main.rb` on a Linux computer that has them, and Fledge adds nothing for it: no library, no binding. Open each library by its soname (`Fiddle.dlopen("libgtk-4.so.1")`, `Fiddle.dlopen("libadwaita-1.so.0")`), connect each signal to a `Fiddle::Closure::BlockCaller`, and keep every closure in a variable, since Ruby frees one that only GTK refers to. [`examples/basket`](../examples/basket) is a shopping list drawn this way by GNOME's Human Interface Guidelines, with a header bar, a boxed list, and a toast that offers to undo a removal: [`lib/basket/gtk.rb`](../examples/basket/lib/basket/gtk.rb) holds its calls into GTK, 125 lines, and [`lib/basket/linux.rb`](../examples/basket/lib/basket/linux.rb) its screen.
+Your Ruby can open GTK 4 and libadwaita itself with `fiddle`, which Ruby bundles, as it does under `ruby main.rb` on a Linux computer that has them, and Fledge adds nothing for it: no library, no binding. Open each library by its soname (`Fiddle.dlopen("libgtk-4.so.1")`, `Fiddle.dlopen("libadwaita-1.so.0")`), connect each signal to a `Fiddle::Closure::BlockCaller`, and keep every closure in a variable, since Ruby frees one that only GTK refers to. [`examples/basket`](../examples/basket) is a shopping list drawn this way by GNOME's Human Interface Guidelines, with a header bar, a boxed list, and a toast that offers to undo a removal: [`lib/basket/gtk.rb`](../examples/basket/lib/basket/gtk.rb) holds its calls into GTK, and [`lib/basket/linux.rb`](../examples/basket/lib/basket/linux.rb) its screen.
 
 Set `kind: windowed`, so that your Ruby runs on the main thread, which GTK needs. Three things differ from a program of C:
 
@@ -102,7 +127,7 @@ Set `kind: windowed`, so that your Ruby runs on the main thread, which GTK needs
 
 ### Draw the window with Win32 on Windows
 
-Your Ruby can open Windows' `user32` and `comctl32` itself with `fiddle`, which Ruby bundles, as it does under `ruby main.rb` on Windows, and Fledge adds nothing for it: no library, no binding, no key in `fledge.yml`. Every Windows has both libraries. [`examples/basket`](../examples/basket) is a shopping list drawn this way, with a text field, an Add button that Return presses, a list, and a Remove button: [`lib/basket/win32.rb`](../examples/basket/lib/basket/win32.rb) holds its calls into Windows, and [`lib/basket/windows.rb`](../examples/basket/lib/basket/windows.rb) its screen, which reads as `lib/basket/ios.rb` does.
+Your Ruby can open Windows' `user32` and `comctl32` itself with `fiddle`, which Ruby bundles, as it does under `ruby main.rb` on Windows, and Fledge adds nothing for it: no library, no binding, no key in `fledge.yml`. Every Windows has both libraries. [`examples/basket`](../examples/basket) is a shopping list drawn this way, with a text field, an Add button that Return presses, a list, and a Remove button: [`lib/basket/win32.rb`](../examples/basket/lib/basket/win32.rb) holds its calls into Windows, and [`lib/basket/windows.rb`](../examples/basket/lib/basket/windows.rb) its screen, which reads as `lib/basket/ios.rb` does. Basket draws it where Windows has no Windows App Runtime, and where WinUI 3, below, fails to start.
 
 Set `kind: windowed`, so that Windows gives your app no console. A program of C gets the first two of these from its manifest and writes the last two in its message loop and window procedure. `ruby.exe` and your app's program have none of them, so your Ruby does all four, the first two before it makes a window:
 
@@ -111,11 +136,11 @@ Set `kind: windowed`, so that Windows gives your app no console. A program of C 
 - Handles, `WPARAM`, `LPARAM`, and `LRESULT` are 64 bits wide and `LONG` is 32. Declare each handle as `Fiddle::TYPE_INTPTR_T`, not `TYPE_LONG`.
 - Tab and Return work as in a dialog only when the message loop calls `IsDialogMessageW` before `TranslateMessage`, and the window answers `DM_GETDEFID` with the id of its default button.
 
-A windowed app's standard output reaches no console, so a program that logs redirects it, as CI's check of Basket does with `Start-Process -RedirectStandardOutput`. A message loop runs on the main thread, where the launcher runs your Ruby.
+A windowed app's standard output reaches no console, so a program that logs redirects it, as PowerShell's `Start-Process -RedirectStandardOutput` does. A message loop runs on the main thread, where the launcher runs your Ruby.
 
 ### Draw the window with WinUI 3 on Windows
 
-Where the computer has the Windows App Runtime, your Ruby can draw WinUI 3's controls, Microsoft's current ones for a Windows app, with `fiddle` alone, and Fledge adds nothing for it. WinUI is a WinRT API: your Ruby gets a class from `combase.dll`, calls an object's methods by their place in its interface's table of functions, which the `.winmd` files of Microsoft's Windows App SDK list in order, and passes WinUI events made of `Fiddle::Closure`s. [`examples/basket`](../examples/basket) does so when it can: [`lib/basket/winrt.rb`](../examples/basket/lib/basket/winrt.rb) holds its calls, and [`lib/basket/winui.rb`](../examples/basket/lib/basket/winui.rb) its screen, a text box, an Add button, a list, and a Remove button in Fluent's styles, with its controls written as the XAML markup a WinUI app has. Basket carries none of Microsoft's files, so a computer without the Windows App Runtime gets the Win32 screen above, and no message.
+Where the computer has the Windows App Runtime, your Ruby can draw WinUI 3's controls, Microsoft's current ones for a Windows app, with `fiddle` alone, and Fledge adds nothing for it. WinUI is a WinRT API: your Ruby gets a class from `combase.dll`, calls an object's methods by their place in its interface's table of functions, which the `.winmd` files of Microsoft's Windows App SDK list in order, and passes WinUI events made of `Fiddle::Closure`s. [`examples/basket`](../examples/basket) does so when it can: [`lib/basket/winrt.rb`](../examples/basket/lib/basket/winrt.rb) holds its calls, and [`lib/basket/winui.rb`](../examples/basket/lib/basket/winui.rb) its screen, a text box, an Add button, a list, and a Remove button in Fluent's styles, with its controls written as the XAML markup a WinUI app has. Basket carries none of Microsoft's files, so a computer without the Windows App Runtime gets the Win32 screen above, and no message. When WinUI is there and fails to start, Basket logs one line that says why and draws the Win32 screen instead, so the person sees a window either way; a windowed app has no console, so the line is for a program that redirects the output. On Windows on ARM64, activating `XamlControlsResources` fails with `0x80004005` even where the runtime is registered, so Basket draws Win32's screen there ([issue 162](https://github.com/setdef/Fledge/issues/162)).
 
 - Ask Windows to add the framework package to your process, as the Windows App SDK's bootstrapper does for an app that is not packaged: `TryCreatePackageDependency` and `AddPackageDependency` in `kernelbase.dll`, for the package family `Microsoft.WindowsAppRuntime.2_8wekyb3d8bbwe`. They fail on a computer that has not registered that package. A packaged app has the framework in its package graph already.
 - WinUI takes the main thread: `Application.Start` runs its message loop there and calls your Ruby back on it, as the launcher runs your Ruby under `ruby main.rb`. A WinRT call that finishes on another thread would end the process.
@@ -257,13 +282,13 @@ A certificate kept in a cloud or a hardware service, such as [Azure Artifact Sig
 
 Fledge runs the command through `cmd.exe` once for each program and library, then for the uninstaller and the setup program as it writes them, then for the MSIX package if you build one, with the path in quotes. Without `%1`, the path goes at the end, so a `.cmd` file of your own works too. A command that exits with anything but 0 stops the build and names the file. Fledge never prints the command, which may hold a password. To keep the command out of your build scripts, set `FLEDGE_SIGN_COMMAND` instead, as a CI secret can.
 
-### What is proven
+### What Fledge does not sign
 
-Fledge's CI signs with a self-signed certificate, on macOS and on Windows, and runs `signtool` through `--sign-command` too. It notarizes against a stand-in for Apple's service that answers as Apple documents. How Gatekeeper and SmartScreen treat an app signed and notarized with real credentials is untested. Fledge does not sign Linux apps, and Xcode and Gradle sign a phone's app.
+Fledge does not sign Linux apps, and Xcode and Gradle sign a phone's app.
 
 ## Publish to a store
 
-No Fledge app has been through any store's review. This section says what each store's own documents ask for, as they read on 2026-11-04, against what Fledge writes. A store can still refuse an app for a reason its documents leave out, and only a submission settles that. For phones, see [Google Play and the App Store](phones.md#google-play).
+This section says what each store's own documents ask for, as they read on 2026-11-04, against what Fledge writes. A store can still refuse an app for a reason its documents leave out, and only a submission settles that. For phones, see [Google Play and the App Store](phones.md#google-play).
 
 ### The Microsoft Store
 
@@ -313,12 +338,12 @@ windows:
 
 Fledge writes one `PackageDependency` for each entry into the package's manifest. `fledge build` refuses a `min_version` that is not four numbers between periods, each from 0 to 65535, and a package listed twice. It does not check that the package exists. Only the `.msix` has the dependency: the setup program, the disk image, the AppImage, the `.deb`, and the `.zip` ignore the key, so an app that runs from one of them finds the framework only when the computer already has it. A package you install without the Store needs the framework installed first, or given to `Add-AppxPackage` with `-DependencyPath`.
 
-The package names Windows 10 version 1809 as the oldest Windows it installs on, though Windows 11 is the oldest Fledge's apps are tested on. Its version is your `version`'s first three numbers and a 0, because the Store keeps the fourth number for itself. The Store also refuses a version whose first number is 0, so ship `1.0.0` or later.
+The package names Windows 10 version 1809 as the oldest Windows it installs on, though Fledge's apps run on Windows 11 and newer. Its version is your `version`'s first three numbers and a 0, because the Store keeps the fourth number for itself. The Store also refuses a version whose first number is 0, so ship `1.0.0` or later.
 
 **Install an `.msix` on your own computer.** What the package carries as its publisher depends on how it is signed:
 
 - **Unsigned, to try it.** An `.msix` that `fledge build` leaves unsigned installs on Windows 11 with `Add-AppxPackage -Path NAME-PLATFORM.msix -AllowUnsigned`, as Microsoft's [Run unsigned packages](https://learn.microsoft.com/windows/msix/package/unsigned-package) says. Microsoft requires an unsigned package to carry a special OID in its publisher, which Fledge appends to `msix_publisher`: `CN=Example, OID.2.25.311729368913984317654407730594956997722=1`. Without it Windows refuses the package. Run PowerShell as an administrator, since an unsigned package with programs in it installs for every user: from a standard account, Windows 11 refuses it with 0x80073D2B, "an unsigned package cannot include Executable activations". Microsoft means this for trying an app, not for giving it to people. An unsigned package never has the identity of a signed one, so a signed build of the same app installs beside it.
-- **Signed by Fledge.** `fledge build --sign THUMBPRINT` or `--sign-command` signs the package as it signs the setup program, and its publisher is `msix_publisher` as it stands, which must be the certificate's subject. Sign it with a test certificate, trust that certificate in the computer's Trusted People store, and install the package with `Add-AppxPackage`, as Microsoft's [signing guide](https://learn.microsoft.com/windows/msix/package/create-certificate-package-signing) says. Fledge's CI installs a package signed that way, runs the app from it, and removes it.
+- **Signed by Fledge.** `fledge build --sign THUMBPRINT` or `--sign-command` signs the package as it signs the setup program, and its publisher is `msix_publisher` as it stands, which must be the certificate's subject. Sign it with a test certificate, trust that certificate in the computer's Trusted People store, and install the package with `Add-AppxPackage`, as Microsoft's [signing guide](https://learn.microsoft.com/windows/msix/package/create-certificate-package-signing) says.
 - **Signed by you after the build, or by the Store.** Set `msix_allow_unsigned: false`. Fledge then writes `msix_publisher` as it stands, whether or not it signs the package: Microsoft says a package ready to be distributed must not carry the OID, and its publisher must be the certificate's subject. A package built so cannot be installed with `-AllowUnsigned`.
 
 To sideload an MSIX package without the Store, sign it with `--sign` or `--sign-command` and a certificate from a certificate authority, and set `msix_publisher` to that certificate's subject. Windows installs the package only when the subject and `msix_publisher` match.
@@ -326,7 +351,7 @@ To sideload an MSIX package without the Store, sign it with `--sign` or `--sign-
 **An `.exe` installer you sign yourself.** The Store's [policy 10.2.9](https://learn.microsoft.com/windows/apps/publish/store-policies) takes a desktop program as an `.exe` installer at a link you give it, and the setup program Fledge writes fits what it lists:
 
 - It holds the whole app, and is no downloader stub.
-- `/S` installs it silently, which the policy asks for. Fledge's CI installs it this way, runs the app from the Start menu, and uninstalls it.
+- `/S` installs it silently, which the policy asks for.
 - It installs for one person, with no administrator, and adds a Start menu entry and an uninstaller.
 
 What the setup program lacks, you bring:
@@ -335,7 +360,7 @@ What the setup program lacks, you bring:
 - **A versioned HTTPS address**, whose file never changes. A GitHub Release's address redirects to a download host, and whether the Store's check takes that is unknown.
 - **A Partner Center account.** Microsoft's [new onboarding flow](https://learn.microsoft.com/windows/apps/publish/partner-center/open-a-developer-account) charges no registration fee.
 
-No one has submitted either to the Store. Fledge's CI signs with a self-signed certificate only, so the Store's certification, and its malware scan of a Ruby runtime, are unknown for both routes.
+The Store's certification, and its malware scan of a Ruby runtime, decide whether either route passes, and Fledge cannot tell you beforehand.
 
 ### The Mac App Store
 
@@ -343,8 +368,8 @@ Fledge does not build for the Mac App Store. Its `.app` is signed for Developer 
 
 ### Linux
 
-Flathub, the Debian and Ubuntu archives, and Launchpad PPAs take only what they build from source, so none of them takes a Fledge app. [Flathub says](https://docs.flathub.org/docs/for-app-authors/requirements) "Binary or precompiled files must not be present in the submission pull request". Fedora's rules were out of reach when this was written. Three routes take prebuilt apps, and no one has tried any of them with a Fledge app:
+Flathub, the Debian and Ubuntu archives, and Launchpad PPAs take only what they build from source, so none of them takes a Fledge app. [Flathub says](https://docs.flathub.org/docs/for-app-authors/requirements) "Binary or precompiled files must not be present in the submission pull request". Fedora's rules were out of reach when this was written. Three routes take prebuilt apps:
 
-- **Your own apt repository.** Serve the `.deb` Fledge builds from a repository you make with [`reprepro` or `aptly`](https://wiki.debian.org/DebianRepository/Setup) and sign, and your users [add your key and a `.sources` file](https://wiki.debian.org/DebianRepository/UseThirdParty). Fledge's CI installs the `.deb` with `apt`, from the file. It has not served one from a repository.
+- **Your own apt repository.** Serve the `.deb` Fledge builds from a repository you make with [`reprepro` or `aptly`](https://wiki.debian.org/DebianRepository/Setup) and sign, and your users [add your key and a `.sources` file](https://wiki.debian.org/DebianRepository/UseThirdParty).
 - **The Snap Store.** Its documents ask for no source build in what was read, and [Tauri's guide](https://v2.tauri.app/distribute/snapcraft/) makes a strict snap with snapcraft's `dump` plugin from a built `.deb`. Fledge writes no `snapcraft.yaml`, so you would write one. A strict snap sees only what its interfaces open, so the app's files and network reach differ from `ruby main.rb`. Whether the launcher runs from a snap's read-only mount is unknown.
 - **Your own Flatpak repository.** [Flatpak's guide](https://docs.flatpak.org/en/latest/hosting-a-repository.html) says how to host one, on a web server or GitLab Pages. Fledge writes no Flatpak, so you would write its manifest, and the default sandbox gives an app no host files or network until you open them.

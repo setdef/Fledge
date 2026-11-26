@@ -1772,8 +1772,9 @@ jobs:
 
       # examples/basket, Basket, a shopping list whose Ruby draws its window
       # with AppKit through Basket's bridge to Objective-C
-      # (doc/contributors/design/phone-widgets.md, "Basket on a Mac"), built
-      # on the Mac alone: Delivery adds an item and removes it.
+      # (doc/contributors/design/desktop-apps.md, "An app that draws with
+      # the system's widgets"), built on the Mac alone: Delivery adds an
+      # item and removes it.
       - name: Build Basket for ${{ matrix.platform }}
         if: runner.os == 'macOS'
         env:
@@ -3402,8 +3403,8 @@ jobs:
       # Windows on ARM64 WinUI fails to activate its Fluent styles and
       # Basket draws its Win32 screen, which this check fails on, so the
       # step comes back there when WinUI's screen draws on ARM64 (issue
-      # 162; doc/contributors/design/desktop-apps.md, "Delivery of the
-      # WinUI screen").
+      # 162; doc/contributors/design/desktop-apps.md, "An app that draws
+      # with the system's widgets").
       - name: Register the Windows App Runtime, start Basket.exe's WinUI screen, add an item, and remove it
         if: ${{ !cancelled() && matrix.platform != 'aarch64-mingw-ucrt' }}
         shell: pwsh

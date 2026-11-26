@@ -35,6 +35,11 @@ icon: icons/icon
 # Every installer a desktop makes: a disk image, a setup program, an
 # AppImage, a .deb, and an MSIX package.
 installers: [dmg, nsis, appimage, deb, msix]
+linux:
+  # Its Ruby opens GTK 4 and libadwaita by name (lib/basket/gtk.rb), as
+  # no compiled file does, so a .deb asks apt for the packages that
+  # provide libgtk-4.so.1 and libadwaita-1.so.0.
+  deb_depends: [libgtk-4-1, libadwaita-1-0]
 windows:
   # A test identity for the MSIX package. A submission to the Microsoft
   # Store replaces both with the identity Partner Center assigns.

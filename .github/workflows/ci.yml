@@ -1676,7 +1676,8 @@ jobs:
 
       # examples/basket, Basket, whose own Ruby draws its screen on Linux
       # with GTK 4 and libadwaita, which it opens by soname with Fiddle
-      # and fledge.yml says nothing of. Delivery runs it where they are.
+      # and whose packages fledge.yml lists for its .deb alone. Delivery
+      # runs it where they are.
       - name: Build Basket for ${{ matrix.platform }}
         if: runner.os == 'Linux'
         env:

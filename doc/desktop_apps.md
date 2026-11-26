@@ -97,7 +97,7 @@ Your Ruby can open GTK 4 and libadwaita itself with `fiddle`, which Ruby bundles
 Set `kind: windowed`, so that your Ruby runs on the main thread, which GTK needs. Three things differ from a program of C:
 
 - Ruby runs its handler for SIGINT and SIGTERM only when its main thread next runs Ruby, which inside `g_application_run` it does not, so Ctrl-C and `kill` would do nothing while the window is open. Attach `g_unix_signal_add` for both and call `g_application_quit` from its handler, as Basket does.
-- Fledge cannot tell that your app needs GTK 4, since `linux: system_libraries` lists only what a gem's compiled files link, so a `.deb` does not depend on `libgtk-4-1`. A computer without it gets what your Ruby does about the `Fiddle::DLError`: Basket names the library and exits with status 72, as Fledge's launcher does for a library a gem lists.
+- Fledge cannot tell that your app needs GTK 4, since `linux: system_libraries` lists only what a gem's compiled files link. List its packages under `linux: deb_depends` (`[libgtk-4-1, libadwaita-1-0]`), so `apt install` brings them in with a `.deb`. A computer that has the app another way, without them, gets what your Ruby does about the `Fiddle::DLError`: Basket names the library and exits with status 72, as Fledge's launcher does for a library a gem lists.
 - GTK exits the process when it cannot open a display, and a library GTK loads itself, such as `libGLESv2.so.2`, may abort it; neither reaches your Ruby.
 
 ### Draw the window with Win32 on Windows

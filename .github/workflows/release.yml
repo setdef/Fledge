@@ -51,7 +51,7 @@
 # on every job, Delivery's among them, and are checked against what the
 # tagged commit's tasks/release_examples.rb says a release carries
 # (doc/contributors/design/releases.md, "The examples a release
-# carries"). CI keeps them two weeks, as it keeps the runtimes.
+# carries"). CI keeps them ninety days, as it keeps the runtimes.
 #
 # It does not run CI again. CI ran on both commits, on a push or a
 # dispatch (releases.md, "Which runs are a commit's"), and this looks

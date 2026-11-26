@@ -8,11 +8,11 @@
 require "fiddle"
 
 module Basket
-  # Ruby's way to the Objective-C runtime, and through it to UIKit, with
-  # nothing but Fiddle, which Ruby bundles. It is only as much as Basket
-  # needs, and it runs under any Ruby on a computer that has the
-  # Objective-C runtime and the frameworks it is asked for: Foundation on
-  # a Mac, and UIKit on an iPhone or iPad.
+  # Ruby's way to the Objective-C runtime, and through it to UIKit and
+  # AppKit, with nothing but Fiddle, which Ruby bundles. It is only as
+  # much as Basket needs, and it runs under any Ruby on a computer that
+  # has the Objective-C runtime and the frameworks it is asked for:
+  # Foundation and AppKit on a Mac, and UIKit on an iPhone or iPad.
   #
   # An Objective-C message is a method call whose name is the selector's
   # first part and whose keywords are the rest; <tt>name=</tt> sends
@@ -41,9 +41,21 @@ module Basket
   # <tt>class_addMethod</tt> gives a class made with
   # <tt>objc_allocateClassPair</tt>.
   #
-  # UIKit's objects are the main thread's to use, so a program that draws
-  # its screen runs its Ruby there and hands the thread to UIKit with
-  # ObjC.application_main.
+  # UIKit's and AppKit's objects are the main thread's to use, so a
+  # program that draws its screen runs its Ruby there and hands the
+  # thread to UIKit with ObjC.application_main, or to AppKit by sending
+  # NSApplication +run+.
+  #
+  # A struct that a method takes by value, such as an NSRect or an
+  # NSEdgeInsets, is an Array of its numbers, nested as the struct is:
+  #
+  #   stack.edgeInsets = [20.0, 20.0, 20.0, 20.0]
+  #   window.setContentSize([480.0, 360.0])
+  #
+  # On 64-bit ARM, which is every Mac and iPhone Fledge builds for, a
+  # struct of up to four doubles travels as that many doubles, so it is
+  # passed as that many arguments. A struct a method returns cannot come
+  # back: Fiddle returns one register.
   module ObjC
     # libobjc, which every process of Apple's systems links through
     # Foundation.
@@ -137,13 +149,14 @@ module Basket
     # rules for automatic reference counting.
     OWNING_FAMILIES = %w[alloc new copy mutableCopy init].freeze
 
-    # The type encodings of the methods of the UIKit protocols a Ruby
-    # class here implements, from UIKit's headers, for 64-bit ARM: +q+ is
-    # NSInteger, +B+ is BOOL. +objc_getProtocol+ finds only a protocol
-    # that compiled code in the process refers to, and a program of Ruby
-    # alone has none of UIKit's. UIKit asks a delegate or a data source
-    # +respondsToSelector:+, so a class that answers a protocol's
-    # selectors with these encodings serves without declaring it.
+    # The type encodings of the methods of the UIKit and AppKit protocols
+    # a Ruby class here implements, from their headers, for 64-bit ARM:
+    # +q+ is NSInteger, +B+ is BOOL. +objc_getProtocol+ finds only a
+    # protocol that compiled code in the process refers to, and a program
+    # of Ruby alone has none of UIKit's. UIKit and AppKit ask a delegate
+    # or a data source +respondsToSelector:+, so a class that answers a
+    # protocol's selectors with these encodings serves without declaring
+    # it.
     PROTOCOL_ENCODINGS = {
       "UITableViewDataSource" => {
         "tableView:numberOfRowsInSection:" => "q32@0:8@16q24",
@@ -155,6 +168,19 @@ module Basket
       },
       "UIWindowSceneDelegate" => {
         "scene:willConnectToSession:options:" => "v40@0:8@16@24@32",
+      },
+      "NSApplicationDelegate" => {
+        "applicationDidFinishLaunching:" => "v24@0:8@16",
+        "applicationShouldTerminateAfterLastWindowClosed:" => "B24@0:8@16",
+      },
+      "NSTableViewDataSource" => {
+        "numberOfRowsInTableView:" => "q24@0:8@16",
+      },
+      "NSTableViewDelegate" => {
+        "tableView:viewForTableColumn:row:" => "@40@0:8@16@24q32",
+      },
+      "NSMenuItemValidation" => {
+        "validateMenuItem:" => "B24@0:8@16",
       },
     }.freeze
 
@@ -263,8 +289,19 @@ module Basket
         raise ArgumentError, "#{selector} takes #{parameters.size} arguments, not #{arguments.size}" unless parameters.size == arguments.size
 
         kept = [] # the objects made for the arguments, alive until the call returns
-        values = parameters.zip(arguments).map { |type, value| to_c(type, value, kept) }
-        result = function(returns, parameters).call(receiver, sel, *values)
+        types = []
+        values = []
+        parameters.zip(arguments).each do |type, value|
+          if type.start_with?("{")
+            numbers = struct_numbers(type, value)
+            types.concat(["d"] * numbers.size)
+            values.concat(numbers)
+          else
+            types << type
+            values << to_c(type, value, kept)
+          end
+        end
+        result = function(returns, types).call(receiver, sel, *values)
         kept.clear
         from_c(returns, result, owned: owning?(selector))
       end
@@ -288,6 +325,28 @@ module Basket
           index += 1 while encoding[index]&.match?(/[\d-]/)
         end
         codes
+      end
+
+      # The doubles of the struct +value+, an Array nested as the struct
+      # of encoding +type+ is: its fields, in order, as Floats. Raises
+      # an Error for a struct of anything but up to four doubles, which
+      # 64-bit ARM passes as that many doubles.
+      def struct_numbers(type, value)
+        fields = struct_fields(type)
+        raise Error, "Fiddle cannot pass an argument of type #{type}" unless fields.size.between?(1, 4) && fields.all?("d")
+
+        numbers = Array(value).flatten
+        raise ArgumentError, "#{type} takes #{fields.size} numbers, not #{numbers.size}" unless numbers.size == fields.size
+
+        numbers.map { |number| Float(number) }
+      end
+
+      # The type codes of the fields of the struct of encoding +type+,
+      # with the fields of its own structs in place of them.
+      def struct_fields(type)
+        return [type] unless type.start_with?("{")
+
+        parse(type[(type.index("=") + 1)...-1]).flat_map { |field| struct_fields(field) }
       end
 
       # The value Fiddle passes for +value+, as argument +type+, with an
@@ -351,7 +410,7 @@ module Basket
       end
 
       # The encoding of the instance method +selector+ in the first of
-      # +protocols+, UIKit's protocols by name, that PROTOCOL_ENCODINGS
+      # +protocols+, UIKit's and AppKit's protocols by name, that PROTOCOL_ENCODINGS
       # has it for, or nil.
       def protocol_encoding(protocols, selector)
         protocols.each do |name|
@@ -489,7 +548,7 @@ module Basket
           "#{base}:#{keywords.keys.map { |key| "#{key}:" }.join}"
         end
 
-        # Declares the UIKit protocols this class, defined in Ruby,
+        # Declares the UIKit or AppKit protocols this class, defined in Ruby,
         # conforms to, whose methods' encodings its objc_method methods
         # take (PROTOCOL_ENCODINGS). When the Objective-C runtime has the
         # protocol, the class adopts it too.
@@ -616,6 +675,11 @@ module Basket
       # An init method consumes the reference this object held.
       def objc_send(selector, *arguments)
         ObjC.send_message(objc_pointer, selector, arguments).tap { disown if ObjC.init?(selector) }
+      end
+
+      # The objects of an NSArray, as a Ruby Array.
+      def to_a
+        Array.new(count) { |index| objectAtIndex(index) }
       end
 
       # The text of an NSString, or else the object's description.

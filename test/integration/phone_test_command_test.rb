@@ -44,7 +44,7 @@ class PhoneTestCommandTest < Minitest::Test
     ios_missing("Xcode builds an iOS app on a Mac only") unless Fledge::Platform.local.name == "arm64-darwin"
     runtimes("ios")
     simulator do |udid|
-      assert_passes fledge_test("ios", "-d", udid, BASKET), runs: 24
+      assert_passes fledge_test("ios", "-d", udid, BASKET), runs: 28
       assert_passes fledge_test("ios", "-d", udid, PASSES), runs: 1, warns: true
       assert_fails fledge_test("ios", "-d", udid, FAILS)
     end

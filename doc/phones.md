@@ -19,7 +19,7 @@ Draw your app's screen in Ruby with each phone's own widgets, so that it looks a
 
 Say `kind: windowed` in `fledge.yml`. A phone's widgets belong to its main thread, so an app of that kind runs its Ruby there, and your program hands the thread back to the phone when its screen is ready. An app without it runs its Ruby on a thread of its own and shows its name, as before.
 
-On iOS, your Ruby calls the Objective-C runtime through `fiddle`, which Ruby bundles, and ends by calling `UIApplicationMain`. [`examples/basket/lib/basket/objc.rb`](../examples/basket/lib/basket/objc.rb) is a bridge of about 380 lines of Ruby that you can copy into your app and change: a class of UIKit's is a constant of `Basket::ObjC`, a message is a method whose keywords spell the rest of its selector, and `name = value` sends `setName:`. Write your delegates as Ruby classes that inherit from UIKit's, with `objc_method` for each method UIKit calls. Name one `SceneDelegate`, which the app's `Info.plist` lists, and end your program with `ObjC.application_main(AppDelegate)`:
+On iOS, your Ruby calls the Objective-C runtime through `fiddle`, which Ruby bundles, and ends by calling `UIApplicationMain`. [`examples/basket/lib/basket/objc.rb`](../examples/basket/lib/basket/objc.rb) is a bridge of about 420 lines of Ruby that you can copy into your app and change: a class of UIKit's is a constant of `Basket::ObjC`, a message is a method whose keywords spell the rest of its selector, and `name = value` sends `setName:`. Write your delegates as Ruby classes that inherit from UIKit's, with `objc_method` for each method UIKit calls. Name one `SceneDelegate`, which the app's `Info.plist` lists, and end your program with `ObjC.application_main(AppDelegate)`:
 
 ```ruby
 require_relative "lib/objc" # examples/basket/lib/basket/objc.rb, copied
@@ -56,7 +56,7 @@ button.setOnClickListener(Listener.implement(["android.view.View$OnClickListener
 
 Basket reaches the activity through four members of Android's own `ActivityThread` that Android lists as unsupported: they work for every app today, and a later Android may take them away. Tell Android from iOS as any Ruby program tells platforms apart, with `RUBY_PLATFORM`.
 
-Both phones use `fiddle`: if your app has a `Gemfile`, add `gem "fiddle"` to it. [`examples/basket`](../examples/basket) is a shopping list drawn this way on both phones, its screen for each in a file of its own. Basket's iOS bridge does not pass a struct such as `CGRect` or make an Objective-C block, which it has no need of, and lays its screen out with Auto Layout's anchors; neither phone's Ruby here subclasses a Java class such as `View`, so implement listeners' interfaces on Android. Touch the widgets only from the main thread, as in any phone app: a Ruby thread of your own posts its work there.
+Both phones use `fiddle`: if your app has a `Gemfile`, add `gem "fiddle"` to it. [`examples/basket`](../examples/basket) is a shopping list drawn this way on both phones, its screen for each in a file of its own. Basket's bridge passes a struct of up to four doubles, such as `NSEdgeInsets`, as an Array of its numbers, but returns no struct and makes no Objective-C block, which it has no need of, and Basket's iOS screen lays itself out with Auto Layout's anchors; neither phone's Ruby here subclasses a Java class such as `View`, so implement listeners' interfaces on Android. Touch the widgets only from the main thread, as in any phone app: a Ruby thread of your own posts its work there.
 
 ## Test your app on a Simulator or emulator
 

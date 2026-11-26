@@ -182,6 +182,49 @@ class ObjCTest < Minitest::Test
     assert_match(/cannot pass .*_NSRange/, error.message)
   end
 
+  # A struct of doubles, which AppKit's and UIKit's geometry is made of,
+  # is an Array of its numbers, nested as the struct is.
+  def test_a_struct_of_doubles_is_the_array_of_its_numbers
+    assert_equal [20.0, 20.0, 20.0, 20.0], objc.struct_numbers("{NSEdgeInsets=dddd}", [20, 20, 20, 20])
+    assert_equal [1.0, 2.0, 3.0, 4.0], objc.struct_numbers("{CGRect={CGPoint=dd}{CGSize=dd}}", [[1, 2], [3, 4]])
+    assert_equal [1.0, 2.0, 3.0, 4.0], objc.struct_numbers("{CGRect={CGPoint=dd}{CGSize=dd}}", [1, 2, 3, 4])
+  end
+
+  # A struct needs as many numbers as it has fields, and fields of
+  # doubles.
+  def test_a_struct_the_bridge_cannot_pass_is_refused
+    error = assert_raises(ArgumentError) { objc.struct_numbers("{CGPoint=dd}", [1, 2, 3]) }
+
+    assert_match(/takes 2 numbers, not 3/, error.message)
+    assert_raises(Basket::ObjC::Error) { objc.struct_numbers("{_NSRange=QQ}", [0, 1]) }
+    assert_raises(Basket::ObjC::Error) { objc.struct_numbers("{Wide=ddddd}", [1, 2, 3, 4, 5]) }
+  end
+
+  # Foundation on a Mac reads a struct's numbers where the bridge put them.
+  if RUBY_PLATFORM.include?("darwin") && Basket::ObjC.load_framework("AppKit")
+    # The numbers of geometry, as an Array, reach NSValue.
+    def test_foundation_reads_the_numbers_of_a_struct_passed_as_an_array
+      assert_equal "NSRect: {{1, 2}, {3, 4}}", objc::NSValue.valueWithRect([[1, 2], [3, 4]]).to_s
+      assert_equal "NSPoint: {5.5, 6}", objc::NSValue.valueWithPoint([5.5, 6]).to_s
+      assert_equal "NSSize: {7, 8}", objc::NSValue.valueWithSize([7, 8]).to_s
+      assert_equal "NSEdgeInsets: {1, 2, 3, 4}", objc::NSValue.valueWithEdgeInsets([1, 2, 3, 4]).to_s
+    end
+  end
+
+  # An NSArray is read as a Ruby Array of its objects.
+  def test_an_nsarray_is_read_as_an_array
+    assert_equal %w[a b], objc.array(["a", "b"]).to_a.map(&:to_s)
+    assert_empty objc.array([]).to_a
+  end
+
+  # AppKit's protocols have recorded encodings too.
+  def test_appkits_protocols_give_their_recorded_encodings
+    assert_equal "q24@0:8@16", objc.protocol_encoding(["NSTableViewDataSource"], "numberOfRowsInTableView:")
+    assert_equal "@40@0:8@16@24q32", objc.protocol_encoding(["NSTableViewDelegate"], "tableView:viewForTableColumn:row:")
+    assert_equal "B24@0:8@16", objc.protocol_encoding(["NSMenuItemValidation"], "validateMenuItem:")
+    assert_equal "v24@0:8@16", objc.protocol_encoding(["NSApplicationDelegate"], "applicationDidFinishLaunching:")
+  end
+
   # An encoding's type codes come without qualifiers and offsets.
   def test_type_encodings_lose_qualifiers_and_offsets
     assert_equal %w[v @ : @], objc.parse("v24@0:8@16")

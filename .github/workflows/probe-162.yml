@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+# A spike for issue 162, never for trunk: it runs only on the branch
+# probe/162-winui-arm64, on Windows on ARM64, and gathers facts about why
+# WinUI's XamlControlsResources fails to activate in Basket there. It
+# takes the built Basket from the apps of a green run of ci.yml.
+
+name: Probe 162
+
+on:
+  push:
+    branches:
+      - probe/162-winui-arm64
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    name: Probe 162 (windows-11-arm)
+    runs-on: windows-11-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts/probe-162
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-aarch64-mingw-ucrt
+          path: ${{ runner.temp }}/delivered
+          run-id: "45862863261"
+          github-token: ${{ github.token }}
+
+      - name: Gather the facts
+        shell: pwsh
+        run: >-
+          powershell -NoProfile -ExecutionPolicy RemoteSigned -File .github/scripts/probe-162/probe.ps1
+          -Archive "$env:RUNNER_TEMP/delivered/Basket-aarch64-mingw-ucrt.zip" -Out "$env:RUNNER_TEMP/probe-out"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: probe-162-1
+          path: ${{ runner.temp }}/probe-out

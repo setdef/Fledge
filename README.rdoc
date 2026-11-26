@@ -81,9 +81,20 @@ another Ruby.
   icon, and version, and offers your app for the files you name.
 [Phones]
   An Xcode or Gradle project for iPhone, iPad, and Android, whose screen
-  your Ruby draws with each phone's own widgets, UIKit's and Android's
+  your Ruby can draw with each phone's widgets, UIKit's and Android's
   views, with your gems' C, C++, and Rust extensions compiled for the
   phone, and the +ffi+ gem and Ruby's +fiddle+ working there.
+[Native widgets]
+  Your Ruby can draw each system's widgets, as it would under
+  <tt>ruby main.rb</tt>, with +fiddle+, which Ruby bundles, on the main
+  thread: AppKit on a Mac, GTK 4 and libadwaita on Linux, WinUI 3 or
+  Win32's controls on Windows, UIKit on iPhone and iPad, and Android's
+  views on Android. Fledge adds no widget, library, or binding for it.
+  The {Basket}[https://github.com/setdef/Fledge/tree/trunk/examples/basket#readme]
+  example is a shopping list that does so on all five. An app that draws
+  with GTK 4 needs GTK 4 and libadwaita on the Linux computer, and one
+  that draws with WinUI 3 needs the Windows App Runtime on the Windows
+  one; the app carries neither.
 [Signing]
   <tt>--sign</tt> signs every program, library, bundle, and installer
   with your macOS identity or your Windows certificate, and

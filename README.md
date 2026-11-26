@@ -10,7 +10,7 @@ Ship a Ruby app to people who don't have Ruby.
 
 You wrote a Ruby program for people who have never installed Ruby and never will. Fledge turns it into an app they download and open like any other: a Mac app on a disk image, a Windows setup program, a Linux [AppImage](https://appimage.org/), or a command they install with [Homebrew](https://brew.sh/) or [winget](https://learn.microsoft.com/windows/package-manager/winget/). For iPhone, iPad, and Android, Fledge writes the [Xcode](https://developer.apple.com/xcode/) or [Gradle](https://gradle.org/) project you build the app from.
 
-You write your app in Ruby, with whatever front end your framework uses, on every platform, phones included, and never the native code a platform needs: Fledge supplies every line of it.
+You write your app in Ruby, with whatever front end your framework uses, on every platform, phones included, and never the native code a platform needs: Fledge supplies every line of it. If you want each system's widgets, your Ruby draws them, as it would under `ruby main.rb`: [AppKit](https://developer.apple.com/documentation/appkit) on a Mac, [GTK 4](https://www.gtk.org/) with [libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/) on Linux, [WinUI 3](https://learn.microsoft.com/windows/apps/winui/winui3/) or [Win32](https://learn.microsoft.com/windows/win32/)'s controls on Windows, [UIKit](https://developer.apple.com/documentation/uikit) on iPhone and iPad, and [Android's views](https://developer.android.com/reference/android/view/View) on Android.
 
 Your code runs as it does when you type `ruby main.rb` or [`bundle exec`](https://bundler.io/), with the same requires, globals, and standard library, and the gem versions in your `Gemfile.lock`, compiled gems included. If your users happen to have Ruby, your app ignores it, and its settings.
 
@@ -68,7 +68,7 @@ The archive is 29 MB, and 88 MB unpacked. Anyone with an Apple silicon Mac on ma
 | Runs in a terminal (the default) | a `.tar.gz` | a `.zip` | a `.tar.gz` |
 | Opens windows | a `.app` bundle, and a `.dmg` | a `.zip`, a setup program that installs without an administrator, and an [`.msix`](https://learn.microsoft.com/windows/msix/overview) for the [Microsoft Store](https://apps.microsoft.com/) if you ask for one | a `.tar.gz` with a [desktop entry](https://specifications.freedesktop.org/desktop-entry-spec/latest/), an [AppImage](https://appimage.org/), and a [`.deb`](https://manpages.debian.org/deb.5) if you ask for one |
 
-For iPhone, iPad, and Android, Fledge writes an [Xcode](https://developer.apple.com/xcode/) or [Gradle](https://gradle.org/) project that you build, sign, and submit as you would any other phone app. Your Ruby draws the app's screen with each phone's widgets, UIKit's on iOS and Android's views on Android, which your Ruby reaches with Ruby's [`fiddle`](https://github.com/ruby/fiddle). Fledge compiles your gems' C, C++, and Rust extensions for the phone, and the [`ffi`](https://github.com/ffi/ffi) gem works there too.
+For iPhone, iPad, and Android, Fledge writes an [Xcode](https://developer.apple.com/xcode/) or [Gradle](https://gradle.org/) project that you build, sign, and submit as you would any other phone app. Your Ruby can draw the app's screen with each phone's widgets, as [Draw windows with each system's widgets](#draw-windows-with-each-systems-widgets) says. Fledge compiles your gems' C, C++, and Rust extensions for the phone, and the [`ffi`](https://github.com/ffi/ffi) gem works there too.
 
 ## How Fledge compares
 
@@ -103,6 +103,7 @@ Fledge and the apps it builds run on Ruby 4.1, the version on the Ruby badge, an
 - Fledge builds for the computer you run it on. To ship to three systems, build on three computers, such as a CI runner of each. Fledge builds nothing for Intel Macs or 32-bit systems, and nothing for the Mac App Store.
 - On Windows, [RubyInstaller](https://rubyinstaller.org/) builds no Ruby preview, so until Ruby 4.1.0 is released, a Windows app runs on RubyInstaller's build of Ruby's development branch, a Ruby 4.1 newer than the preview. Test your app on Windows too. [Runtimes and Ruby versions](doc/runtimes.md) has the details.
 - Your code can see [a few differences](doc/differences_from_ruby.md) from `ruby main.rb`, each listed with its reason.
+- An app that draws with GTK 4 needs GTK 4 and libadwaita on the Linux computer, and one that draws with WinUI 3 needs the [Windows App Runtime](https://learn.microsoft.com/windows/apps/windows-app-sdk/) on the Windows one. The app carries neither. An app can draw Win32's controls where WinUI is missing or fails to start, as Basket does.
 - Fledge makes each system's app with that system's tools. A Mac has them all. On Windows, Fledge brings [rcedit](https://github.com/electron/rcedit) and [NSIS](https://nsis.sourceforge.io/Main_Page), and to make an MSIX package, it uses [MakeAppx](https://learn.microsoft.com/windows/msix/package/create-app-package-with-makeappx-tool) from the Windows SDK, which you install. On Linux, install [squashfs-tools](https://github.com/plougher/squashfs-tools) 4.4 or newer for an AppImage, and [`dpkg-deb`](https://manpages.debian.org/dpkg-deb) for a `.deb`. If a tool is missing, `fledge build` stops and names what to install.
 
 ## Installation
@@ -185,6 +186,20 @@ icon: icons/icon
 
 On a Mac, with icons in `icons/` and this `fledge.yml`, `bundle exec fledge build` makes `dist/Hello Window-arm64-darwin.tar.gz`, which holds `Hello Window.app`, and `dist/Hello Window-arm64-darwin.dmg`. With the first line in place, an editor that runs the [YAML language server](https://github.com/redhat-developer/yaml-language-server), such as VS Code with [Red Hat's YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml), completes each key and marks mistakes. `bundle exec fledge --help` prints every key. For icon sizes, the files your app opens, and several programs in one app, see [Desktop apps](doc/desktop_apps.md).
 
+### Draw windows with each system's widgets
+
+To make an app look and behave as other apps for its system do, draw its windows with that system's widgets, from your Ruby. Your Ruby opens the system's libraries with [`fiddle`](https://github.com/ruby/fiddle), which Ruby bundles (on Android, with `zlib` and `digest`, which Ruby bundles too), on the process's main thread, where those widgets have to be used. Fledge adds no widget, library, or binding for it, and no key in `fledge.yml` that turns it on.
+
+| System | Your Ruby draws with |
+| --- | --- |
+| macOS | AppKit |
+| Linux | GTK 4 and libadwaita |
+| Windows | WinUI 3, or Win32's common controls |
+| iOS and iPadOS | UIKit |
+| Android | Android's views |
+
+[`basket`](examples/basket) is a shopping list that does this on all five (its [README](examples/basket/README.md) says how to build it and, on Windows, which screen you see), with each system's screen in a separate file: a window with a table and a menu bar on a Mac, a header bar and a boxed list with an Undo toast on Linux, a text box and a list in Fluent's styles on Windows, a table under a large title on iPhone and iPad, and a list under the app bar on Android. The Ruby that calls each system's libraries is Basket's, in files you can copy and change. [Desktop apps](doc/desktop_apps.md#draw-the-window-with-each-systems-widgets) and [iPhone, iPad, and Android](doc/phones.md#your-apps-screen) say how each one works.
+
 ### Sign
 
 When people download an app you didn't [sign](doc/desktop_apps.md#sign-your-app), macOS's [Gatekeeper](https://support.apple.com/guide/security/gatekeeper-and-runtime-protection-sec5599b66df/web) and Windows' [SmartScreen](https://learn.microsoft.com/windows/security/operating-system-security/virus-and-threat-protection/microsoft-defender-smartscreen/) warn them. Pass `--sign` with your macOS [signing identity](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/) or your Windows certificate's [thumbprint](https://learn.microsoft.com/dotnet/framework/wcf/feature-details/how-to-retrieve-the-thumbprint-of-a-certificate), and Fledge signs every program, library, bundle, and installer. On a Mac, add `--notarize`, and Fledge has Apple [notarize](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution) the app and [staples Apple's ticket](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow#Staple-the-ticket-to-your-distribution) to it, so Gatekeeper accepts the app even on a computer with no internet connection:
@@ -203,7 +218,7 @@ On Windows, to sign with a certificate in a cloud or hardware service, pass `--s
 
 ### Build for a phone
 
-On a Mac, `bundle exec fledge build ios` writes an [Xcode](https://developer.apple.com/xcode/) project. On a Mac, Linux, or Windows, `bundle exec fledge build android` writes a [Gradle](https://gradle.org/) project. Fledge prints the project's path, and you build, sign, and submit it with Xcode or Gradle. First, lock the `ruby` platform (`bundle lock --add-platform ruby`), and give the app an `identifier` in `fledge.yml`. What your program prints goes to the phone's system log. Your Ruby runs on the phone's main thread, as under `ruby main.rb`, where it can draw the app's screen with the phone's own widgets. For your app's screen, gems with extensions, what a phone forbids, and the App Store and Google Play, see [iPhone, iPad, and Android](doc/phones.md).
+On a Mac, `bundle exec fledge build ios` writes an [Xcode](https://developer.apple.com/xcode/) project. On a Mac, Linux, or Windows, `bundle exec fledge build android` writes a [Gradle](https://gradle.org/) project. Fledge prints the project's path, and you build, sign, and submit it with Xcode or Gradle. First, lock the `ruby` platform (`bundle lock --add-platform ruby`), and give the app an `identifier` in `fledge.yml`. What your program prints goes to the phone's system log. Your Ruby runs on the phone's main thread, as under `ruby main.rb`, where it can draw the app's screen with the phone's widgets. For your app's screen, gems with extensions, what a phone forbids, and the App Store and Google Play, see [iPhone, iPad, and Android](doc/phones.md).
 
 ### Publish
 
@@ -223,14 +238,14 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. A new Fledge ma
 | --- | --- |
 | `bundle exec fledge --help` | The manual: every option, every `fledge.yml` key, every file Fledge writes, and the exit statuses |
 | [Gems in a Fledge app](doc/gems.md) | Locking, compiled gems, gems that link a Linux library or a library from your Mac, and gems from `vendor/cache` |
-| [Desktop apps](doc/desktop_apps.md) | Names, icons, installers, file associations, several programs in one app, a server that other computers open in the browser, signing, and publishing to a store |
+| [Desktop apps](doc/desktop_apps.md) | Names, icons, installers, drawing windows with each system's widgets, file associations, several programs in one app, a server that other computers open in the browser, signing, and publishing to a store |
 | [iPhone, iPad, and Android](doc/phones.md) | Phone projects, your app's screen in UIKit and Android's views, gems with C, C++, and Rust extensions or libraries for `ffi`, and what a phone forbids |
 | [Publishing with a package manager](doc/package_managers.md) | A Scoop manifest, a Homebrew formula, winget's files, a Chocolatey package, and a `PKGBUILD` for a console app |
 | [Building from an app already built](doc/building_from_an_app.md) | `fledge build --from` and `build_tools`, for frameworks |
 | [Runtimes and Ruby versions](doc/runtimes.md) | Which Ruby your app gets, where Fledge downloads it from, mirrors, building offline, updating, and what stays the same from 1.0 |
 | [How a Fledge app differs from `ruby main.rb`](doc/differences_from_ruby.md) | Each difference your code can see, and why it is there |
 | [What ships in your app](doc/licensing.md) | Every component Fledge puts in an app, on each platform, and what you owe under its license |
-| [`examples/`](examples) | Apps to start from: [`hello`](examples/hello), the smallest; [`libui_app`](examples/libui_app), a work timer in a window; [`file_drop`](examples/file_drop), a file drop that phones and computers on your network open in the browser; [`markdown_to_html`](examples/markdown_to_html), a droplet that writes the HTML of Markdown files dropped on it, with a command for the terminal; [`lectern`](examples/lectern), a Markdown reader for the terminal, in one download with no Ruby; and [`basket`](examples/basket), a shopping list for iPhone, iPad, Android, Linux, and Windows, drawn with each system's own widgets |
+| [`examples/`](examples) | Apps to start from: [`hello`](examples/hello), the smallest; [`libui_app`](examples/libui_app), a work timer in a window; [`file_drop`](examples/file_drop), a file drop that phones and computers on your network open in the browser; [`markdown_to_html`](examples/markdown_to_html), a droplet that writes the HTML of Markdown files dropped on it, with a command for the terminal; [`lectern`](examples/lectern), a Markdown reader for the terminal, in one download with no Ruby; and [`basket`](examples/basket), a shopping list for macOS, Linux, Windows, iPhone, iPad, and Android, drawn with each system's widgets |
 | [CHANGELOG](CHANGELOG.md) | What changed in each release |
 
 ## Reporting problems

@@ -1674,6 +1674,16 @@ jobs:
             ruby -I lib exe/fledge build -o dist "$app"
           done
 
+      # examples/basket, Basket, whose own Ruby draws its screen on Linux
+      # with GTK 4 and libadwaita, which it opens by soname with Fiddle
+      # and fledge.yml says nothing of. Delivery runs it where they are.
+      - name: Build Basket for ${{ matrix.platform }}
+        if: runner.os == 'Linux'
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
+        run: ruby -I lib exe/fledge build -o dist examples/basket
+
       # test/fixtures/rust_lengths, a Rust gem on rb-sys alone, which says
       # how its bindings declare rb_len_t and calls two functions whose
       # results differ when that is not the runtime's Ruby's
@@ -2678,6 +2688,52 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
     steps: *delivery-deb-steps
+
+  # Delivery of Basket on a computer the way GNOME has it: a fresh Ubuntu
+  # 24.04 container with no Ruby, which first has no GTK 4, so that Basket
+  # names the library it lacks and exits with 72; then apt installs GTK 4
+  # and libadwaita, an X server with no screen, a window manager, xdotool,
+  # Mesa's drivers, and a font, and Basket runs as a person uses it: the
+  # script types an item, presses Return, clicks the row's remove button
+  # and the toast's Undo, and fails unless Basket logs what it did and
+  # ends cleanly on SIGTERM
+  # (.github/scripts/deliver-basket.sh). Ubuntu 24.04, since a built app
+  # needs glibc 2.38 until issue 142 is fixed, which Debian 12 lacks.
+  delivery-basket-x86_64-linux:
+    name: Delivery of Basket (${{ matrix.platform }}, ubuntu-noble)
+    needs: [changes, build-x86_64-linux]
+    runs-on: ${{ matrix.os }}
+    container: ${{ fromJSON(needs.changes.outputs.images)['ubuntu-noble'] }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: delivered
+
+      - name: Fetch apt's package lists and the packages the job installs
+        run: .github/scripts/apt-update.sh libgtk-4-1 libadwaita-1-0 xvfb openbox xdotool libgl1-mesa-dri libglx-mesa0 fonts-dejavu-core
+
+      - name: Run Basket without GTK 4
+        run: .github/scripts/deliver-basket.sh "delivered/Basket-${{ matrix.platform }}.tar.gz" without-gtk
+
+      - name: Install GTK 4, libadwaita, and a desktop's X server with apt
+        run: DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgtk-4-1 libadwaita-1-0 xvfb openbox xdotool libgl1-mesa-dri libglx-mesa0 fonts-dejavu-core
+
+      - name: Run Basket, add an item, and remove it
+        run: .github/scripts/deliver-basket.sh "delivered/Basket-${{ matrix.platform }}.tar.gz"
 
   # Delivery where the glibc floor says an app runs (runtimes.md, "The
   # glibc floor"), in the oldest systems it admits, each pinned by

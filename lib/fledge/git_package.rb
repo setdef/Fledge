@@ -7,6 +7,7 @@
 
 require "rubygems"
 require_relative "entry"
+require_relative "evaluation"
 require_relative "error"
 require_relative "gem_files"
 require_relative "gem_package"
@@ -70,7 +71,7 @@ module Fledge
       @gem = gem
       @checkout = checkout
       specs = Dir.glob(gem.glob, base: checkout).filter_map do |relative|
-        spec = Gem::Specification.load(File.join(checkout, relative))
+        spec = Evaluation.to_stderr { Gem::Specification.load(File.join(checkout, relative)) }
         [relative, spec] if spec&.name == gem.name
       end
       relative, @spec = specs.first || raise(Error, "#{gem.uri} at #{gem.revision} holds no gemspec of #{gem.name} " \

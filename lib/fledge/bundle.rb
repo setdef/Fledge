@@ -7,6 +7,7 @@
 
 require "shellwords"
 require_relative "error"
+require_relative "evaluation"
 require_relative "git_gem"
 require_relative "locked_gem"
 require_relative "bundle/gemspec_loads"
@@ -172,13 +173,13 @@ module Fledge
     private def definition(gemfile)
       at_project(gemfile) do
         dsl = Bundler::Dsl.new
-        dsl.eval_gemfile(gemfile)
+        Evaluation.to_stderr { dsl.eval_gemfile(gemfile) }
         # Frozen as the built app is, whatever the environment says: Bundler
         # adds the computer's own platform to a definition it may rewrite
         # (Bundler::Definition#initialize), and that platform is no more
         # locked for the app than the lockfile says.
         definition = Bundler.settings.temporary(frozen: true) do
-          dsl.to_definition(Pathname.new(@lockfile), {}).tap { |read| read.ensure_equivalent_gemfile_and_lockfile(true) }
+          Evaluation.to_stderr { dsl.to_definition(Pathname.new(@lockfile), {}) }.tap { |read| read.ensure_equivalent_gemfile_and_lockfile(true) }
         end
         @build_args = build_settings
         read_groups(definition)
@@ -481,9 +482,9 @@ module Fledge
     private def lockfile_with(target)
       at_project(@gemfile) do
         dsl = Bundler::Dsl.new
-        dsl.eval_gemfile(@gemfile)
+        Evaluation.to_stderr { dsl.eval_gemfile(@gemfile) }
         Bundler.settings.temporary(frozen: true) do
-          dsl.to_definition(Pathname.new(@lockfile), {}).tap { |definition| definition.add_platform(target) }.to_lock
+          Evaluation.to_stderr { dsl.to_definition(Pathname.new(@lockfile), {}) }.tap { |definition| definition.add_platform(target) }.to_lock
         end
       end
     end
@@ -520,7 +521,7 @@ module Fledge
       lockfile = @shipped_lockfile
       shipped[@lockfile.delete_prefix("#{@app.root}/")] = lockfile if lockfile
       gemspecs.uniq.sort.each_with_object(shipped) do |path, files|
-        spec = Bundler.load_gemspec(path) or next
+        spec = Evaluation.to_stderr { Bundler.load_gemspec(path) } or next
         spec.installed_by_version = Gem::VERSION
         files[path.delete_prefix("#{@app.root}/")] = with_loads(spec.to_ruby, path)
       end

@@ -7,6 +7,7 @@
 
 require "rubygems"
 require_relative "cache_tag"
+require_relative "evaluation"
 require_relative "config"
 require_relative "entry"
 require_relative "error"
@@ -220,14 +221,16 @@ module Fledge
       require "bundler"
       path = File.join(root, paths.first.to_s)
       gemfile = %w[Gemfile gems.rb].map { |name| File.join(root, name) }.find { |file| File.file?(file) }
-      return Bundler.load_gemspec(path) unless gemfile
+      return Evaluation.to_stderr { Bundler.load_gemspec(path) } unless gemfile
 
       saved = ENV.fetch("BUNDLE_GEMFILE", nil)
       begin
         ENV["BUNDLE_GEMFILE"] = gemfile
         Bundler.reset_settings_and_root!
-        Bundler::Dsl.new.eval_gemfile(gemfile)
-        Bundler.load_gemspec(path)
+        Evaluation.to_stderr do
+          Bundler::Dsl.new.eval_gemfile(gemfile)
+          Bundler.load_gemspec(path)
+        end
       rescue Bundler::BundlerError => e
         raise Error, "Bundler can't evaluate #{gemfile} and #{path}:\n#{e.message.rstrip}"
       ensure

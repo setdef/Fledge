@@ -8,6 +8,7 @@
 require "fileutils"
 require "rubygems"
 require_relative "entry"
+require_relative "evaluation"
 require_relative "error"
 require_relative "gem_files"
 require_relative "gem_package"
@@ -64,7 +65,7 @@ module Fledge
       @checkout = gem.folder
       @folder = "."
       found = Dir.glob(gem.glob, base: gem.folder).sort.filter_map do |relative|
-        spec = Bundler.load_gemspec(File.join(gem.folder, relative))
+        spec = Evaluation.to_stderr { Bundler.load_gemspec(File.join(gem.folder, relative)) }
         [relative, spec] if spec&.name == gem.name
       end.first
       raise Error, "#{gem.folder} holds no gemspec of #{gem.name} (#{gem.glob}). Run bundle lock, then build again." unless found
@@ -303,7 +304,7 @@ module Fledge
     private def evaluated_gemspecs
       specs = {} # : Hash[String, String]
       Dir.glob(@gem.glob, base: checkout).each do |relative|
-        spec = Bundler.load_gemspec(File.join(checkout, relative)) or next
+        spec = Evaluation.to_stderr { Bundler.load_gemspec(File.join(checkout, relative)) } or next
         spec.installed_by_version = Gem::VERSION
         specs[relative] = spec.to_ruby
       end

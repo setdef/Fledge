@@ -6,6 +6,7 @@
 #++
 
 require_relative "../error"
+require_relative "../evaluation"
 require_relative "../git_gem"
 require_relative "../locked_gem"
 require_relative "../path_gem"
@@ -151,7 +152,7 @@ module Fledge
       # finds and evaluates it, or +nil+.
       private def path_gemspec(folder, name, source)
         Dir.glob(source.options["glob"] || GEMSPECS, base: folder).each do |file|
-          spec = Bundler.load_gemspec(File.join(folder, file))
+          spec = Evaluation.to_stderr { Bundler.load_gemspec(File.join(folder, file)) }
           return spec if spec&.name == name
         end
         nil

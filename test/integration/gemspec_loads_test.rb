@@ -70,6 +70,16 @@ class GemspecLoadsTest < Minitest::Test
     assert_match(%r{\ARuby can't evaluate #{Regexp.escape(gemspec)}:\n.*lib/missing}m, error.message)
   end
 
+  # What the Gemfile or the gemspec prints is not among the files the Ruby
+  # of its own answers with.
+  def test_what_the_gemfile_and_the_gemspec_print_does_not_reach_the_answer
+    root = FakeProject.write(@dir, name: "chatty", gemfile: "puts \"gemfile\"\nsystem(\"echo child\")\n")
+    gemspec = File.join(root, "chatty.gemspec")
+    File.write(gemspec, "puts \"gemspec\"\n#{File.read(gemspec)}")
+
+    assert_equal [], Fledge::Bundle::GemspecLoads.new.call(gemspec, gemfile: File.join(root, "Gemfile"))
+  end
+
   # A gemspec that needs what the Gemfile defined before its gemspec line:
   # Bundler evaluates the Gemfile first, so bundle exec works.
   def test_a_gemspec_that_needs_what_the_gemfile_loaded_ships

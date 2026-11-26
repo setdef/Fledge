@@ -9,6 +9,7 @@ require "digest"
 require "fileutils"
 require "open3"
 require_relative "error"
+require_relative "evaluation"
 
 module Fledge
   # Fetches a git gem's repository at the revision its lockfile locks.
@@ -159,7 +160,7 @@ module Fledge
       require "bundler"
       Dir.glob(glob, base: folder).each do |relative|
         path = File.join(folder, relative)
-        spec = Bundler.load_gemspec(path) or next
+        spec = Evaluation.to_stderr { Bundler.load_gemspec(path) } or next
         spec.installed_by_version = Gem::VERSION
         File.binwrite(path, spec.to_ruby)
       end

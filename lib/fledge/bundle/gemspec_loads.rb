@@ -32,10 +32,14 @@ module Fledge
       # a file Ruby compiles then (TracePoint's +script_compiled+) that is
       # not a required one, unless a file compiled then is still running,
       # which loads it again wherever it runs. Each load comes before the
-      # requires that finished after it began.
+      # requires that finished after it began. The files are its standard
+      # output, so what the Gemfile or the gemspec prints goes to its
+      # standard error.
       SCRIPT = <<~RUBY
         require "bundler"
         require "json"
+        result = STDOUT.dup
+        STDOUT.reopen(STDERR)
         gemfile, target = ARGV.map { |path| File.realpath(path) }
         Dir.chdir(File.dirname(gemfile))
         events = nil
@@ -69,7 +73,7 @@ module Fledge
         end)
         Bundler::Dsl.new.eval_gemfile(gemfile)
         Bundler.load_gemspec(target) if events.nil?
-        print JSON.generate(events.sort_by.with_index { |event, index| [event[0], event[1], index] }.map { |event| event.drop(2) })
+        result.print JSON.generate(events.sort_by.with_index { |event, index| [event[0], event[1], index] }.map { |event| event.drop(2) })
       RUBY
 
       # Each file evaluating the gemspec at +path+ loads, after the

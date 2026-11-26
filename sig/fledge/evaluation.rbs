@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  module Evaluation
+    def self.to_stderr: [T] () { () -> T } -> T
+  end
+end

@@ -203,6 +203,19 @@ module Probe
     say "-- in OnLaunched"
     package_graph("in OnLaunched")
     modules("in OnLaunched, before any activation")
+    floating_point
+    retest("baseline")
+    say "-- step A: _fpreset"
+    Win.function("ucrtbase.dll", "_fpreset", [], Fiddle::TYPE_VOID).call
+    floating_point
+    retest("after _fpreset")
+    say "-- step B: control word set to round-to-nearest, denormals saved, all exceptions masked"
+    control_word(0x1f, 0x1f | 0x300 | 0x03000000)
+    floating_point
+    retest("after the control word was set")
+    say "-- step C: the C library's numeric locale set to C"
+    say "  setlocale(LC_NUMERIC, \"C\") returned #{Win.function('ucrtbase.dll', 'setlocale', [W::INT, W::POINTER], W::POINTER).call(4, 'C').to_s.inspect}"
+    retest("after setlocale")
     2.times do |round|
       say "-- round #{round + 1}"
       CLASSES.each do |name|
@@ -222,6 +235,35 @@ module Probe
     end
     package_graph("after the activations")
     modules("after the activations")
+  end
+
+  # The floating-point control word and the locales, which a double's
+  # parse reads.
+  def self.floating_point
+    say "  floating-point control word 0x#{control_word(0, 0).to_s(16)}"
+    locale = Win.function("ucrtbase.dll", "setlocale", [W::INT, W::POINTER], W::POINTER).call(0, nil).to_s
+    say "  setlocale(LC_ALL, NULL): #{locale.inspect}"
+    name = Win.buffer(170)
+    length = Win.function("kernel32.dll", "GetUserDefaultLocaleName", [W::POINTER, W::INT], W::INT).call(name, 85)
+    say "  user default locale #{name[0, [length - 1, 0].max * 2].force_encoding(Encoding::UTF_16LE).encode(Encoding::UTF_8)}, thread locale 0x#{Win.function('kernel32.dll', 'GetThreadLocale', [], W::UINT).call.to_s(16)}"
+  end
+
+  # _controlfp_s: sets the bits of mask to those of value, and returns the control word.
+  def self.control_word(value, mask)
+    cell = Win.buffer(4)
+    status = Win.function("ucrtbase.dll", "_controlfp_s", [W::POINTER, W::UINT, W::UINT], W::INT).call(cell, value, mask)
+    say "  _controlfp_s returned #{status}" unless status.zero?
+    cell[0, 4].unpack1("L")
+  end
+
+  # Whether a double in markup parses, and whether XamlControlsResources activates.
+  def self.retest(label)
+    say "-- retest #{label}"
+    reader = W.factory("Microsoft.UI.Xaml.Markup.XamlReader", Basket::WinUI::IID_XAML_READER_STATICS)
+    %w[0.96 0.5 0.75 0.1 1 0 10.25].each do |text|
+      attempt("  Border Opacity=#{text}") { reader.out_object(6, [W::POINTER], Win.hstring("<Border #{NS} Opacity=\"#{text}\"/>"), what: "XamlReader.Load") }
+    end
+    attempt("  RoActivateInstance XamlControlsResources") { W.activate("Microsoft.UI.Xaml.Controls.XamlControlsResources") }
   end
 
   # IActivationFactory::ActivateInstance of XamlControlsResources, called

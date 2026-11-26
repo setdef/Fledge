@@ -5,7 +5,7 @@
 # Xcode project, which fledge build generated it from; change it and run
 # xcodegen again, or change the project in Xcode. One app for iPhone and
 # iPad, iOS 15 and later, on arm64 devices and Apple silicon Simulators,
-# as Fledge's iOS runtime is (ADR 099), linking
+# as Fledge's iOS runtime is (doc/contributors/design/phone-runtimes.md, "Targets"), linking
 # FledgeRuby.xcframework, and embedding it where its Ruby is a
 # framework, with the identity fledge.yml gives. Each of that Ruby's own
 # extensions is Frameworks/NAME.xcframework, embedded and not linked,

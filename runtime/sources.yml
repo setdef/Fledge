@@ -367,7 +367,7 @@ replaceability:
     mirrors:
       - https://mirrors.kernel.org/gnu/gmp/gmp-6.2.1.tar.xz
 
-# What fledge build runs or copies (ADR 101), which a
+# What fledge build runs or copies (decisions, 2026-10-28), which a
 # runtime keeps in its tools/ folder and no app holds.
 #
 # Windows: rcedit, Electron's editor of a Windows program's resources

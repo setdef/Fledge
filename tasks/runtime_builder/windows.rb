@@ -175,7 +175,7 @@ class RuntimeBuilder
     end
 
     # rcedit, which fledge build runs on Windows to write an app's
-    # version information and icon into its program (ADR 101): Electron's
+    # version information and icon into its program (decisions, 2026-10-28): Electron's
     # release of it, as electron-builder downloads it, pinned by SHA-256.
     private def copy_rcedit(to)
       pin = @builder.sources.fetch("rcedit")

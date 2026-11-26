@@ -14,7 +14,7 @@
 # each app it builds is delivered as CI delivers every push's
 # (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the
 # runtime's own tools, is installed and its app run, as CI installs every
-# push's (ADR 101). Another job writes phones' projects from
+# push's (decisions, 2026-10-28). Another job writes phones' projects from
 # the tag and builds them with Xcode and Gradle (ADR 012), and another
 # downloads every asset of the release and checks it against SHA256SUMS,
 # which must be the tag's lib/fledge/SHA256SUMS, the pins the gem ships.
@@ -226,7 +226,7 @@ jobs:
             [ "$version" = "fledge ${TAG#v}" ] || { echo "::error::bundle exec fledge --version printed '$version' in $folder, not 'fledge ${TAG#v}'"; exit 1; }
           done
 
-      # mksquashfs, which writes windowed_app's AppImage (ADR 101), as a
+      # mksquashfs, which writes windowed_app's AppImage (decisions, 2026-10-28), as a
       # Linux developer installs it, pinned to Ubuntu 24.04's build.
       - name: Install mksquashfs
         if: runner.os == 'Linux'

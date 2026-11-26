@@ -12,7 +12,7 @@ module Fledge
     # Which tool reads which format of compiled file on this computer,
     # and how to get them.
     #
-    # Each platform's app is built on that platform (ADR 101), so
+    # Each platform's app is built on that platform (decisions, 2026-10-28), so
     # <tt>fledge build</tt> reads its own platform's format with that
     # platform's tool: on a Mac, Xcode's command line tools' objdump
     # (LLVM's), which compiling a gem needs anyway; on Linux, binutils'

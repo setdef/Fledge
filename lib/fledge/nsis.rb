@@ -21,7 +21,7 @@ module Fledge
   # installer makes one. People also expect an app
   # they install to be in Settings' list of apps, where they can remove
   # it. NSIS is the installer Tauri's bundler writes by default, and on
-  # Windows, where Windows apps are built (ADR 101), Tauri runs NSIS's own
+  # Windows, where Windows apps are built (decisions, 2026-10-28), Tauri runs NSIS's own
   # release, as Fledge does: the Windows runtime carries it in its tools
   # folder, which no app holds.
   #

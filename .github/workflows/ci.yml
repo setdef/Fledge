@@ -4,7 +4,7 @@
 # Plan 001's pipeline, on every push and pull request: the gate, then a
 # runtime per platform, then the tests on each platform with its own
 # runtime, then each platform building the examples for itself on a
-# runner of its own (ADR 101), then Delivery: each built app unpacked and
+# runner of its own (decisions, 2026-10-28), then Delivery: each built app unpacked and
 # run on a fresh computer that has never had Ruby.
 #
 # The gate runs once, on Linux: its lints (RuboCop, Steep, RDoc
@@ -1191,7 +1191,7 @@ jobs:
   # runtime, so test/integration/built_app_test.rb builds and runs a
   # real app rather than skipping (FLEDGE_REQUIRE_RUNTIME turns a skip
   # into a failure); on Linux with squashfs-tools' mksquashfs, which
-  # writes an AppImage's file system (ADR 101), and with GObject
+  # writes an AppImage's file system (decisions, 2026-10-28), and with GObject
   # introspection, so test/integration/typelib_test.rb builds an app
   # over ruby-gnome's gems. No sqlite3 gem is built for Ruby 4.1 yet, so the
   # builds of test/fixtures/my_cool_app and the gem-shaped probe compile it
@@ -1523,7 +1523,7 @@ jobs:
 
   # Each platform's apps, built on a runner of that platform from the
   # runtime the runtime job built for it, with that platform's own tools
-  # (ADR 101), as a developer builds them: examples/hello, the parity
+  # (decisions, 2026-10-28), as a developer builds them: examples/hello, the parity
   # probe (test/fixtures/parity), which Delivery asks what a child Ruby
   # sees, and the probe as a gem-shaped app's program (Parity.gem_probe),
   # which Delivery asks what Bundler.with_original_env and

@@ -607,7 +607,7 @@ Ruby records the name of a preview or a development build only in that string. `
 
 ## The tools folder
 
-`tools/` holds what `fledge build` runs or copies (ADR 101). An app holds none of it, unless its `fledge.yml` sets `build_tools` (`doc/contributors/design/desktop-apps.md`). Each file is pinned by SHA-256 in `runtime/sources.yml` and owned by a component of the license audit, which checks `rcedit.exe`'s and `llvm-readobj.exe`'s SHA-256 again in the runtime.
+`tools/` holds what `fledge build` runs or copies (decisions, 2026-10-28). An app holds none of it, unless its `fledge.yml` sets `build_tools` (`doc/contributors/design/desktop-apps.md`). Each file is pinned by SHA-256 in `runtime/sources.yml` and owned by a component of the license audit, which checks `rcedit.exe`'s and `llvm-readobj.exe`'s SHA-256 again in the runtime.
 
 | Platform | File | What `fledge build` does with it |
 |---|---|---|
@@ -622,7 +622,7 @@ A desktop runtime alone serves `fledge build` when it compiles a gem's extension
 
 ## Platform names and asset names
 
-A platform is named by its RubyGems platform: `arm64-darwin`, `x86_64-linux`, `aarch64-linux`, `x86_64-linux-musl`, `aarch64-linux-musl`, `x64-mingw-ucrt`, and `aarch64-mingw-ucrt`. A Ruby developer already meets these names in `Gemfile.lock` and in precompiled gems, and they decide which precompiled gem fits a runtime, so Fledge prints no other name for a platform: not in a runtime's asset, `fledge build`'s output, `dist/NAME-PLATFORM`, an error message, a CI job, or the license map. `Fledge::Platform::NAMES` lists them, `Fledge::Platform.local` maps `Gem::Platform.local` to one, and `test/platform_test.rb` checks the mapping. A build's target is the platform Fledge runs on (ADR 101). A phone's targets follow RubyGems' grammar but are chosen so that no desktop gem fits them (`doc/contributors/design/phone-runtimes.md`, "Targets").
+A platform is named by its RubyGems platform: `arm64-darwin`, `x86_64-linux`, `aarch64-linux`, `x86_64-linux-musl`, `aarch64-linux-musl`, `x64-mingw-ucrt`, and `aarch64-mingw-ucrt`. A Ruby developer already meets these names in `Gemfile.lock` and in precompiled gems, and they decide which precompiled gem fits a runtime, so Fledge prints no other name for a platform: not in a runtime's asset, `fledge build`'s output, `dist/NAME-PLATFORM`, an error message, a CI job, or the license map. `Fledge::Platform::NAMES` lists them, `Fledge::Platform.local` maps `Gem::Platform.local` to one, and `test/platform_test.rb` checks the mapping. A build's target is the platform Fledge runs on (decisions, 2026-10-28). A phone's targets follow RubyGems' grammar but are chosen so that no desktop gem fits them (`doc/contributors/design/phone-runtimes.md`, "Targets").
 
 RubyGems' names are irregular: `arm64` on macOS against `aarch64` on Linux and Windows, `x64` on Windows against `x86_64` elsewhere. A Mach-O gem may also be named for a macOS version (`arm64-darwin-23`), which fits a runtime only as RubyGems decides, so `fledge build` matches as RubyGems does, not by string. Other ecosystems name platforms differently (LLVM target triples such as `aarch64-apple-darwin`, Go's `darwin/arm64`, Python's wheel tags such as `manylinux_2_39_x86_64`, Electron's `--platform darwin --arch arm64`). Each is more regular, and none tells a Ruby developer which precompiled gem fits.
 

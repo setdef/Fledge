@@ -43,7 +43,7 @@ module Fledge
   # Ruby's prefix is in (doc/contributors/design/launcher.md, "The app
   # folder in a macOS bundle"). Then it writes <tt>Info.plist</tt> with
   # +plutil+ and signs the bundle ad hoc with +codesign+, which seals every file; both come with
-  # macOS (ADR 101).
+  # macOS (decisions, 2026-10-28).
   #
   # Use it through Fledge::Assembly.
   #

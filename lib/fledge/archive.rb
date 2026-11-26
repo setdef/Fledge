@@ -19,7 +19,7 @@ module Fledge
   # or a symbolic link: GNU tar on Linux, bsdtar (libarchive) on macOS,
   # and on Windows 10 and 11 the bsdtar Windows ships as
   # <tt>System32\\tar.exe</tt>. Fledge wrote its own tar and ZIP formats
-  # only so that one computer could build every platform (ADR 101).
+  # only so that one computer could build every platform (decisions, 2026-10-28).
   #
   # This module runs that tar. It packs a folder under its own name, so
   # the archive unpacks into one folder; it unpacks an archive into a

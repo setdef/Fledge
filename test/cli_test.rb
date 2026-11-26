@@ -156,7 +156,7 @@ class CLITest < Minitest::Test
     assert_equal "fledge build: unrecognized option '--frobnicate'\n#{USAGE}", err
   end
 
-  # Each platform's app is built on that platform (ADR 101), so the
+  # Each platform's app is built on that platform (decisions, 2026-10-28), so the
   # --target of Fledge 0.0.1.pre.7 is a usage error that says so.
   def test_a_target_is_a_usage_error_that_says_to_build_on_that_platform
     out, err, status = fledge("build", "--target", "x86_64-linux", "examples/hello")

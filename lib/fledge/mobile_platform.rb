@@ -13,7 +13,7 @@ module Fledge
   # iPhones and iPads, or +android+.
   #
   # A desktop app is built for the computer <tt>fledge build</tt> runs on
-  # (ADR 101). A phone builds nothing, so its app is built on a computer
+  # (decisions, 2026-10-28). A phone builds nothing, so its app is built on a computer
   # whose tools build for it: Xcode, which runs only on macOS, for iOS; and
   # the Android SDK's Gradle plugin, which Google supports on macOS,
   # Windows, and x86-64 Linux, for Android, as Briefcase, Flutter, React

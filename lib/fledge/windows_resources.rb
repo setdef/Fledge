@@ -23,7 +23,7 @@ module Fledge
   # This module has rcedit write them, as electron-builder and
   # electron-packager have it write an Electron app's: Electron's own
   # resource editor (MIT), which calls Windows' UpdateResource, so it
-  # runs on Windows, where each Windows app is built (ADR 101). The
+  # runs on Windows, where each Windows app is built (decisions, 2026-10-28). The
   # Windows runtime carries a pinned build of it in its +tools+ folder,
   # which no app holds. It sets FileDescription, ProductName, and
   # InternalName to the app's name, OriginalFilename to its program's,

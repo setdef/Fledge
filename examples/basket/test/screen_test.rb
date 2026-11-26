@@ -86,12 +86,12 @@ elsif RUBY_PLATFORM.include?("android")
     # empties the field.
     def test_adding_puts_what_the_field_holds_in_the_list_and_empties_the_field
       shown = screen
-      shown.field.call("setText", "(Ljava/lang/CharSequence;)V", "Milk")
+      shown.field.setText("Milk")
       shown.add
 
       assert_equal ["Milk"], @list.items
       assert_equal 1, shown.rows
-      assert_equal "", shown.field.call("getText", "()Landroid/text/Editable;").to_s
+      assert_equal "", shown.field.getText.to_s
     end
 
     # Taking an item out takes its row away.

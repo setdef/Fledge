@@ -28,14 +28,13 @@ module Basket
     module Listener
       # The name of the class Ruby writes.
       HANDLER = "basket.Handler"
-      # The JNI signature of InvocationHandler.invoke.
+      # The JNI signature of InvocationHandler.invoke, which RegisterNatives
+      # takes as text.
       INVOKE = "(Ljava/lang/Object;Ljava/lang/reflect/Method;[Ljava/lang/Object;)Ljava/lang/Object;"
-      # The JNI signature of Proxy.newProxyInstance.
-      NEW_PROXY = "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;"
-      # How to read a boxed Java number as Ruby's, by class.
+      # The method that reads a boxed Java number as Ruby's, by class.
       UNBOXING = {
-        "java.lang.Integer" => ["intValue", "()I"],
-        "java.lang.Long" => ["longValue", "()J"],
+        "java.lang.Integer" => :intValue,
+        "java.lang.Long" => :longValue,
       }.freeze
 
       @proxies = []
@@ -48,7 +47,7 @@ module Basket
         # a boolean method's lambda answers true or false.
         def implement(interfaces, handlers)
           classes = Java.array(Java::Klass["java.lang.Class"], interfaces.map { |name| Java::Klass[name] })
-          proxy = Java::Klass["java.lang.reflect.Proxy"].call("newProxyInstance", NEW_PROXY, loader, classes, handler)
+          proxy = Java::Klass["java.lang.reflect.Proxy"].newProxyInstance(loader, classes, handler)
           @proxies << [proxy, handlers.transform_keys(&:to_s)]
           proxy
         end
@@ -60,8 +59,8 @@ module Basket
         # prints one a program does not rescue, and the call answers null.
         def dispatch(proxy_ref, method_ref, arguments_ref)
           method = Java.borrow(method_ref)
-          name = method.call("getName", "()Ljava/lang/String;")
-          returns = method.call("getReturnType", "()Ljava/lang/Class;").call("getName", "()Ljava/lang/String;")
+          name = method.getName
+          returns = method.getReturnType.getName
           arguments = arguments_ref.zero? ? [] : Java.elements(arguments_ref).map { |argument| unbox(argument) }
           proxy, handlers = @proxies.find { |each, _| Java.same?(each.ref, proxy_ref) }
           answer(returns, handlers&.key?(name) ? handlers.fetch(name).call(*arguments) : own(name, proxy, arguments))
@@ -83,8 +82,8 @@ module Basket
         private def unbox(argument)
           return argument unless argument.is_a?(Java::Instance)
 
-          UNBOXING.each do |name, (getter, signature)|
-            return argument.call(getter, signature) if argument.instance_of_klass?(Java::Klass[name])
+          UNBOXING.each do |name, getter|
+            return argument.public_send(getter) if argument.instance_of_type?(name)
           end
           argument
         end
@@ -93,8 +92,8 @@ module Basket
         # boolean or int, a String, or null.
         private def answer(returns, value)
           case returns
-          when "boolean" then local(Java::Klass["java.lang.Boolean"].call("valueOf", "(Z)Ljava/lang/Boolean;", value ? true : false))
-          when "int" then local(Java::Klass["java.lang.Integer"].call("valueOf", "(I)Ljava/lang/Integer;", value.to_i))
+          when "boolean" then local(Java::Klass["java.lang.Boolean"].valueOf(value ? true : false))
+          when "int" then local(Java::Klass["java.lang.Integer"].valueOf(value.to_i))
           when "java.lang.String" then Java.new_string(value.to_s)
           else 0
           end
@@ -108,17 +107,17 @@ module Basket
         # to, and the loader of the class Ruby wrote for it.
         private def handler
           @handler ||= begin
-            klass = Java::Klass.of(HANDLER, loader.call("loadClass", "(Ljava/lang/String;)Ljava/lang/Class;", HANDLER))
+            klass = Java::Klass.of(HANDLER, loader.loadClass(HANDLER))
             register(klass)
-            klass.new("()V")
+            klass.new
           end
         end
 
         private def loader
           @loader ||= begin
-            buffer = Java::Klass["java.nio.ByteBuffer"].call("wrap", "([B)Ljava/nio/ByteBuffer;", Java.bytes(Dex.handler_class(HANDLER)))
-            parent = Java::Klass["java.lang.ClassLoader"].call("getSystemClassLoader", "()Ljava/lang/ClassLoader;")
-            Java::Klass["dalvik.system.InMemoryDexClassLoader"].new("(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V", buffer, parent)
+            buffer = Java::Klass["java.nio.ByteBuffer"].wrap(Java.bytes(Dex.handler_class(HANDLER)))
+            parent = Java::Klass["java.lang.ClassLoader"].getSystemClassLoader
+            Java::Klass["dalvik.system.InMemoryDexClassLoader"].new(buffer, parent)
           end
         end
 

@@ -6,8 +6,9 @@
 #++
 
 # Basket's tests inside the app on a phone: the list's, which also run
-# on your own computer, the dex writer's, on Android, the iOS bridge's,
-# on iOS, and the screen's, which need the phone's widgets.
+# on your own computer, the dex writer's and the calls into Java, on
+# Android, the iOS bridge's, on iOS, and the screen's, which need the
+# phone's widgets.
 # fledge test runs this file as the app's program, in place of main.rb,
 # and exits with its status, as ruby test/phone.rb would:
 #
@@ -16,5 +17,6 @@
 
 require_relative "list_test"
 require_relative "dex_test" if RUBY_PLATFORM.include?("android")
+require_relative "java_test" if RUBY_PLATFORM.include?("android")
 require_relative "objc_test" if RUBY_PLATFORM.include?("darwin")
 require_relative "screen_test"

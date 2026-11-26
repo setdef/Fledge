@@ -54,7 +54,7 @@ class PhoneTestCommandTest < Minitest::Test
     android_missing("no Android device or emulator: set ANDROID_SERIAL, as bin/android-emulator does") unless ENV["ANDROID_SERIAL"]
     runtimes("android")
     uninstall_android_apps
-    assert_passes fledge_test("android", BASKET), runs: 12
+    assert_passes fledge_test("android", BASKET), runs: 21
     assert_passes fledge_test("android", PASSES), runs: 1, warns: true
     assert_fails fledge_test("android", FAILS)
   ensure

@@ -26,17 +26,16 @@ module Basket
       class << self
         # The app's Application, a Context that lives as long as the app.
         def application
-          Java::Klass[THREAD].call("currentApplication", "()Landroid/app/Application;")
+          Java::Klass[THREAD].currentApplication
         end
 
         # The Activity Android made first, the one whose screen the person
         # sees when Ruby starts.
         def first
-          thread = Java::Klass[THREAD].call("currentActivityThread", "()Landroid/app/ActivityThread;")
-          activities = thread.field("mActivities", "Landroid/util/ArrayMap;")
-          raise Java::Error, "Android has made no Activity" if activities.call("size", "()I").zero?
+          activities = Java::Klass[THREAD].currentActivityThread.field("mActivities", "Landroid/util/ArrayMap;")
+          raise Java::Error, "Android has made no Activity" if activities.size.zero?
 
-          activities.call("valueAt", "(I)Ljava/lang/Object;", 0).field("activity", "Landroid/app/Activity;")
+          activities.valueAt(0).field("activity", "Landroid/app/Activity;")
         end
       end
     end

@@ -6,6 +6,7 @@
 #++
 
 require "fiddle"
+require_relative "member"
 require_relative "vm"
 
 module Basket
@@ -14,13 +15,15 @@ module Basket
     # interface Android's runtime gives native code, reached through
     # Fiddle. Any Ruby on Android can do what this file does.
     #
-    # Each call spells out its JNI signature, as Android's reference
-    # lists the method, and the signature says how Ruby's values become
-    # Java's: a Ruby String is a Java String, +true+ a boolean, and an
-    # Instance or a Klass the Java object it holds.
+    # Java's classes, methods, and constants are called by name, as
+    # Android's reference lists them, and Ruby chooses among a method's
+    # overloads by the arguments, as pyjnius does: a Ruby String is a
+    # Java String, +true+ a boolean, an Integer an int or a long, a Float
+    # a float, +nil+ null, and an Instance the Java object it holds.
     #
-    #   edit = Java::Klass["android.widget.EditText"].new("(Landroid/content/Context;)V", activity)
-    #   edit.call("setHint", "(Ljava/lang/CharSequence;)V", "Add an item")
+    #   edit = Java::Klass["android.widget.EditText"].new(activity)
+    #   edit.setHint("Add an item")
+    #   Java::Klass["android.widget.LinearLayout"].VERTICAL # => 1
     #
     # Every Java object Ruby holds is a global reference that Ruby's
     # collector deletes, so a program that runs for days does not fill the
@@ -98,9 +101,9 @@ module Basket
 
       class << self
         # This thread's JNIEnv, from the Java VM's GetEnv. Basket calls
-        # Java only from Android's main thread, which Java started and so
-        # already knows. A thread Java did not start has no JNIEnv, and
-        # this raises Error for it.
+        # Java only from Android's main thread, which Java started, so
+        # Java has a JNIEnv for it. A thread Java did not start has none,
+        # and this raises Error for it.
         def env
           Thread.current.thread_variable_get(:basket_jni_env) || begin
             slot = Fiddle::Pointer.malloc(WORD, FREE)
@@ -199,6 +202,39 @@ module Basket
           end
         end
 
+        # Calls the method +name+ of JNI +signature+ on +target+, which is
+        # an object of the class +owner+, or the class itself when
+        # +static+. It is how Ruby asks Java what a class lists, before
+        # any method can be called by name.
+        def method_call(target, owner, name, signature, *arguments, static: false)
+          id = call(static ? :get_static_method_id : :get_method_id, [P, P, P], P, owner, name, signature).to_i
+          invoke(target, id, signature, arguments, static:)
+        end
+
+        # Yields the class of the object +ref+, a local reference that this
+        # deletes afterward.
+        def class_of(ref)
+          klass = call(:get_object_class, [P], P, ref).to_i
+          yield klass
+        ensure
+          delete_local(klass) if klass
+        end
+
+        # The Members that the class +klass+ (a jclass) lists with its
+        # +getter+, getMethods or getConstructors, by name. A class is
+        # listed once, by its name.
+        def members(klass, getter)
+          lister = Klass["java.lang.Class"].ref
+          kind = (getter == "getMethods") ? "Method" : "Constructor"
+          name = method_call(klass, lister, "getName", "()Ljava/lang/String;")
+          (@members ||= {})[[name, getter]] ||= begin
+            list = method_call(klass, lister, getter, "()[Ljava/lang/reflect/#{kind};")
+            arrays = Klass["java.util.Arrays"].ref
+            text = method_call(arrays, arrays, "toString", "([Ljava/lang/Object;)Ljava/lang/String;", list, static: true)
+            ((kind == "Method") ? Member.methods_in(text) : Member.constructors_in(text)).group_by(&:name)
+          end
+        end
+
         # Calls the method +id+ of +target+, an object or a class, whose JNI
         # +signature+ says how +arguments+ become Java's and the result
         # Ruby's.
@@ -267,7 +303,7 @@ module Basket
         end
       end
 
-      # A Java class, found by its Java name: its constructor, static
+      # A Java class, found by its Java name: its constructors, static
       # methods, and static int fields are Ruby methods of Klass.
       class Klass
         # The class named +name+, such as "android.widget.TextView".
@@ -296,28 +332,34 @@ module Basket
           end
         end
 
-        # A new object of this class, by the constructor of JNI +signature+.
-        def new(signature, *arguments)
-          id = Java.call(:get_method_id, [P, P, P], P, ref, "<init>", signature).to_i
-          Java.construct(ref, id, signature, arguments)
+        # A new object of this class, by the constructor that +arguments+
+        # fit.
+        def new(*arguments)
+          member = Member.choose(Java.members(ref, "getConstructors").fetch(Member::INIT), arguments)
+          id = Java.call(:get_method_id, [P, P, P], P, ref, Member::INIT, member.signature).to_i
+          Java.construct(ref, id, member.signature, arguments)
         end
 
-        # Calls the static method +name+ of JNI +signature+.
-        def call(name, signature, *arguments)
-          id = Java.call(:get_static_method_id, [P, P, P], P, ref, name, signature).to_i
-          Java.invoke(ref, id, signature, arguments, static: true)
-        end
+        # Calls the static method +name+ that +arguments+ fit, or, for
+        # a name with no static method and no arguments, reads the
+        # static int field of that name, a constant such as
+        # <tt>LinearLayout.VERTICAL</tt>. Looking the field up makes Java
+        # initialize the class, which its constants need.
+        def method_missing(name, *arguments)
+          members = Java.members(ref, "getMethods")[name.to_s]&.select(&:static)
+          if members.nil? || members.empty?
+            id = Java.call(:get_static_field_id, [P, P, P], P, ref, name.to_s, "I").to_i
+            return Java.call(Java::TYPES.fetch("I")[4], [P, P], I, ref, id)
+          end
 
-        # The value of the static int field +name+. Looking the field up
-        # makes Java initialize the class, which its constants need.
-        def int(name)
-          id = Java.call(:get_static_field_id, [P, P, P], P, ref, name, "I").to_i
-          Java.call(Java::TYPES.fetch("I")[4], [P, P], I, ref, id)
+          member = Member.choose(members, arguments)
+          id = Java.call(:get_static_method_id, [P, P, P], P, ref, name.to_s, member.signature).to_i
+          Java.invoke(ref, id, member.signature, arguments, static: true)
         end
       end
 
       # A Java object, held by a global reference that Ruby's collector
-      # deletes. It calls Java's methods by name and signature.
+      # deletes. It calls Java's methods by name.
       class Instance
         # What deletes the global reference +ref+, for Ruby's collector to
         # call.
@@ -334,30 +376,38 @@ module Basket
           ObjectSpace.define_finalizer(self, self.class.release(ref))
         end
 
-        # Calls the method +name+ of JNI +signature+.
-        def call(name, signature, *arguments)
-          klass = Java.call(:get_object_class, [P], P, ref).to_i
-          id = Java.call(:get_method_id, [P, P, P], P, klass, name, signature).to_i
-          Java.delete_local(klass)
-          Java.invoke(ref, id, signature, arguments)
+        # Calls the method +name+ of the object's class that +arguments+
+        # fit.
+        def method_missing(name, *arguments)
+          @members ||= Java.class_of(ref) { |klass| Java.members(klass, "getMethods") }
+          members = @members[name.to_s]&.reject(&:static) or return super
+          member = Member.choose(members, arguments)
+          id = Java.class_of(ref) { |klass| Java.call(:get_method_id, [P, P, P], P, klass, name.to_s, member.signature).to_i }
+          Java.invoke(ref, id, member.signature, arguments)
         end
 
-        # The object in the field +name+, whose JNI type is +descriptor+.
+        # The object in the field +name+, whose JNI type is +descriptor+,
+        # for a field that Java's reflection does not list, such as one of
+        # Android's that the SDK hides.
         def field(name, descriptor)
-          klass = Java.call(:get_object_class, [P], P, ref).to_i
-          id = Java.call(:get_field_id, [P, P, P], P, klass, name, descriptor).to_i
-          Java.delete_local(klass)
-          Java.wrap(descriptor, Java.call(:get_object_field, [P, P], P, ref, id).to_i)
+          Java.class_of(ref) do |klass|
+            id = Java.call(:get_field_id, [P, P, P], P, klass, name, descriptor).to_i
+            Java.wrap(descriptor, Java.call(:get_object_field, [P, P], P, ref, id).to_i)
+          end
         end
 
         # The object's text, from Java's toString.
         def to_s
-          call("toString", "()Ljava/lang/String;")
+          Java.class_of(ref) { |klass| Java.method_call(ref, klass, "toString", "()Ljava/lang/String;") }
         end
 
-        # Whether this object is an instance of the class +klass+, a Klass.
-        def instance_of_klass?(klass)
+        # Whether this object is an instance of the Java type +type+, a
+        # class name or an array's, as a method's parameter spells it.
+        def instance_of_type?(type)
+          klass = Klass[type.include?("[") ? Member.descriptor(type) : type]
           Java.call(:is_instance_of, [P, P], U, ref, klass.ref) != 0
+        rescue Error
+          false
         end
 
         # Whether +other+ is the same Java object.

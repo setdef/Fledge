@@ -1842,8 +1842,9 @@ jobs:
       # examples/lota_pop, Pop, a game written with Lota, whose gem is
       # not on RubyGems.org: the script takes it from Lota's release,
       # checked against the SHA-256 it pins, into the project's
-      # vendor/cache. Delivery plays it (.github/scripts/deliver-pop.sh
-      # and deliver-pop.ps1), and a release carries it. Not on
+      # vendor/cache. Delivery plays it on a Mac and on Linux
+      # (.github/scripts/deliver-pop.sh), and a release carries it there; on
+      # Windows, deliver-pop.ps1 waits for issue 163. Not on
       # musl Linux (build-musl): Lota publishes no gem for it.
       - name: Build Pop, a Lota game, for ${{ matrix.platform }}
         shell: bash
@@ -3246,13 +3247,6 @@ jobs:
       - name: Start Basket.exe's Win32 screen, add an item, and remove it
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/check-basket-window.ps1 -Archive "$env:RUNNER_TEMP/delivered/Basket-$env:PLATFORM.zip"
-
-      # Pop, a Lota game, started as Explorer starts it and clicked
-      # with the messages a mouse sends: it must pop a dot and end
-      # itself with its score (.github/scripts/deliver-pop.ps1).
-      - name: Start Pop.exe, click its dots, and let it end itself
-        shell: pwsh
-        run: pwsh -NoProfile -File .github/scripts/deliver-pop.ps1 -Archive "$env:RUNNER_TEMP/delivered/Pop-$env:PLATFORM.zip"
 
       # test/fixtures/programs: a GUI and a console program from one
       # folder, with one project and one Ruby, sharing one save

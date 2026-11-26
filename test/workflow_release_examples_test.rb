@@ -47,11 +47,12 @@ class WorkflowReleaseExamplesTest < Minitest::Test
 "delivery-games-arm64-darwin" => %w[deliver-focus-timer.sh deliver-pop.sh],
 "delivery-games-x86_64-linux" => %w[deliver-focus-timer.sh deliver-pop.sh],
 "delivery-games-aarch64-linux" => %w[deliver-focus-timer.sh deliver-pop.sh],
-"delivery-windows-x64-mingw-ucrt" => %w[deliver-pop.ps1],
-"delivery-windows-aarch64-mingw-ucrt" => %w[deliver-pop.ps1],
 }.each do |name, scripts|
       run = runs(jobs("ci.yml").fetch(name)).join("\n")
       scripts.each { |script| assert_includes run, script, "#{name} does not run #{script}" }
+    end
+    %w[delivery-windows-x64-mingw-ucrt delivery-windows-aarch64-mingw-ucrt].each do |name|
+      refute_includes runs(jobs("ci.yml").fetch(name)).join("\n"), "deliver-pop.ps1", "#{name} runs a Pop check that fails on GitHub's runners (issue 163), and a release carries no Pop there"
     end
   end
 

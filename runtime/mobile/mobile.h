@@ -52,6 +52,17 @@ int fledge_log_open(const char *tag);
 void fledge_log_write(int error, const char *text, size_t length);
 
 /*
+ * Waits until every line this process has written to standard output or
+ * standard error has been sent to the log and to a developer tool's
+ * console, as far as the log answers: for at most two seconds. Sends the
+ * line a newline has not ended too. fledge_ruby_run calls it when the
+ * program ends, and a process that ends by exit() or by returning from
+ * main calls it, since fledge_ruby_forward_output registers it with
+ * atexit(3). Does nothing when the output is not forwarded.
+ */
+void fledge_output_drain(void);
+
+/*
  * The runtime's CA certificates, ROOT/libexec/cert.pem, once
  * fledge_ruby_run has found them, or NULL.
  */

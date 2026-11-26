@@ -122,8 +122,8 @@ module Fledge
 
     # Reads the log until two reads +interval+ apart are the same, prints
     # what is new, stops the app, and returns +logged+'s status: the
-    # embedding API logs the program's output from threads of its own, so
-    # its last lines may follow the host's.
+    # system's log may take a moment to show what the app has logged, so
+    # the last lines may come after the host's status.
     private def finish(device, logged, shown)
       status = logged.status
       loop do

@@ -275,9 +275,14 @@ run_ruby(int argc, char **argv)
     register_extensions();
     if (ruby_executable_node(node, NULL) &&
         (put_ruby_on_path() != 0 || (bundle_gemfile != NULL && setup_bundler() != 0))) {
-        return ruby_cleanup(FLEDGE_RUBY_SOFTWARE);
+        int status = ruby_cleanup(FLEDGE_RUBY_SOFTWARE);
+        fledge_output_drain();
+        return status;
     }
-    return ruby_run_node(node);
+    int status = ruby_run_node(node);
+    /* Whatever way the program ended, the host logs its status after the program's last line. */
+    fledge_output_drain();
+    return status;
 }
 /* SPDX-SnippetEnd */
 

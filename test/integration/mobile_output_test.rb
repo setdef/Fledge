@@ -29,9 +29,10 @@ class MobileOutputTest < Minitest::Test
   # bytes, which both logs would cut short at the first, so each goes as
   # the two bytes 0xC0 0x80 as CPython's Android streams write it, or
   # U+2400 on Apple's systems, whose os_log drops an entry of bytes that
-  # are no UTF-8, even where that cuts an entry; then it ends with exit(), which flushes every
-  # stdio stream while the forwarding threads wait on their pipes, as an
-  # app's would.
+  # are no UTF-8, even where that cuts an entry; then it ends with exit()
+  # at once, as a windowed app's host does, while the forwarding threads
+  # still have lines to write: the log takes 20 milliseconds an entry, so
+  # a process that ended without waiting for them would lose the last.
   PROGRAM = <<~C
     #include "fledge_ruby.h"
     #include "mobile.h"
@@ -46,6 +47,7 @@ class MobileOutputTest < Minitest::Test
     int fledge_log_echoes(void) { return 0; }
     int fledge_log_open(const char *tag) { return strcmp(tag, "org.example.App") == 0 ? 0 : -1; }
     void fledge_log_write(int error, const char *text, size_t length) {
+        usleep(20000);
         fprintf(log_file, "%s %.*s\\n", error ? "E" : "O", (int)length, text);
         fflush(log_file);
     }
@@ -72,8 +74,6 @@ class MobileOutputTest < Minitest::Test
         nuls[1000] = '\\0';
         nuls[1001] = '\\n';
         fwrite(nuls, 1, 1002, stdout);
-        fflush(stdout);
-        sleep(1);
         exit(0);
     }
   C
@@ -192,6 +192,7 @@ class MobileOutputTest < Minitest::Test
     #include "fledge_ruby.h"
     #include "mobile.h"
     #include <stdio.h>
+    #include <unistd.h>
 
     const char *ruby_embed_libruby_path;
     __attribute__((weak)) void ruby_init_ext(const char *name, void (*init)(void)) { (void)name; (void)init; }
@@ -204,6 +205,7 @@ class MobileOutputTest < Minitest::Test
     int fledge_log_echoes(void) { return 0; }
     int fledge_log_open(const char *tag) { (void)tag; return 0; }
     void fledge_log_write(int error, const char *text, size_t length) {
+        usleep(100000);
         fprintf(log_file, "%s %.*s\\n", error ? "E" : "O", (int)length, text);
         fflush(log_file);
     }
@@ -248,6 +250,41 @@ class MobileOutputTest < Minitest::Test
         rescue Errno::ESRCH, Errno::ECHILD
           nil
         end
+      end
+    end
+  end
+
+  # What a program that ends the moment it has printed leaves in the log.
+  # The host's log takes 100 milliseconds an entry, so the forwarding
+  # thread is still writing the first lines when the program ends, and
+  # the process ends with main's return, as a windowed app's does, which
+  # ends every thread. Each way a program ends is tried but exit!, which
+  # Ruby ends the process with at once (_exit), where no host can wait:
+  # falling off its end, exit with a status, an uncaught exception, and
+  # an at_exit block that prints.
+  ENDINGS = {
+    "its end" => ["puts 'one'\n$stderr.puts 'two'\nputs 'last'\n", 0, ["O one", "E two", "O last"]],
+    "exit" => ["puts 'one'\nputs 'last'\nexit 3\n", 3, ["O one", "O last"]],
+    "an uncaught exception" => ["puts 'one'\nputs 'last'\nraise 'boom'\n", 1, ["O one", "O last"]],
+    "at_exit" => ["at_exit { puts 'last' }\nputs 'one'\n", 0, ["O one", "O last"]],
+  }.freeze
+
+  def test_a_program_that_ends_at_once_leaves_every_line_in_the_log
+    skip "the mobile embedding API is for iOS and Android, which share POSIX's pipes; Windows has none" if Gem.win_platform?
+    compiler = RbConfig::CONFIG.fetch("CC").split.first
+    skip "no C compiler (#{compiler}) on this computer" unless system(compiler, "--version", out: File::NULL, err: File::NULL)
+
+    Dir.mktmpdir do |dir|
+      program = compile_ruby_host(compiler, dir)
+      ENDINGS.each do |ending, (source, status, lines)|
+        script = File.join(dir, "main.rb")
+        File.write(script, source)
+        log = File.join(dir, "log.txt")
+        errors = File.join(dir, "errors.txt")
+        done = finish(Process.spawn(program, log, dir, script, in: File::NULL, out: File::NULL, err: errors), seconds: 30)
+        assert_equal status, done.exitstatus, "a program ending by #{ending}: #{File.read(errors)}"
+        entries = File.read(log).lines.map(&:chomp)
+        assert_empty lines - entries, "a program ending by #{ending} left the log #{entries.inspect}"
       end
     end
   end

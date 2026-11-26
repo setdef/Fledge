@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On iOS and Android, the last lines a program writes before it ends reach the log, and `fledge test ios` and `fledge test android` print them: a windowed app, or any host that ends the process as the program returns, could lose them, so a run's output could end before its test summary.
 - An iPhone app launched with `xcrun devicectl device process launch --console` shows the lines its Ruby prints on that console, as it did only when the launch also set `OS_ACTIVITY_DT_MODE`: the forwarding to the log keeps a copy of each stream a tool holds and writes each line to it too.
 - On Android and iOS, a NUL byte in an app's output no longer cuts the log entry short: the whole line reaches the log, the NUL as the two bytes `0xC0 0x80` on Android, as CPython's Android streams write it, and as U+2400 on iOS, whose log drops an entry of bytes that are no UTF-8.
 - A `.tar.gz` app records owner id 0 and group id 0 with no names, not the numeric ids and names of the account that built it.

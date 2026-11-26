@@ -64,7 +64,7 @@ module Fledge
     #++
     #   # From a terminal:
     #   #   $ fledge build my_cool_app/exe/my_cool_app
-    #   #   dist/MyCoolApp-x86_64-linux.tar.gz
+    #   #   dist/my_cool_app-x86_64-linux.tar.gz
     #
     #   Fledge::CLI::Build.new(out: $stdout, err: $stderr).call(["examples/hello"]) # => 0
     #--
@@ -119,8 +119,8 @@ module Fledge
         options = Options.parse(argv)
         host = Platform.local(@host)
         from = options.from&.then { |path| BuiltApp.at(path, platform: host, runtimes: Runtimes.new(env: @env, log: @err, pins: @pins)) }
-        app = App.at(options.path)
         phone = MobilePlatform.find(options.phone.to_s)
+        app = App.at(options.path, phone: !phone.nil?)
         signing = phone ? nil : signing(options, host)
         if from then build_from(from.adopt(app), from, host, options.out, signing)
         # A phone's app runs one program: App#main

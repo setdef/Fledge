@@ -36,7 +36,7 @@ class BuildOutputTest < Minitest::Test
       out, err, status = Open3.capture3(env, RbConfig.ruby, "-I", LIB, EXE, "build", "--out", File.join(dir, "dist"), root)
 
       assert_predicate status, :success?, err
-      archive = File.join(dir, "dist", "MyApp-#{Fledge::Platform.local.name}#{Fledge::Platform.local.windows? ? '.zip' : '.tar.gz'}")
+      archive = File.join(dir, "dist", "my_app-#{Fledge::Platform.local.name}#{Fledge::Platform.local.windows? ? '.zip' : '.tar.gz'}")
       assert_equal "#{archive}\n", out.gsub("\r\n", "\n")
       ["gemfile says hi", "gemfile child", "gemspec says hi"].each { |line| assert_includes err.gsub("\r\n", "\n").lines.map(&:chomp), line }
     end

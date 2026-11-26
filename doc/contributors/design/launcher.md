@@ -86,7 +86,7 @@ The app's program runs on the process's main thread, where macOS wants windows a
 
 Each follows a symbolic link someone or a package manager put on `PATH` to the file it names, so the launcher finds `fledge.cfg` and Ruby beside the real file. On Windows `GetModuleFileNameW` returns the path the program was started by, so a program winget links into its `Links` folder would otherwise look there. Only the file itself is resolved: a folder reached through a junction, as Scoop's `current` is, or a `subst` or mapped drive keeps the path the person used, and the folder beside the program is the app's either way.
 
-The launcher's file name is NAME in its messages, `.exe` and all on Windows (`Hello.exe: this app is incomplete: ...`), and, less `.exe` on Windows, names its section of `fledge.cfg`.
+The launcher's file name is NAME in its messages, `.exe` and all on Windows (`hello.exe: this app is incomplete: ...`), and, less `.exe` on Windows, names its section of `fledge.cfg`.
 
 On macOS and Linux, `--enable-load-relative` makes Ruby derive its prefix from the file that holds libruby, which is the launcher, so Ruby looks for `ROOT/lib/ruby/` (`ruby.c`, lines 593 to 743). When that folder is named `bin` in any case, or `lib`, `ruby.c` takes its parent as the prefix instead (lines 712 to 722), so the launcher refuses to run there rather than use a standard library from somewhere else. `argv[0]` stays the pointer `ruby_sysinit` recorded: on Linux `ruby.c` recognizes the program that holds libruby by comparing `dladdr`'s file name with it (line 649), and only then reads `/proc/self/exe`, so a launcher found on `PATH` by its bare name still finds its root.
 

@@ -27,7 +27,7 @@
 #   deliver-console.sh ARCHIVE
 #   deliver-console.sh --reference RUBY MAIN_RB
 #
-# ARCHIVE is Console-PLATFORM.tar.gz as fledge build wrote it. With
+# ARCHIVE is console-PLATFORM.tar.gz as fledge build wrote it. With
 # --reference, it runs MAIN_RB, the probe's own main.rb, with RUBY, as
 # ruby main.rb, and expects exactly the same; CI's Test jobs run that
 # with the Ruby the runtime came from, and Delivery the built app.

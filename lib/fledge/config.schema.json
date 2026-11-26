@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "properties": {
     "name": {
-      "description": "The app's name (default: the gemspec's name, or the project folder's name, camelized). It may have spaces.",
+      "description": "The app's name, used as written (default: for a console app, its entry point's file name without the extension, or for main.rb the gemspec's name, or else the project folder's name, in lower case; for a windowed app, the gemspec's name, or else the project folder's name, camelized). It may have spaces.",
       "type": ["string", "null"],
       "pattern": "[^\\u0000\\t\\n\\u000b\\f\\r ]"
     },

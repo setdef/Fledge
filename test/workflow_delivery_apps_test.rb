@@ -26,13 +26,13 @@ require_relative "test_helper"
 # cannot see what the app prints, or that it prints to standard error.
 class WorkflowDeliveryAppsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  SCRIPT = %r{deliver\.(?:sh|ps1)"?\s+(?:-Archive\s+)?"[^"\s]*/([A-Z]\w*)-}
+  SCRIPT = %r{deliver\.(?:sh|ps1)"?\s+(?:-Archive\s+)?"[^"\s]*/([A-Za-z]\w*)-}
   PASSES_STATUS_ON = /^\s*exit\b[^#\n]*\bARGV\b/
 
   def test_every_app_delivered_exits_with_the_status_it_is_given
     apps = delivered_apps
-    assert_includes apps, "Hello"
-    assert_includes apps, "RustLengths"
+    assert_includes apps, "hello"
+    assert_includes apps, "rust_lengths"
     assert_includes apps, "FfiLibc"
 
     problems = apps.flat_map do |name|

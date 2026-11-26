@@ -54,7 +54,7 @@ class OpensslGemTest < Minitest::Test
 
     assert_equal 0, status, err.string
     scrubbed = ENV.keys.grep(Fledge::NativeBuild::SCRUBBED).to_h { |name| [name, nil] }
-    program = File.join(@dir, "dist", "OpensslGem-#{@platform}", "OpensslGem")
+    program = File.join(@dir, "dist", "openssl_gem-#{@platform}", "openssl_gem")
     out, ran = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }.merge(scrubbed), program, unsetenv_others: true)
 
     assert_predicate ran, :success?, out

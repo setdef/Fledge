@@ -37,18 +37,21 @@ computer you run it on. On a Mac with Apple silicon, the build, and a run
 of the app, look like this:
 
   $ bundle exec fledge build
-  dist/Greet-arm64-darwin.tar.gz
-  $ tar -xzf dist/Greet-arm64-darwin.tar.gz -C /tmp
-  $ /tmp/Greet-arm64-darwin/Greet Ruby
+  dist/greet-arm64-darwin.tar.gz
+  $ tar -xzf dist/greet-arm64-darwin.tar.gz -C /tmp
+  $ /tmp/greet-arm64-darwin/greet Ruby
   {"greeting":"Hello, Ruby!"}
 
+Fledge names a console app after its entry point. Because +main.rb+ is not a
+command, it uses the folder's name, +greet+.
+
 The app carries a whole Ruby runtime, so the archive and the unpacked
-folder are tens of megabytes: <tt>du -sh dist/Greet-arm64-darwin</tt> shows
+folder are tens of megabytes: <tt>du -sh dist/greet-arm64-darwin</tt> shows
 the size of the folder you built. Anyone with an Apple silicon Mac on
 macOS 26 or newer can run it, whether or not they have Ruby. On Windows, the same command
-writes <tt>dist/Greet-x64-mingw-ucrt.zip</tt>, which holds +Greet.exe+, and
+writes <tt>dist/greet-x64-mingw-ucrt.zip</tt>, which holds +greet.exe+, and
 on Linux, a <tt>.tar.gz</tt> for your processor, such as
-<tt>dist/Greet-x86_64-linux.tar.gz</tt>.
+<tt>dist/greet-x86_64-linux.tar.gz</tt>.
 
 That app holds Fledge too, as it holds your other development gems,
 because Bundler installs a gem from git as its whole repository. To see its

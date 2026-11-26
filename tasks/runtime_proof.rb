@@ -135,7 +135,7 @@ class RuntimeProof
     examples_bundle = { "BUNDLE_PATH" => File.join(@work, "examples-bundle") }
     step("bundle install for #{File.basename(gem_app)}", examples_bundle, "bundle", "install", chdir: gem_app)
     expected = capture("bundle", "exec", "ruby", "exe/my_cool_app", env: examples_bundle, chdir: gem_app)
-    { "Hello" => ["Parity", hello], "MyCoolApp" => ["ParityBundle", expected] }.each do |name, (probe, line)|
+    { "hello" => ["parity", hello], "my_cool_app" => ["ParityBundle", expected] }.each do |name, (probe, line)|
       archive, probe_archive = [name, probe].map { |each| File.join(dist, "#{each}-#{platform}#{platform.archive_extension}") }
       step("deliver.sh #{name}", {}, "sh", ".github/scripts/deliver.sh", archive, probe_archive, line)
     end

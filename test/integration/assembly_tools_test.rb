@@ -31,17 +31,17 @@ class AssemblyToolsTest < Minitest::Test
       app = FakeApp.write(dir)
       archive = assemble(dir, app, platform: WINDOWS, runtime:)
 
-      assert_equal File.join(dir, "dist", "Hello-x64-mingw-ucrt.zip"), archive
-      folder = File.join(dir, "dist", "Hello-x64-mingw-ucrt")
-      assert_equal %w[Hello.exe app fledge.cfg ruby], Dir.children(folder).sort
-      program = File.join(folder, "Hello.exe")
+      assert_equal File.join(dir, "dist", "hello-x64-mingw-ucrt.zip"), archive
+      folder = File.join(dir, "dist", "hello-x64-mingw-ucrt")
+      assert_equal %w[app fledge.cfg hello.exe ruby], Dir.children(folder).sort
+      program = File.join(folder, "hello.exe")
       assert_equal 3, subsystem(program)
       info = version_info(program)
-      assert_equal ["Hello", "Hello", "Hello.exe", "0.0.0", "0.0.0"],
+      assert_equal ["hello", "hello", "hello.exe", "0.0.0", "0.0.0"],
         info.values_at("FileDescription", "ProductName", "OriginalFilename", "FileVersion", "ProductVersion")
-      top = File.join(unpacked(dir, archive), "Hello-x64-mingw-ucrt")
+      top = File.join(unpacked(dir, archive), "hello-x64-mingw-ucrt")
       assert_path_exists File.join(top, "ruby/bin/x64-ucrt-ruby400.dll")
-      assert_equal File.binread(File.join(folder, "Hello.exe")), File.binread(File.join(top, "Hello.exe"))
+      assert_equal File.binread(File.join(folder, "hello.exe")), File.binread(File.join(top, "hello.exe"))
       assert_equal File.binread(File.join(app, "main.rb")), File.binread(File.join(top, "app/main.rb"))
     end
   end

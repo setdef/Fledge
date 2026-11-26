@@ -50,7 +50,7 @@ What a project holds, how each file is filled, and how a framework keeps its own
 
 ### What a build writes
 
-`fledge build ios` and `fledge build android` write `OUT/NAME-ios/` or `OUT/NAME-android/`, named as a desktop's folder is, replacing an earlier one, and print its path. `Fledge::MobileProject` (`lib/fledge/mobile_project.rb`) does what both share:
+`fledge build ios` and `fledge build android` write `OUT/NAME-ios/` or `OUT/NAME-android/`, replacing an earlier one, and print its path. NAME is the one a windowed desktop app has, camelized from the gemspec or the project folder, not the entry point's file name that a console app on a desktop takes, since a phone shows an app's name and no command ("The project and its name" in `doc/contributors/design/desktop-apps.md`). `Fledge::MobileProject` (`lib/fledge/mobile_project.rb`) does what both share:
 
 1. checks the app has an identifier, and that a host folder `fledge.yml` names is a folder in the project;
 2. unpacks the phone's runtime, found and checked against the pins as every runtime is (`Fledge::Runtimes`);

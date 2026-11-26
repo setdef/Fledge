@@ -15,7 +15,7 @@ module Fledge
 
     def self.new: (root: String, name: String, gemfile: String?, config: Config, programs: Array[App::Program]) -> instance
 
-    def self.at: (String path, ?home: String) -> App
+    def self.at: (String path, ?home: String, ?phone: bool) -> App
 
     private def self.listed: (String path, String full, String root, Config config, Gem::Specification? gemspec, String? gemfile) -> App
 
@@ -37,6 +37,7 @@ module Fledge
 
     private def self.gemfile_in: (String root, Gem::Specification? gemspec) -> String?
 
+    private def self.name_of_one: (Config config, Gem::Specification? gemspec, String root, String entry, phone: bool) -> String
     private def self.name_for: (Config config, Gem::Specification? gemspec, String root) -> String
 
     def self.camelize: (String name) -> String

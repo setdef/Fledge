@@ -6,7 +6,7 @@
 
 People who live in a terminal install tools with a package manager. This guide shows how to publish a console app that [Fledge](../README.md) built through [Scoop](https://scoop.sh/), a [Homebrew](https://brew.sh/) tap, [winget](https://learn.microsoft.com/windows/package-manager/), [Chocolatey](https://chocolatey.org/), and the [AUR](https://aur.archlinux.org/). Each manager takes the archive `fledge build` writes, from a release you publish, such as a GitHub Release, and a text file you write that names the archive's address and its SHA-256.
 
-The examples publish an app named `Hello`, from a repository at `github.com/example/hello`, as the command `hello`. Replace each `HASH FROM FILE.sha256` with the hash in that file, which `fledge build` writes beside each archive.
+The examples publish a console app named `hello`, from a repository at `github.com/example/hello`, as the command `hello`. A console app is named after its entry point, so `hello`'s program is `hello` (`hello.exe` on Windows), and its archive is `hello-PLATFORM`. Replace each `HASH FROM FILE.sha256` with the hash in that file, which `fledge build` writes beside each archive.
 
 ## Keep the app's folder whole
 
@@ -31,26 +31,26 @@ Put a manifest such as `hello.json` in a git repository, your bucket, and your u
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/example/hello/releases/download/v1.0.0/Hello-x64-mingw-ucrt.zip",
-      "hash": "HASH FROM Hello-x64-mingw-ucrt.zip.sha256",
-      "extract_dir": "Hello-x64-mingw-ucrt"
+      "url": "https://github.com/example/hello/releases/download/v1.0.0/hello-x64-mingw-ucrt.zip",
+      "hash": "HASH FROM hello-x64-mingw-ucrt.zip.sha256",
+      "extract_dir": "hello-x64-mingw-ucrt"
     },
     "arm64": {
-      "url": "https://github.com/example/hello/releases/download/v1.0.0/Hello-aarch64-mingw-ucrt.zip",
-      "hash": "HASH FROM Hello-aarch64-mingw-ucrt.zip.sha256",
-      "extract_dir": "Hello-aarch64-mingw-ucrt"
+      "url": "https://github.com/example/hello/releases/download/v1.0.0/hello-aarch64-mingw-ucrt.zip",
+      "hash": "HASH FROM hello-aarch64-mingw-ucrt.zip.sha256",
+      "extract_dir": "hello-aarch64-mingw-ucrt"
     }
   },
-  "bin": [["Hello.exe", "hello"]],
+  "bin": "hello.exe",
   "checkver": "github",
   "autoupdate": {
     "architecture": {
       "64bit": {
-        "url": "https://github.com/example/hello/releases/download/v$version/Hello-x64-mingw-ucrt.zip",
+        "url": "https://github.com/example/hello/releases/download/v$version/hello-x64-mingw-ucrt.zip",
         "hash": { "url": "$url.sha256" }
       },
       "arm64": {
-        "url": "https://github.com/example/hello/releases/download/v$version/Hello-aarch64-mingw-ucrt.zip",
+        "url": "https://github.com/example/hello/releases/download/v$version/hello-aarch64-mingw-ucrt.zip",
         "hash": { "url": "$url.sha256" }
       }
     }
@@ -79,25 +79,25 @@ class Hello < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/example/hello/releases/download/v1.0.0/Hello-arm64-darwin.tar.gz"
-      sha256 "HASH FROM Hello-arm64-darwin.tar.gz.sha256"
+      url "https://github.com/example/hello/releases/download/v1.0.0/hello-arm64-darwin.tar.gz"
+      sha256 "HASH FROM hello-arm64-darwin.tar.gz.sha256"
     end
   end
 
   on_linux do
     on_intel do
-      url "https://github.com/example/hello/releases/download/v1.0.0/Hello-x86_64-linux.tar.gz"
-      sha256 "HASH FROM Hello-x86_64-linux.tar.gz.sha256"
+      url "https://github.com/example/hello/releases/download/v1.0.0/hello-x86_64-linux.tar.gz"
+      sha256 "HASH FROM hello-x86_64-linux.tar.gz.sha256"
     end
     on_arm do
-      url "https://github.com/example/hello/releases/download/v1.0.0/Hello-aarch64-linux.tar.gz"
-      sha256 "HASH FROM Hello-aarch64-linux.tar.gz.sha256"
+      url "https://github.com/example/hello/releases/download/v1.0.0/hello-aarch64-linux.tar.gz"
+      sha256 "HASH FROM hello-aarch64-linux.tar.gz.sha256"
     end
   end
 
   def install
     libexec.install Dir["*"]
-    bin.install_symlink libexec/"Hello" => "hello"
+    bin.install_symlink libexec/"hello"
   end
 
   test do
@@ -161,16 +161,16 @@ InstallerType: zip
 NestedInstallerType: portable
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/example/hello/releases/download/v1.0.0/Hello-x64-mingw-ucrt.zip
-    InstallerSha256: HASH FROM Hello-x64-mingw-ucrt.zip.sha256
+    InstallerUrl: https://github.com/example/hello/releases/download/v1.0.0/hello-x64-mingw-ucrt.zip
+    InstallerSha256: HASH FROM hello-x64-mingw-ucrt.zip.sha256
     NestedInstallerFiles:
-      - RelativeFilePath: Hello-x64-mingw-ucrt\Hello.exe
+      - RelativeFilePath: hello-x64-mingw-ucrt\hello.exe
         PortableCommandAlias: hello
   - Architecture: arm64
-    InstallerUrl: https://github.com/example/hello/releases/download/v1.0.0/Hello-aarch64-mingw-ucrt.zip
-    InstallerSha256: HASH FROM Hello-aarch64-mingw-ucrt.zip.sha256
+    InstallerUrl: https://github.com/example/hello/releases/download/v1.0.0/hello-aarch64-mingw-ucrt.zip
+    InstallerSha256: HASH FROM hello-aarch64-mingw-ucrt.zip.sha256
     NestedInstallerFiles:
-      - RelativeFilePath: Hello-aarch64-mingw-ucrt\Hello.exe
+      - RelativeFilePath: hello-aarch64-mingw-ucrt\hello.exe
         PortableCommandAlias: hello
 ManifestType: installer
 ManifestVersion: 1.12.0
@@ -218,16 +218,16 @@ $ErrorActionPreference = 'Stop'
 $toolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
 Install-ChocolateyZipPackage -PackageName 'hello' -UnzipLocation $toolsDir `
-  -Url64bit 'https://github.com/example/hello/releases/download/v1.0.0/Hello-x64-mingw-ucrt.zip' `
-  -Checksum64 'HASH FROM Hello-x64-mingw-ucrt.zip.sha256' -ChecksumType64 'sha256'
+  -Url64bit 'https://github.com/example/hello/releases/download/v1.0.0/hello-x64-mingw-ucrt.zip' `
+  -Checksum64 'HASH FROM hello-x64-mingw-ucrt.zip.sha256' -ChecksumType64 'sha256'
 
 Get-ChildItem -LiteralPath $toolsDir -Recurse -Filter '*.exe' |
-  Where-Object { $_.Name -ne 'Hello.exe' } |
+  Where-Object { $_.Name -ne 'hello.exe' } |
   ForEach-Object { New-Item -ItemType File -Force -Path "$($_.FullName).ignore" | Out-Null }
 ```
 <!-- SPDX-SnippetEnd -->
 
-Windows finds `Hello.exe` when your users type `hello`, whatever its case.
+Windows finds `hello.exe` when your users type `hello`, whatever its case.
 
 ## The AUR
 
@@ -247,15 +247,15 @@ arch=('x86_64' 'aarch64')
 url="https://github.com/example/hello"
 license=('MIT')
 options=('!strip' '!debug' '!staticlibs' '!purge')
-source_x86_64=("https://github.com/example/hello/releases/download/v1.0.0/Hello-x86_64-linux.tar.gz")
-source_aarch64=("https://github.com/example/hello/releases/download/v1.0.0/Hello-aarch64-linux.tar.gz")
-sha256sums_x86_64=('HASH FROM Hello-x86_64-linux.tar.gz.sha256')
-sha256sums_aarch64=('HASH FROM Hello-aarch64-linux.tar.gz.sha256')
+source_x86_64=("https://github.com/example/hello/releases/download/v1.0.0/hello-x86_64-linux.tar.gz")
+source_aarch64=("https://github.com/example/hello/releases/download/v1.0.0/hello-aarch64-linux.tar.gz")
+sha256sums_x86_64=('HASH FROM hello-x86_64-linux.tar.gz.sha256')
+sha256sums_aarch64=('HASH FROM hello-aarch64-linux.tar.gz.sha256')
 
 package() {
   install -d "$pkgdir/opt/hello" "$pkgdir/usr/bin"
-  cp -a "$srcdir/Hello-$CARCH-linux/." "$pkgdir/opt/hello/"
-  ln -s /opt/hello/Hello "$pkgdir/usr/bin/hello"
+  cp -a "$srcdir/hello-$CARCH-linux/." "$pkgdir/opt/hello/"
+  ln -s /opt/hello/hello "$pkgdir/usr/bin/hello"
 }
 ```
 <!-- SPDX-SnippetEnd -->
@@ -280,11 +280,11 @@ strip_components = 1
 bin_path = "."
 
 [tools."http:hello".platforms]
-macos-arm64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/Hello-arm64-darwin.tar.gz", checksum = "sha256:HASH FROM Hello-arm64-darwin.tar.gz.sha256" }
-linux-x64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/Hello-x86_64-linux.tar.gz", checksum = "sha256:HASH FROM Hello-x86_64-linux.tar.gz.sha256" }
-linux-arm64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/Hello-aarch64-linux.tar.gz", checksum = "sha256:HASH FROM Hello-aarch64-linux.tar.gz.sha256" }
-windows-x64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/Hello-x64-mingw-ucrt.zip", checksum = "sha256:HASH FROM Hello-x64-mingw-ucrt.zip.sha256" }
-windows-arm64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/Hello-aarch64-mingw-ucrt.zip", checksum = "sha256:HASH FROM Hello-aarch64-mingw-ucrt.zip.sha256" }
+macos-arm64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/hello-arm64-darwin.tar.gz", checksum = "sha256:HASH FROM hello-arm64-darwin.tar.gz.sha256" }
+linux-x64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/hello-x86_64-linux.tar.gz", checksum = "sha256:HASH FROM hello-x86_64-linux.tar.gz.sha256" }
+linux-arm64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/hello-aarch64-linux.tar.gz", checksum = "sha256:HASH FROM hello-aarch64-linux.tar.gz.sha256" }
+windows-x64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/hello-x64-mingw-ucrt.zip", checksum = "sha256:HASH FROM hello-x64-mingw-ucrt.zip.sha256" }
+windows-arm64 = { url = "https://github.com/example/hello/releases/download/v{{ version }}/hello-aarch64-mingw-ucrt.zip", checksum = "sha256:HASH FROM hello-aarch64-mingw-ucrt.zip.sha256" }
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -302,11 +302,11 @@ strip_components = 1
 bin_path = "."
 
 [tools."github:example/hello".platforms]
-macos-arm64 = { asset_pattern = "Hello-arm64-darwin.tar.gz" }
-linux-x64 = { asset_pattern = "Hello-x86_64-linux.tar.gz" }
-linux-arm64 = { asset_pattern = "Hello-aarch64-linux.tar.gz" }
-windows-x64 = { asset_pattern = "Hello-x64-mingw-ucrt.zip" }
-windows-arm64 = { asset_pattern = "Hello-aarch64-mingw-ucrt.zip" }
+macos-arm64 = { asset_pattern = "hello-arm64-darwin.tar.gz" }
+linux-x64 = { asset_pattern = "hello-x86_64-linux.tar.gz" }
+linux-arm64 = { asset_pattern = "hello-aarch64-linux.tar.gz" }
+windows-x64 = { asset_pattern = "hello-x64-mingw-ucrt.zip" }
+windows-arm64 = { asset_pattern = "hello-aarch64-mingw-ucrt.zip" }
 ```
 <!-- SPDX-SnippetEnd -->
 

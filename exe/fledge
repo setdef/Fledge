@@ -247,8 +247,13 @@
 #                        runtime's, and sets up the gems, as under
 #                        bundle exec; its CHECKSUMS entry is checked.
 #     ROOT/fledge.yml    Optional, a YAML mapping of:
-#                        name: the app's name (default: the gemspec's
-#                          name, or ROOT's folder name, camelized)
+#                        name: the app's name, as written (default: a
+#                          console app's entry point's file name without
+#                          its extension, or for main.rb the gemspec's
+#                          name, or else ROOT's folder name, in lower
+#                          case; for a windowed app, and for a phone, the
+#                          gemspec's name, or else ROOT's folder name,
+#                          camelized)
 #                        kind: console (default) or windowed; a phone
 #                          runs every app's Ruby on its main thread,
 #                          whatever its kind
@@ -433,9 +438,14 @@
 #                        which fledge build warns of; a -linux-musl one on Linux with musl, such as
 #                        Alpine, and aarch64-mingw-ucrt on Windows 11
 #                        on ARM64.
-#                        NAME is the gemspec's name, or else ROOT's
-#                        folder name, camelized (my_cool_app is
-#                        MyCoolApp), unless fledge.yml names it. NAME
+#                        NAME is fledge.yml's name, or for a console
+#                        app its entry point's file name without the
+#                        extension (exe/my_cool_app is my_cool_app), or
+#                        for main.rb the gemspec's name, or else ROOT's
+#                        folder name, in lower case. For a windowed
+#                        app, and a phone's, it is the gemspec's name,
+#                        or else ROOT's folder name, camelized
+#                        (my_cool_app is MyCoolApp). NAME
 #                        is also the program to run (NAME.exe on
 #                        Windows), or, for a windowed app on macOS,
 #                        the bundle NAME.app; a windowed Linux app has

@@ -79,7 +79,7 @@ class MobileParityTest < Minitest::Test
   # project, scheme, and log are found by those names.
   def test_each_app_is_named_as_its_fledge_yml_names_it
     MobileParity::APPS.each do |app|
-      built = Fledge::App.at(File.join(MobileParity::ROOT, app.path))
+      built = Fledge::App.at(File.join(MobileParity::ROOT, app.path), phone: true)
       assert_equal [app.name, app.identifier], [built.name, built.identity.identifier], app.path
     end
   end

@@ -21,8 +21,8 @@ class GemAppWindowsBuildTest < Minitest::Test
 
     out, err, status = build(File.join(root, "exe/my_app"), host: "x64-mingw-ucrt")
 
-    assert_equal [0, "dist/MyApp-x64-mingw-ucrt.zip\n"], [status, out], err
-    assert_the_locked_gems_ship("dist/MyApp-x64-mingw-ucrt", "ruby/lib/ruby/gems/4.1.0+5", windows)
+    assert_equal [0, "dist/my_app-x64-mingw-ucrt.zip\n"], [status, out], err
+    assert_the_locked_gems_ship("dist/my_app-x64-mingw-ucrt", "ruby/lib/ruby/gems/4.1.0+5", windows)
   end
 
   # With windows: { visual_c_runtime: central } the app carries none of
@@ -34,11 +34,11 @@ class GemAppWindowsBuildTest < Minitest::Test
     linked = FakeGem.build(@gems, "linked", "1.0.0", platform: "x64-mingw-ucrt",
       files: { "vendor/libui.x64.dll" => Binaries.pe(needed: %w[d2d1.dll DWrite.dll msvcrt.dll WINDOWSCODECS.dll MSVCP140.dll VCRUNTIME140.dll VCRUNTIME140_1.dll]) })
     root = project(dependencies: { "linked" => ">= 0" }, locked: [linked])
-    folder = File.join(@dir, "dist/MyApp-x64-mingw-ucrt")
+    folder = File.join(@dir, "dist/my_app-x64-mingw-ucrt")
 
     File.write(File.join(root, "fledge.yml"), "windows:\n  visual_c_runtime: central\n")
     out, err, status = build(File.join(root, "exe/my_app"), host: "x64-mingw-ucrt")
-    assert_equal [0, "dist/MyApp-x64-mingw-ucrt.zip\n"], [status, out], err
+    assert_equal [0, "dist/my_app-x64-mingw-ucrt.zip\n"], [status, out], err
     assert_includes File.read(File.join(folder, "fledge.cfg")), "\nvisual_c_runtime = msvcp140.dll vcruntime140.dll vcruntime140_1.dll\n"
     assert_empty Dir.glob("ruby/bin/ruby_builtin_dlls/{msvcp,vcruntime}*", base: folder)
   end
@@ -64,6 +64,6 @@ class GemAppWindowsBuildTest < Minitest::Test
     assert_equal ["", 1], [beside_fiddle[0], beside_fiddle[2]], beside_fiddle[1]
     assert_includes beside_fiddle[1], "linked 1.0.0 (x64-mingw-ucrt)'s lib/linked.so needs libgmp-10.dll, which neither windows, nor Fledge's runtime, " \
       "nor the gem itself provides, so the app could not load it on another computer."
-    assert_equal ["dist/MyApp-x64-mingw-ucrt.zip\n", 0], built.call("ruby/bin/ruby_builtin_dlls/libgmp-10.dll").values_at(0, 2)
+    assert_equal ["dist/my_app-x64-mingw-ucrt.zip\n", 0], built.call("ruby/bin/ruby_builtin_dlls/libgmp-10.dll").values_at(0, 2)
   end
 end

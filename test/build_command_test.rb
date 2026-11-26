@@ -42,7 +42,7 @@ class BuildCommandTest < Minitest::Test
     assert_equal "fledge build: You are running Ruby 4.2.0, and Fledge #{Fledge::VERSION}'s runtime for x86_64-linux is Ruby 4.1.0.\n" \
       "fledge build: An app runs on the Ruby you build it with: run fledge build with Ruby 4.1, or use a Fledge release that has a runtime for Ruby 4.2.\n",
       err
-    refute_path_exists File.join(@dir, "dist/Hello-x86_64-linux")
+    refute_path_exists File.join(@dir, "dist/hello-x86_64-linux")
   end
 
   # The runtime carries the newest patch of its Ruby minor, which is
@@ -50,15 +50,15 @@ class BuildCommandTest < Minitest::Test
   def test_a_build_on_another_patch_of_the_runtimes_ruby_builds
     out, err, status = build("hello", ruby: "4.1.1")
 
-    assert_equal [0, "", "dist/Hello-x86_64-linux.tar.gz\n"], [status, err, out]
+    assert_equal [0, "", "dist/hello-x86_64-linux.tar.gz\n"], [status, err, out]
   end
 
   def test_the_build_is_for_this_computer_and_the_default_out_is_dist
     out, err, status = build("hello", host: Gem::Platform.new("arm64-darwin-25"))
 
     assert_equal [0, ""], [status, err]
-    assert_equal "dist/Hello-arm64-darwin.tar.gz\n", out
-    assert_path_exists File.join(@dir, "dist/Hello-arm64-darwin/Hello")
+    assert_equal "dist/hello-arm64-darwin.tar.gz\n", out
+    assert_path_exists File.join(@dir, "dist/hello-arm64-darwin/hello")
   end
 
   # Beside each file it prints, the build writes that file's SHA-256 in
@@ -68,9 +68,9 @@ class BuildCommandTest < Minitest::Test
   def test_the_archive_gets_a_checksum_file_beside_it_that_is_not_printed
     out, err, status = build("hello")
 
-    archive = File.join(@dir, "dist/Hello-x86_64-linux.tar.gz")
-    assert_equal [0, "", "dist/Hello-x86_64-linux.tar.gz\n"], [status, err, out]
-    assert_equal "#{Digest::SHA256.file(archive).hexdigest}  Hello-x86_64-linux.tar.gz\n",
+    archive = File.join(@dir, "dist/hello-x86_64-linux.tar.gz")
+    assert_equal [0, "", "dist/hello-x86_64-linux.tar.gz\n"], [status, err, out]
+    assert_equal "#{Digest::SHA256.file(archive).hexdigest}  hello-x86_64-linux.tar.gz\n",
       File.binread("#{archive}.sha256")
   end
 
@@ -81,20 +81,20 @@ class BuildCommandTest < Minitest::Test
     build("hello")
 
     arguments = (tool == "shasum") ? ["shasum", "-a", "256", "-c"] : ["sha256sum", "-c"]
-    assert system(*arguments, "Hello-x86_64-linux.tar.gz.sha256", chdir: File.join(@dir, "dist"), out: File::NULL)
+    assert system(*arguments, "hello-x86_64-linux.tar.gz.sha256", chdir: File.join(@dir, "dist"), out: File::NULL)
   end
 
   def test_on_another_computer_the_build_is_for_that_computer
     out, err, status = build("hello", host: Gem::Platform.new("aarch64-linux"))
 
-    assert_equal [0, "", "dist/Hello-aarch64-linux.tar.gz\n"], [status, err, out]
+    assert_equal [0, "", "dist/hello-aarch64-linux.tar.gz\n"], [status, err, out]
   end
 
   def test_out_and_path_take_their_equals_and_double_dash_forms
     out, _, status = build("--out=elsewhere", "--", "hello")
 
     assert_equal 0, status
-    assert_equal "elsewhere/Hello-x86_64-linux.tar.gz\n", out
+    assert_equal "elsewhere/hello-x86_64-linux.tar.gz\n", out
   end
 
   # --sign names the identity a desktop build signs with.
@@ -149,7 +149,7 @@ class BuildCommandTest < Minitest::Test
   def test_the_signing_command_in_the_environment_is_only_windows
     out, err, status = build("hello", env: { "FLEDGE_RUNTIME_DIR" => @runtimes, "FLEDGE_SIGN_COMMAND" => "false %1" })
 
-    assert_equal [0, "dist/Hello-x86_64-linux.tar.gz\n", ""], [status, out, err]
+    assert_equal [0, "dist/hello-x86_64-linux.tar.gz\n", ""], [status, out, err]
   end
 
   def test_the_path_defaults_to_the_current_directory
@@ -160,7 +160,7 @@ class BuildCommandTest < Minitest::Test
     end
 
     assert_equal 0, status
-    assert_equal "../dist/Hello-x86_64-linux.tar.gz\n", out.string
+    assert_equal "../dist/hello-x86_64-linux.tar.gz\n", out.string
   end
 
   # A phone's name, first, asks for its project, as Briefcase's create
@@ -258,7 +258,7 @@ class BuildCommandTest < Minitest::Test
     FakeRuntime.write(@runtimes, Fledge::Platform.find("x86_64-linux"), extra: [Fledge::Entry.file("built-here", "")])
     out, err, status = build("hello", env: { "FLEDGE_RUNTIME_DIR" => @runtimes, "FLEDGE_RUNTIME_DIR_UNCHECKED" => "1" }, pins:)
 
-    assert_equal [0, "dist/Hello-x86_64-linux.tar.gz\n"], [status, out]
+    assert_equal [0, "dist/hello-x86_64-linux.tar.gz\n"], [status, out]
     assert_equal "#{File.basename(runtime)} in FLEDGE_RUNTIME_DIR (#{@runtimes}) does not match the SHA-256 Fledge " \
       "#{Fledge::VERSION} pins for it; FLEDGE_RUNTIME_DIR_UNCHECKED is set, so it is used unchecked\n", err
   end

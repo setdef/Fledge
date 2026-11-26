@@ -297,12 +297,12 @@ jobs:
       - name: Run hello and my_cool_app as someone with no Ruby would
         if: runner.os != 'Windows'
         run: |
-          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.tar.gz" \
-            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.1.0 on $(.github/scripts/ruby-platform.sh ${{ matrix.platform }})"
-          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/MyCoolApp-${{ matrix.platform }}.tar.gz" \
-            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/my_cool_app.expected")"
-          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/NativeApp-${{ matrix.platform }}.tar.gz" \
-            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/native_app.expected")"
+          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/hello-${{ matrix.platform }}.tar.gz" \
+            "$RUNNER_TEMP/dist/parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.1.0 on $(.github/scripts/ruby-platform.sh ${{ matrix.platform }})"
+          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/my_cool_app-${{ matrix.platform }}.tar.gz" \
+            "$RUNNER_TEMP/dist/parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/my_cool_app.expected")"
+          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/native_app-${{ matrix.platform }}.tar.gz" \
+            "$RUNNER_TEMP/dist/parity-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/native_app.expected")"
 
       # The windowed app, as ci.yml delivers it.
       - name: Install desktop-file-validate
@@ -337,31 +337,31 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/dist/Hello Window-${{ matrix.platform }}.zip"
 
-      - name: Run Hello.exe as someone with no Ruby would
+      - name: Run hello.exe as someone with no Ruby would
         if: runner.os == 'Windows'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.zip"
-          -Probe "$env:RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.zip" -Platform ${{ matrix.platform }}
+          -Archive "$env:RUNNER_TEMP/dist/hello-${{ matrix.platform }}.zip"
+          -Probe "$env:RUNNER_TEMP/dist/parity-${{ matrix.platform }}.zip" -Platform ${{ matrix.platform }}
           -Expected "Hello from Ruby 4.1.0 on ${{ matrix.platform }}"
 
-      - name: Run MyCoolApp.exe as someone with no Ruby would
+      - name: Run my_cool_app.exe as someone with no Ruby would
         if: matrix.platform == 'x64-mingw-ucrt'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/dist/MyCoolApp-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Archive "$env:RUNNER_TEMP/dist/my_cool_app-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/dist/parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/my_cool_app.expected" -Raw).TrimEnd()
 
-      - name: Run NativeApp.exe as someone with no Ruby would
+      - name: Run native_app.exe as someone with no Ruby would
         if: matrix.platform == 'x64-mingw-ucrt'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/dist/NativeApp-x64-mingw-ucrt.zip"
-          -Probe "$env:RUNNER_TEMP/dist/Parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
+          -Archive "$env:RUNNER_TEMP/dist/native_app-x64-mingw-ucrt.zip"
+          -Probe "$env:RUNNER_TEMP/dist/parity-x64-mingw-ucrt.zip" -Platform x64-mingw-ucrt
           -Expected (Get-Content -LiteralPath "$env:RUNNER_TEMP/native_app.expected" -Raw).TrimEnd()
 
   # musl Linux from the tag: in Alpine with Ruby, as a developer
@@ -448,8 +448,8 @@ jobs:
           PLATFORM: ${{ matrix.platform }}
         run: >-
           docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work -e PLATFORM "$ALPINE" sh -c '
-          checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed &&
-          checks/.github/scripts/deliver.sh "dist/MyCoolApp-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "$(cat dist/my_cool_app.expected)" --no-ruby-installed'
+          checks/.github/scripts/deliver.sh "dist/hello-$PLATFORM.tar.gz" "dist/parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed &&
+          checks/.github/scripts/deliver.sh "dist/my_cool_app-$PLATFORM.tar.gz" "dist/parity-$PLATFORM.tar.gz" "$(cat dist/my_cool_app.expected)" --no-ruby-installed'
 
   # A phone's project from the tag (doc/contributors/design/phone-projects.md): fledge build ios on a Mac and
   # fledge build android on Linux, installed from the tag with Bundler,
@@ -805,8 +805,8 @@ jobs:
       - name: Run hello as someone with no Ruby would
         if: runner.os != 'Windows'
         run: |
-          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.tar.gz" \
-            "$RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.1.0 on $(.github/scripts/ruby-platform.sh ${{ matrix.platform }})"
+          .github/scripts/deliver.sh "$RUNNER_TEMP/dist/hello-${{ matrix.platform }}.tar.gz" \
+            "$RUNNER_TEMP/dist/parity-${{ matrix.platform }}.tar.gz" "Hello from Ruby 4.1.0 on $(.github/scripts/ruby-platform.sh ${{ matrix.platform }})"
 
       - name: Install desktop-file-validate
         if: runner.os == 'Linux'
@@ -840,13 +840,13 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/deliver-windowed.ps1 -Archive "$env:RUNNER_TEMP/dist/Hello Window-${{ matrix.platform }}.zip"
 
-      - name: Run Hello.exe as someone with no Ruby would
+      - name: Run hello.exe as someone with no Ruby would
         if: runner.os == 'Windows'
         shell: pwsh
         run: >-
           pwsh -NoProfile -File .github/scripts/deliver.ps1
-          -Archive "$env:RUNNER_TEMP/dist/Hello-${{ matrix.platform }}.zip"
-          -Probe "$env:RUNNER_TEMP/dist/Parity-${{ matrix.platform }}.zip" -Platform ${{ matrix.platform }}
+          -Archive "$env:RUNNER_TEMP/dist/hello-${{ matrix.platform }}.zip"
+          -Probe "$env:RUNNER_TEMP/dist/parity-${{ matrix.platform }}.zip" -Platform ${{ matrix.platform }}
           -Expected "Hello from Ruby 4.1.0 on ${{ matrix.platform }}"
 
   installed-gem-musl:
@@ -933,7 +933,7 @@ jobs:
           cat > "$RUNNER_TEMP/deliver.sh" <<'SH'
           set -eu
           checks/.github/scripts/alpine-packages.sh deliver
-          checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed
+          checks/.github/scripts/deliver.sh "dist/hello-$PLATFORM.tar.gz" "dist/parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed
           checks/.github/scripts/deliver-windowed.sh "dist/Hello Window-$PLATFORM.tar.gz"
           checks/.github/scripts/deliver-appimage.sh "dist/Hello Window-$PLATFORM.AppImage" extract
           SH

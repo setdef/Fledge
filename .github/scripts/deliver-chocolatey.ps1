@@ -33,7 +33,7 @@ if ($LASTEXITCODE -ne 0) { Fail "choco install exited with $LASTEXITCODE" }
 
 $added = @(@(Get-ChildItem -LiteralPath $bin -Filter '*.exe').Name | Where-Object { $before -notcontains $_ })
 Write-Host "New shims: $($added -join ', ')"
-if (($added -join ',') -ne 'Hello.exe') { Fail "Chocolatey made other shims: $($added -join ', ')" }
+if (($added -join ',') -ne 'hello.exe') { Fail "Chocolatey made other shims: $($added -join ', ')" }
 
 & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'package-manager-check.ps1') -Folder $bin -Platform $Platform
 if ($LASTEXITCODE -ne 0) { exit 1 }
@@ -41,4 +41,4 @@ if ($LASTEXITCODE -ne 0) { exit 1 }
 choco uninstall hello --yes --no-progress
 if ($LASTEXITCODE -ne 0) { Fail "choco uninstall exited with $LASTEXITCODE" }
 if (Test-Path -LiteralPath "$env:ChocolateyInstall\lib\hello") { Fail 'uninstalling left the app' }
-if (Test-Path -LiteralPath "$bin\Hello.exe") { Fail 'uninstalling left the shim' }
+if (Test-Path -LiteralPath "$bin\hello.exe") { Fail 'uninstalling left the shim' }

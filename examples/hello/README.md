@@ -12,7 +12,7 @@ Before you ship a real program, you want to see the whole road once: a script yo
 
 - **A lone script.** Hello is a `main.rb` with no `Gemfile` or gemspec. Fledge builds `main.rb` when a folder names no other program.
 - **A project's root.** Fledge ships the program's project: the nearest folder, from the program's up, with a `Gemfile`, `gems.rb`, a gemspec, or a `fledge.yml`. Hello sits inside Fledge's own repository, under Fledge's `Gemfile`, so its `fledge.yml` is what makes `examples/hello` the project, and keeps the rest of Fledge's repository out of the app. Everything in that folder ships, in the app's `app/`, this README too.
-- **A name from the folder.** `fledge.yml` gives no `name`, so the app is named for its folder, camelized: `hello` becomes `Hello`.
+- **A name from the folder.** `fledge.yml` gives no `name`, and `main.rb` names no command, so the app is named for its folder, as written: `hello`.
 - **An identifier, for a phone.** `fledge.yml`'s one key, `identifier: com.setdef.fledge.Hello`, is what iOS and Android know the app by. A desktop's console app needs none; a phone's project does.
 - **Ruby's own extensions.** `main.rb` sends its line through `JSON`, a C extension of Ruby's standard library, so the line prints only when the app's Ruby loads its extensions.
 - **An exit status.** `main.rb` exits with the number you pass it, and the app exits with the same status, as `ruby main.rb` does.
@@ -49,16 +49,16 @@ Install Fledge as the README's [Installation](../../README.md#installation) says
 ```console
 $ bundle exec fledge build ~/Fledge/examples/hello
 Downloading fledge-runtime-0.17.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.17.0
-dist/Hello-arm64-darwin.tar.gz
-$ dist/Hello-arm64-darwin/Hello 3; echo $?
+dist/hello-arm64-darwin.tar.gz
+$ dist/hello-arm64-darwin/hello 3; echo $?
 Hello from Ruby 4.1.0 on arm64-darwin23
 3
 ```
 <!-- SPDX-SnippetEnd -->
 
-The first build on a computer downloads the runtime, the Ruby Fledge puts in the app, and later builds reuse it. Fledge writes the app to `dist` in the folder you run it from: the archive, 25 MB, its `.sha256` beside it, and the app unpacked in `dist/Hello-arm64-darwin/`, where `Hello` runs `main.rb`. The app's Ruby names the macOS its runtime was built on, so its platform differs from your own Ruby's.
+The first build on a computer downloads the runtime, the Ruby Fledge puts in the app, and later builds reuse it. Fledge writes the app to `dist` in the folder you run it from: the archive, 25 MB, its `.sha256` beside it, and the app unpacked in `dist/hello-arm64-darwin/`, where `hello` runs `main.rb`. The app's Ruby names the macOS its runtime was built on, so its platform differs from your own Ruby's.
 
-On each system, the same command builds that system's app: `dist/Hello-x64-mingw-ucrt.zip`, which holds `Hello.exe`, on Windows on x64, and a `.tar.gz` for your processor on Linux, such as `dist/Hello-x86_64-linux.tar.gz`. Hello is a console app, so it gets an archive and no installer.
+On each system, the same command builds that system's app: `dist/hello-x64-mingw-ucrt.zip`, which holds `hello.exe`, on Windows on x64, and a `.tar.gz` for your processor on Linux, such as `dist/hello-x86_64-linux.tar.gz`. Hello is a console app, so it gets an archive and no installer.
 
 For a phone, name it first. On a Mac, `fledge build ios` writes an Xcode project, and on a Mac, Linux, or Windows, `fledge build android` writes a Gradle project:
 

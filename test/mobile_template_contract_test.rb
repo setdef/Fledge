@@ -132,7 +132,7 @@ class MobileTemplateContractTest < Minitest::Test
   private def android_project(extensions)
     dir = Dir.mktmpdir
     @dirs = [*@dirs, dir]
-    app = Fledge::App.at(FakeApp.write(dir).tap { |root| File.write(File.join(root, "fledge.yml"), "identifier: com.example.Hello\n") })
+    app = Fledge::App.at(FakeApp.write(dir).tap { |root| File.write(File.join(root, "fledge.yml"), "identifier: com.example.Hello\n") }, phone: true)
     runtime = FakeRuntime.write_mobile(dir, Fledge::MobilePlatform.find("android"))
     compiler = extensions && FakeExtensions.new(built(dir, **extensions))
     Fledge::MobileProject::Android.new(app:, runtime:, out: File.join(dir, "dist"), extensions: compiler).call

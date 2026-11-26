@@ -19,8 +19,8 @@ class GemAppBuildTest < Minitest::Test
     root, linux, = locked_gems_project
 
     out, err, status = build(File.join(root, "exe/my_app"))
-    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    assert_the_locked_gems_ship("dist/MyApp-x86_64-linux", "lib/ruby/gems/4.1.0+5", linux)
+    assert_equal [0, "dist/my_app-x86_64-linux.tar.gz\n"], [status, out], err
+    assert_the_locked_gems_ship("dist/my_app-x86_64-linux", "lib/ruby/gems/4.1.0+5", linux)
     assert_equal 1, err.scan("Downloading native-1.0.0-x86_64-linux-gnu.gem from #{@server.url('/')}").size
     assert_equal 1, @server.requests.count("/gems/foo-1.0.0.gem"), "a gem downloaded once is taken from the cache"
   end
@@ -36,8 +36,8 @@ class GemAppBuildTest < Minitest::Test
 
     out, err, status = build(File.join(root, "exe/my_app"))
 
-    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    gems = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5")
+    assert_equal [0, "dist/my_app-x86_64-linux.tar.gz\n"], [status, out], err
+    gems = File.join(@dir, "dist/my_app-x86_64-linux/lib/ruby/gems/4.1.0+5")
     assert_path_exists File.join(gems, "gems/rdoc-7.1.0/lib/rubygems_plugin.rb")
     assert_equal "require_relative '../gems/rdoc-7.0.4/lib/rubygems_plugin.rb'\n", File.read(File.join(gems, "plugins/rdoc_plugin.rb"))
   end
@@ -58,8 +58,8 @@ class GemAppBuildTest < Minitest::Test
 
     out, err, status = build(File.join(root, "exe/my_app"))
 
-    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    folder = File.join(@dir, "dist/MyApp-x86_64-linux")
+    assert_equal [0, "dist/my_app-x86_64-linux.tar.gz\n"], [status, out], err
+    folder = File.join(@dir, "dist/my_app-x86_64-linux")
     gems = File.join(folder, "lib/ruby/gems/4.1.0+5")
     assert_equal "# bundler\n", File.read(File.join(gems, "gems/bundler-4.0.19/lib/bundler.rb"))
     assert_equal "4.0.19", Gem::Specification.load(File.join(gems, "specifications/bundler-4.0.19.gemspec")).version.to_s
@@ -84,7 +84,7 @@ class GemAppBuildTest < Minitest::Test
     _, err, = build(root, host: "arm64-darwin-23")
     assert_equal "fledge build: Gemfile.lock locks no build of native for arm64-darwin, only for x86_64-linux-gnu. " \
       "If native has one, run bundle lock --add-platform arm64-darwin, then build again.\n", err
-    refute_path_exists File.join(@dir, "dist/MyApp-arm64-darwin")
+    refute_path_exists File.join(@dir, "dist/my_app-arm64-darwin")
   end
 
   # A precompiled build whose required_ruby_version excludes the
@@ -98,8 +98,8 @@ class GemAppBuildTest < Minitest::Test
 
     out, err, status = build(root)
 
-    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    gems = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5")
+    assert_equal [0, "dist/my_app-x86_64-linux.tar.gz\n"], [status, out], err
+    gems = File.join(@dir, "dist/my_app-x86_64-linux/lib/ruby/gems/4.1.0+5")
     assert_path_exists File.join(gems, "gems/lite-1.0.0/lib/lite.rb")
     refute_path_exists File.join(gems, "gems/lite-1.0.0-x86_64-linux-gnu")
 
@@ -125,7 +125,7 @@ class GemAppBuildTest < Minitest::Test
 
     assert_equal [1, ""], [status, out]
     assert_equal [
-      "fledge build: MyApp can't ship for x86_64-linux:",
+      "fledge build: my_app can't ship for x86_64-linux:",
       "fledge build:   old 1.0.0 (x86_64-linux-gnu) needs Ruby < 3.5, and Fledge's runtime is Ruby 4.1.0. Run bundle update old " \
         "with Ruby 4.1, so that Bundler locks a build of it that runs there, then build again.",
       "fledge build:   unloadable 1.0.0 (x86_64-linux-gnu)'s lib/unloadable.so needs libxml2.so.2, which neither linux, nor " \
@@ -162,7 +162,7 @@ class GemAppBuildTest < Minitest::Test
     out, err, status = build(root, host: "arm64-darwin-23")
     assert_equal [1, ""], [status, out]
     assert_equal [
-      "fledge build: MyApp can't ship for arm64-darwin:",
+      "fledge build: my_app can't ship for arm64-darwin:",
       "fledge build:   #{bundle} needs #{library}, which fledge.yml's macos: carried_libraries has the app carry, but none of the run " \
         "paths dyld would search for it on this computer (it has none) leads to a file, so there is nothing to copy. Install it, or " \
         "build the gem so that it names the library where it is.",
@@ -185,8 +185,8 @@ class GemAppBuildTest < Minitest::Test
 
     out, err, status = build(root)
 
-    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    assert_equal foreign, File.binread(File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5/gems/rayish-1.0.0/lib/libray.aarch64.so"))
+    assert_equal [0, "dist/my_app-x86_64-linux.tar.gz\n"], [status, out], err
+    assert_equal foreign, File.binread(File.join(@dir, "dist/my_app-x86_64-linux/lib/ruby/gems/4.1.0+5/gems/rayish-1.0.0/lib/libray.aarch64.so"))
     _, err, status = build(root, host: "aarch64-linux")
     assert_equal 1, status
     assert_includes err, "rayish 1.0.0's lib/libray.aarch64.so needs libGLX.so.0"
@@ -204,14 +204,14 @@ class GemAppBuildTest < Minitest::Test
     File.write(File.join(root, "fledge.yml"), "linux:\n  system_libraries: [libxml2.so.2]\n")
 
     out, err, status = build(File.join(root, "exe/my_app"))
-    assert_equal [0, "dist/MyApp-x86_64-linux.tar.gz\n"], [status, out], err
-    assert_includes File.read(File.join(@dir, "dist/MyApp-x86_64-linux/fledge.cfg")), "\nsystem_libraries = libxml2.so.2\n"
+    assert_equal [0, "dist/my_app-x86_64-linux.tar.gz\n"], [status, out], err
+    assert_includes File.read(File.join(@dir, "dist/my_app-x86_64-linux/fledge.cfg")), "\nsystem_libraries = libxml2.so.2\n"
 
     File.write(File.join(root, "fledge.yml"), "linux:\n  system_libraries: [libxml2.so.2, libgtk-3.so.0]\n")
     out, err, status = build(File.join(root, "exe/my_app"))
     assert_equal [1, ""], [status, out]
     assert_equal [
-      "fledge build: MyApp can't ship for x86_64-linux:",
+      "fledge build: my_app can't ship for x86_64-linux:",
       "fledge build:   fledge.yml's linux: system_libraries lists libgtk-3.so.0, which none of the gems' compiled files needs beyond " \
         "what every Linux distribution, Fledge's runtime, and the gems themselves provide. Remove it.",
     ], err.lines.map(&:chomp).grep_v(/\ADownloading /)
@@ -244,11 +244,11 @@ class GemAppBuildTest < Minitest::Test
 
     assert_equal 0, status, err
     assert_empty err.lines.grep_v(/\ADownloading /), "no warnings, and no verdicts"
-    installed = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5")
+    installed = File.join(@dir, "dist/my_app-x86_64-linux/lib/ruby/gems/4.1.0+5")
     gems.each { |gem| assert_path_exists File.join(installed, "specifications", "#{File.basename(gem.file_name, '.gem')}.gemspec"), gem.name }
     assert_path_exists File.join(installed, "gems/tokraish-1.0.0-x86_64-linux-gnu/lib/tokraish/tokraish.so")
     assert_path_exists File.join(installed, "gems/iconvy-1.0.0-x86_64-linux-gnu/lib/iconvy.so")
-    refute_path_exists File.join(@dir, "dist/MyApp-x86_64-linux/notices/GEMS.txt")
+    refute_path_exists File.join(@dir, "dist/my_app-x86_64-linux/notices/GEMS.txt")
   end
 
   # A gem that arrives compiled needs the glibc its authors compiled it

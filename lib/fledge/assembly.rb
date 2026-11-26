@@ -78,7 +78,7 @@ module Fledge
   #     runtime: Fledge::Runtimes.new.archive(platform),
   #     out: File.expand_path("dist")
   #   ).call
-  #   # => "/path/to/dist/Hello-x86_64-linux.tar.gz"
+  #   # => "/path/to/dist/hello-x86_64-linux.tar.gz"
   #--
   # SPDX-SnippetEnd
   #++
@@ -171,7 +171,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   assembly.base_name # => "Hello-x86_64-linux"
+    #   assembly.base_name # => "hello-x86_64-linux"
     #--
     # SPDX-SnippetEnd
     #++
@@ -191,7 +191,7 @@ module Fledge
     # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
     # SPDX-License-Identifier: MIT-0
     #++
-    #   assembly.call # => "/path/to/dist/Hello-x86_64-linux.tar.gz"
+    #   assembly.call # => "/path/to/dist/hello-x86_64-linux.tar.gz"
     #--
     # SPDX-SnippetEnd
     #++

@@ -48,8 +48,8 @@ class ReleaseExamplesTest < Minitest::Test
   end
 
   def test_a_desktop_example_is_its_archive_and_each_installer_its_fledge_yml_lists
-    assert_equal [["Hello-x86_64-linux.tar.gz", "fledge-example-hello-1.2.3-x86_64-linux.tar.gz"]], hello("x86_64-linux")
-    assert_equal [["Hello-x64-mingw-ucrt.zip", "fledge-example-hello-1.2.3-x64-mingw-ucrt.zip"]], hello("x64-mingw-ucrt")
+    assert_equal [["hello-x86_64-linux.tar.gz", "fledge-example-hello-1.2.3-x86_64-linux.tar.gz"]], hello("x86_64-linux")
+    assert_equal [["hello-x64-mingw-ucrt.zip", "fledge-example-hello-1.2.3-x64-mingw-ucrt.zip"]], hello("x64-mingw-ucrt")
 
     markdown = ReleaseExamples.desktop("x64-mingw-ucrt", version: VERSION).select { |source, _| source.start_with?("Markdown to HTML") }
     assert_equal [
@@ -100,7 +100,7 @@ class ReleaseExamplesTest < Minitest::Test
 
       assert_equal ReleaseExamples.desktop("x64-mingw-ucrt", version: VERSION).map(&:last), staged
       assert_equal staged.sort, Dir.children(File.join(dir, "out")).sort
-      assert_equal "Hello-x64-mingw-ucrt.zip", File.read(File.join(dir, "out", "fledge-example-hello-1.2.3-x64-mingw-ucrt.zip"))
+      assert_equal "hello-x64-mingw-ucrt.zip", File.read(File.join(dir, "out", "fledge-example-hello-1.2.3-x64-mingw-ucrt.zip"))
     end
   end
 
@@ -166,7 +166,7 @@ class ReleaseExamplesTest < Minitest::Test
     end
   end
 
-  private def hello(platform) = ReleaseExamples.desktop(platform, version: VERSION).select { |source, _| source.start_with?("Hello-") }
+  private def hello(platform) = ReleaseExamples.desktop(platform, version: VERSION).select { |source, _| source.start_with?("hello-") }
 
   private def in_tmp(&) = Dir.mktmpdir(&)
 

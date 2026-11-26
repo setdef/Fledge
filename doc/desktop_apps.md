@@ -75,6 +75,16 @@ What each key does:
 
 A `.deb` depends on `libc6`, on the packages of any libraries you list under `linux: system_libraries`, and on the `gir1.2-` package of each typelib you list under `linux: system_typelibs` (see [Gems](gems.md)), so `apt` installs it on a computer without a desktop too. A library that a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there.
 
+### Draw the window with GTK 4 on Linux
+
+Your Ruby can open GTK 4 and libadwaita itself with `fiddle`, which Ruby bundles, as it does under `ruby main.rb` on a Linux computer that has them, and Fledge adds nothing for it: no library, no binding, no key in `fledge.yml`. Open each library by its soname (`Fiddle.dlopen("libgtk-4.so.1")`, `Fiddle.dlopen("libadwaita-1.so.0")`), connect each signal to a `Fiddle::Closure::BlockCaller`, and keep every closure in a variable, since Ruby frees one that only GTK refers to. [`examples/basket`](../examples/basket) is a shopping list drawn this way by GNOME's Human Interface Guidelines, with a header bar, a boxed list, and a toast that offers to undo a removal: [`lib/basket/gtk.rb`](../examples/basket/lib/basket/gtk.rb) holds its calls into GTK, 125 lines, and [`lib/basket/linux.rb`](../examples/basket/lib/basket/linux.rb) its screen.
+
+Set `kind: windowed`, so that your Ruby runs on the main thread, which GTK needs. Three things differ from a program of C:
+
+- Ruby runs its handler for SIGINT and SIGTERM only when its main thread next runs Ruby, which inside `g_application_run` it does not, so Ctrl-C and `kill` would do nothing while the window is open. Attach `g_unix_signal_add` for both and call `g_application_quit` from its handler, as Basket does.
+- Fledge cannot tell that your app needs GTK 4, since `linux: system_libraries` lists only what a gem's compiled files link, so a `.deb` does not depend on `libgtk-4-1`. A computer without it gets what your Ruby does about the `Fiddle::DLError`: Basket names the library and exits with status 72, as Fledge's launcher does for a library a gem lists.
+- GTK exits the process when it cannot open a display, and a library GTK loads itself, such as `libGLESv2.so.2`, may abort it; neither reaches your Ruby.
+
 ## Open files and folders with your app
 
 A windowed app can list the files and folders it opens, so that each system offers the app for them:

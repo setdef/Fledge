@@ -140,7 +140,13 @@ shot 3-removed
 [ "$(cat "$list")" = "[]" ] || fail "the list is $(cat "$list"), not []"
 echo "ok: the list is empty again"
 
-# The toast's Undo button, at the bottom of the window, puts Milk back.
+# The toast's Undo button, at the bottom of the window, puts Milk back. A
+# person looks at the toast before they reach for its button, and the
+# script waits for it likewise: a pointer that moves onto the button while
+# the toast is still appearing is a click that does nothing, every time on
+# a fresh start, where the same move and click two seconds after the toast
+# appears restores Milk. The toast stays five seconds.
+sleep 2
 xdotool mousemove $((X + 300)) $((Y + 467)) click 1
 wait_for "Basket restored Milk"
 shot 4-restored

@@ -85,6 +85,19 @@ Set `kind: windowed`, so that your Ruby runs on the main thread, which GTK needs
 - Fledge cannot tell that your app needs GTK 4, since `linux: system_libraries` lists only what a gem's compiled files link, so a `.deb` does not depend on `libgtk-4-1`. A computer without it gets what your Ruby does about the `Fiddle::DLError`: Basket names the library and exits with status 72, as Fledge's launcher does for a library a gem lists.
 - GTK exits the process when it cannot open a display, and a library GTK loads itself, such as `libGLESv2.so.2`, may abort it; neither reaches your Ruby.
 
+### Draw the window with Win32 on Windows
+
+Your Ruby can open Windows' `user32` and `comctl32` itself with `fiddle`, which Ruby bundles, as it does under `ruby main.rb` on Windows, and Fledge adds nothing for it: no library, no binding, no key in `fledge.yml`. Every Windows has both libraries. [`examples/basket`](../examples/basket) is a shopping list drawn this way, with a text field, an Add button that Return presses, a list, and a Remove button: [`lib/basket/win32.rb`](../examples/basket/lib/basket/win32.rb) holds its calls into Windows, and [`lib/basket/windows.rb`](../examples/basket/lib/basket/windows.rb) its screen, which reads as `lib/basket/ios.rb` does.
+
+Set `kind: windowed`, so that Windows gives your app no console. A program of C gets the first two of these from its manifest and writes the last two in its message loop and window procedure. `ruby.exe` and your app's program have none of them, so your Ruby does all four, the first two before it makes a window:
+
+- Windows draws the controls of Windows 2000 unless the process asks for Common Controls 6, and neither `ruby.exe` nor your app's program does. Put the dependency in a manifest file in your project, as Basket's `lib/basket/common-controls.manifest` does, and call `CreateActCtxW` with the file's path and then `ActivateActCtx`. The same Ruby draws the same controls under `ruby main.rb` and in the built app.
+- Windows stretches the pixels of a window on a monitor whose scale is above 100% unless the process is aware of each monitor's scale. Call `SetProcessDpiAwarenessContext(-4)` before the first window, and multiply every size by `GetDpiForWindow` over 96.
+- Handles, `WPARAM`, `LPARAM`, and `LRESULT` are 64 bits wide and `LONG` is 32. Declare each handle as `Fiddle::TYPE_INTPTR_T`, not `TYPE_LONG`.
+- Tab and Return work as in a dialog only when the message loop calls `IsDialogMessageW` before `TranslateMessage`, and the window answers `DM_GETDEFID` with the id of its default button.
+
+A windowed app's standard output reaches no console, so a program that logs redirects it, as CI's check of Basket does with `Start-Process -RedirectStandardOutput`. A message loop runs on the main thread, where the launcher runs your Ruby.
+
 ## Open files and folders with your app
 
 A windowed app can list the files and folders it opens, so that each system offers the app for them:

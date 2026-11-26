@@ -39,6 +39,6 @@ public class MainActivity extends Activity {
             started = true;
         }
         String tag = getPackageName();
-        FledgeRuby.startApp(this, "fledge.zip", new String[0], status -> Log.i(tag, name + " exited with status " + status));
+        FledgeRuby.startApp(this, "fledge.zip", new String[0], status -> Log.i(tag + ".host", name + " exited with status " + status));
     }
 }

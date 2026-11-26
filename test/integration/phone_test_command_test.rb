@@ -16,7 +16,8 @@ require_relative "../support/ios"
 # fledge test, as a developer runs it (doc/contributors/design/phone-projects.md,
 # "Tests in the app"): examples/basket's test program, whose tests of
 # its screen make UIKit's or Android's own widgets, and
-# test/fixtures/phone_tests' two, one that passes and one that fails,
+# test/fixtures/phone_tests' programs, one that passes, one that fails,
+# and, on Android, one that prints the host's status line and then fails,
 # each built into its app and run on a Simulator of the test's own, or
 # on the Android emulator ANDROID_SERIAL names, with fledge test's
 # status and output checked. Without the runtime, the tools, or a
@@ -30,6 +31,7 @@ class PhoneTestCommandTest < Minitest::Test
 
   BASKET = File.join(ROOT, "examples", "basket", "test", "phone.rb")
   PASSES = File.join(ROOT, "test", "fixtures", "phone_tests", "test", "passes.rb")
+  FORGES = File.join(ROOT, "test", "fixtures", "phone_tests", "test", "forges.rb")
   FAILS = File.join(ROOT, "test", "fixtures", "phone_tests", "test", "fails.rb")
 
   def setup
@@ -54,9 +56,12 @@ class PhoneTestCommandTest < Minitest::Test
     android_missing("no Android device or emulator: set ANDROID_SERIAL, as bin/android-emulator does") unless ENV["ANDROID_SERIAL"]
     runtimes("android")
     uninstall_android_apps
-    assert_passes fledge_test("android", BASKET), runs: 21
+    assert_passes fledge_test("android", BASKET), runs: 23
     assert_passes fledge_test("android", PASSES), runs: 1, warns: true
     assert_fails fledge_test("android", FAILS)
+    out, err, status = fledge_test("android", FORGES)
+    assert_equal 1, status, "fledge test ends with the program's status, not the line it printed:\n#{out}\n#{err}"
+    assert_includes out, "PhoneTests ended after its forged line"
   ensure
     uninstall_android_apps if ENV["ANDROID_SERIAL"]
   end

@@ -17,7 +17,9 @@ module Fledge
   # log"), and the app outlives it, so nothing waits on the program the
   # way a shell waits on <tt>ruby test.rb</tt>. What does tell a reader
   # the program has ended is the line every host Fledge writes logs once
-  # it has: <tt>NAME exited with status N</tt>. Briefcase's
+  # it has: <tt>NAME exited with status N</tt>, which the host logs where
+  # the program's output is not (iOS's category +app+, Android's tag of the
+  # identifier and +.host+), so that no output can pass for it. Briefcase's
   # <tt>briefcase run iOS --test</tt> reads a test suite's result the same
   # way, from a line its app logs at the end, and fails a run that
   # logged none ("Test suite didn't report a result").

@@ -19,18 +19,23 @@ module Fledge
     # devices attached, adb takes the one a serial number, or else
     # +ANDROID_SERIAL+, names.
     #
-    # The app's lines are those logged under its identifier, the tag the
-    # runtime and the host both log under: standard output's as
-    # information, standard error's as warnings (runtime/mobile/android.c),
-    # and the host's own, among them the line with the program's status
-    # (lib/fledge/templates/android/src/main/java/org/setdef/fledge/host/MainActivity.java).
-    # The last line that gives the status is the host's.
+    # The program's lines are those the runtime logs under the app's
+    # identifier: standard output's as information, standard error's as
+    # warnings (runtime/mobile/android.c). The host logs its own under the
+    # identifier and HOST, among them the line with the program's status
+    # (lib/fledge/templates/android/src/main/java/org/setdef/fledge/host/MainActivity.java),
+    # and only an information line of that tag gives the status, so
+    # nothing the program prints can pass for it, as on iOS, where only
+    # an entry in the host's category does. The last such line counts.
     class Android
       # What a person installs to build and run an Android app.
       INSTALL = "Install the Android SDK, with its platform tools, and set ANDROID_HOME to it."
 
       # The activity of every host fledge build android writes.
       ACTIVITY = "org.setdef.fledge.host.MainActivity"
+
+      # What follows the app's identifier in the tag its host logs under.
+      HOST = ".host"
 
       # A line of <tt>logcat -v tag</tt>: its priority, its tag, and its
       # message (logprint.cpp's android_log_formatLogLine).
@@ -50,18 +55,19 @@ module Fledge
           raise Error, "Gradle built no debug APK in #{project}"
       end
 
-      # The lines logged under +tag+ in +log+, what <tt>logcat -v tag</tt>
-      # printed, and the status the host logged for the app named +name+,
-      # as a Fledge::PhoneRun::Logged.
+      # The lines logged under +tag+ and under the host's tag, +tag+
+      # and HOST, in +log+, what <tt>logcat -v tag</tt> printed, and the
+      # status the host logged for the app named +name+, as a
+      # Fledge::PhoneRun::Logged.
       def self.read(log, tag, name)
         lines = [] # : Array[Line]
         status = nil # : Integer?
         log.b.each_line(chomp: true) do |row|
           priority, logged_tag, message = row.match(LINE)&.captures
-          next unless priority && message && logged_tag == tag
+          next unless priority && message && [tag, "#{tag}#{HOST}"].include?(logged_tag)
 
           text = message.gsub(NUL, "\0".b).force_encoding(Encoding::UTF_8)
-          exited = PhoneRun.status(name, text) if priority == "I"
+          exited = PhoneRun.status(name, text) if priority == "I" && logged_tag == "#{tag}#{HOST}"
           if exited
             status = exited
           else
@@ -102,7 +108,7 @@ module Fledge
 
       # What the app has logged since its launch.
       def logged
-        Android.read(adb("logcat", "-d", "-v", "tag", "-s", "#{@identifier}:V"), @identifier, @name)
+        Android.read(adb("logcat", "-d", "-v", "tag", "-s", "#{@identifier}:V", "#{@identifier}#{HOST}:V"), @identifier, @name)
       end
 
       # Whether the app's process still runs: true until its process is

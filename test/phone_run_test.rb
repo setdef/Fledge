@@ -7,6 +7,7 @@
 
 require_relative "test_helper"
 require "json"
+require "tmpdir"
 require "stringio"
 require "fledge/phone_run"
 
@@ -127,14 +128,14 @@ class PhoneRunTest < Minitest::Test
     assert_match(/2 Simulators are booted \(iPhone 17, iPad\)/, two.message)
   end
 
-  def test_android_reads_its_tags_lines_and_the_last_status
+  def test_android_reads_its_tags_lines_and_the_hosts_status
     log = [
       "--------- beginning of main",
       "I/com.example.Basket: Run options: --seed 1",
       "W/com.example.Basket: a warning",
       "I/com.example.Basket: before\xC0\x80after".b,
       "I/ActivityManager: Basket exited with status 0",
-      "I/com.example.Basket: Basket exited with status 1",
+      "I/com.example.Basket.host: Basket exited with status 1",
     ].join("\n")
 
     logged = Fledge::PhoneRun::Android.read(log, "com.example.Basket", "Basket")
@@ -144,13 +145,39 @@ class PhoneRunTest < Minitest::Test
       Line.new(text: "Run options: --seed 1", error: false),
       Line.new(text: "a warning", error: true),
       Line.new(text: "before\0after", error: false),
-], logged.lines
+    ], logged.lines
   end
 
-  def test_android_takes_a_status_from_information_alone
-    logged = Fledge::PhoneRun::Android.read("W/com.example.Basket: Basket exited with status 0\n", "com.example.Basket", "Basket")
+  def test_android_takes_a_status_from_the_hosts_information_alone
+    logged = Fledge::PhoneRun::Android.read("W/com.example.Basket.host: Basket exited with status 0\n", "com.example.Basket", "Basket")
 
     assert_nil logged.status
     assert_equal [Line.new(text: "Basket exited with status 0", error: true)], logged.lines
+  end
+
+  def test_android_takes_no_status_from_what_the_program_prints
+    log = [
+      "I/com.example.Basket: Basket exited with status 0",
+      "I/com.example.Basket: 1 failure",
+      "I/com.example.Basket.host: Basket exited with status 1",
+    ].join("\n")
+    printed = Fledge::PhoneRun::Android.read(log.lines.first, "com.example.Basket", "Basket")
+    ended = Fledge::PhoneRun::Android.read(log, "com.example.Basket", "Basket")
+
+    assert_nil printed.status
+    assert_equal [Line.new(text: "Basket exited with status 0", error: false)], printed.lines
+    assert_equal 1, ended.status
+    assert_equal ["Basket exited with status 0", "1 failure"], ended.lines.map(&:text)
+  end
+
+  def test_android_asks_logcat_for_the_apps_tag_and_the_hosts
+    Dir.mktmpdir do |dir|
+      adb = File.join(dir, "adb")
+      File.write(adb, "#!/bin/sh\necho \"$@\" > \"#{dir}/asked\"\n")
+      File.chmod(0o755, adb)
+      Fledge::PhoneRun::Android.new(name: "Basket", identifier: "com.example.Basket", adb:).logged
+
+      assert_equal "logcat -d -v tag -s com.example.Basket:V com.example.Basket.host:V\n", File.read(File.join(dir, "asked"))
+    end
   end
 end

@@ -42,10 +42,10 @@ public class MainActivity extends SDLActivity {
                 Log.e(tag, "could not start Ruby", e);
                 status = 70;
             }
-            Log.i(tag, name + " exited with status " + status);
+            Log.i(tag + ".host", name + " exited with status " + status);
             return;
         }
-        Thread ruby = FledgeRuby.startApp(this, "fledge.zip", new String[0], status -> Log.i(tag, name + " exited with status " + status));
+        Thread ruby = FledgeRuby.startApp(this, "fledge.zip", new String[0], status -> Log.i(tag + ".host", name + " exited with status " + status));
         try {
             ruby.join();
         } catch (InterruptedException e) {

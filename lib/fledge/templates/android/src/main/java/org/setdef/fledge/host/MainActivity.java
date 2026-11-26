@@ -16,7 +16,8 @@ import org.setdef.fledge.FledgeRuby;
  * app's name and runs the app's Ruby program, as fledge.cfg in the asset
  * fledge.zip names it, with FledgeRuby, on Ruby's own thread, with no
  * arguments, since a phone has no command line. What the program prints
- * goes to logcat under the app's identifier, and so does its exit status.
+ * goes to logcat under the app's identifier, and its exit status under the
+ * identifier and ".host".
  * Ruby runs once per process, so an Activity Android creates again does
  * not start it again. Change this screen as your app needs; FledgeRuby's
  * calls are what it must keep.
@@ -52,7 +53,9 @@ public class MainActivity extends Activity {
             started = true;
         }
         String tag = getPackageName();
-        IntConsumer exited = status -> Log.i(tag, name + " exited with status " + status);
+        // The status goes under a tag of its own, which fledge test reads, so that
+        // nothing the program prints, under the app's identifier, can pass for it.
+        IntConsumer exited = status -> Log.i(tag + ".host", name + " exited with status " + status);
         if (WINDOWED) {
             FledgeRuby.startAppOnMainThread(this, "fledge.zip", new String[0], exited);
         } else {

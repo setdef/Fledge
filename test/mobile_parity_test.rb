@@ -514,7 +514,7 @@ class MobileParityTest < Minitest::Test
       case arguments
       in ["logcat", "-c"] then launched
       in ["logcat", "-d", "-v", "threadtime"] then whole_log
-      in ["logcat", "-d", "-v", "tag", "-s", _] then tagged.tap { @step += 1 }
+      in ["logcat", "-d", "-v", "tag", "-s", _, _] then tagged.tap { @step += 1 }
       else ""
       end
     end
@@ -541,7 +541,7 @@ class MobileParityTest < Minitest::Test
 
     private def tagged
       lines = ["I/#{@app.identifier}: running", *@said.map { |line| "I/#{@app.identifier}: #{line}" }]
-      lines << "I/#{@app.identifier}: #{@app.name} exited with status 0" if @finishes && @step >= @finishes
+      lines << "I/#{@app.identifier}.host: #{@app.name} exited with status 0" if @finishes && @step >= @finishes
       "#{lines.join("\n")}\n"
     end
 

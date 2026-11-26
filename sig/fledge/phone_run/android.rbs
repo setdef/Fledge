@@ -8,6 +8,7 @@ module Fledge
       ACTIVITY: String
       LINE: Regexp
       NUL: String
+      HOST: String
 
       @name: String
       @identifier: String

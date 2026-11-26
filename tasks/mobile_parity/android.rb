@@ -410,7 +410,7 @@ class MobileParity
     # (doc/contributors/design/phone-runtimes.md, "Output to the system
     # log").
     def self.messages(log, tag, standard_error: true)
-      entry = %r{\A([VDIWEF])/#{Regexp.escape(tag)} *: ?(.*)\z}
+      entry = %r{\A([VDIWEF])/#{Regexp.escape(tag)}(?:\.host)? *: ?(.*)\z}
       log.b.each_line(chomp: true).filter_map do |line|
         priority, message = line.match(entry)&.captures
         MobileParity.printed(message) if priority && (standard_error || priority != "W")
@@ -550,7 +550,7 @@ class MobileParity
     # What +app+ logged under its identifier, as Android.messages reads
     # it.
     private def logged(app)
-      log = adb("logcat", "-d", "-v", "tag", "-s", "#{app.identifier}:V")
+      log = adb("logcat", "-d", "-v", "tag", "-s", "#{app.identifier}:V", "#{app.identifier}.host:V")
       Logged.new(entries: Android.messages(log, app.identifier), output: Android.messages(log, app.identifier, standard_error: false))
     end
 

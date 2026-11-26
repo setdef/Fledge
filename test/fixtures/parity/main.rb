@@ -308,6 +308,26 @@ def titled?
   buffer.byteslice(4, size.unpack1("J") - 4).split("\0").reject(&:empty?)[1] == TITLE
 end
 
+# Whether Thread.main, on which the probe runs, is the thread the system
+# started the process on, as under ruby main.rb (thread_pthread.c,
+# Init_native_thread): on Linux and Android, whether its id is the
+# process's, as the kernel numbers a process's first thread; on Darwin,
+# macOS and iOS alike, whether pthread_main_np is 1, through fiddle,
+# which a Gemfile's bundle may leave out, and then it is not asked.
+# Windows is not asked.
+def main_thread?
+  return Thread.main.native_thread_id == Process.pid if RUBY_PLATFORM.include?("linux")
+  return unless RUBY_PLATFORM.include?("darwin")
+  return if defined?(Bundler) && !Gem.loaded_specs.key?("fiddle")
+
+  begin
+    require "fiddle"
+  rescue LoadError
+    return
+  end
+  Fiddle::Function.new(Fiddle::Handle::DEFAULT["pthread_main_np"], [], Fiddle::TYPE_INT).call == 1
+end
+
 # Whether this is Windows, where Fiddle asks Windows itself what Ruby
 # does not say: the process's program, its ANSI code page, and its
 # AppUserModelID, and how a DLL loads by a narrow path.
@@ -511,6 +531,8 @@ def facts
     "RubyVM::YJIT.enabled?" => defined?(RubyVM::YJIT) ? RubyVM::YJIT.enabled? : nil,
     "RubyVM::ZJIT.enabled?" => defined?(RubyVM::ZJIT) ? RubyVM::ZJIT.enabled? : nil,
     "RbConfig::CONFIG's JITs" => RbConfig::CONFIG.slice("YJIT_SUPPORT", "ZJIT_SUPPORT"),
+    # Last but these two, since each may require fiddle.
+    "Thread.main is the main thread" => main_thread?,
     # Last but requireable, since it requires fiddle.
     "Windows" => windows_child,
   }

@@ -290,11 +290,15 @@ class LicenseAuditTest < Minitest::Test
   # no launcher, no Fledge code in bin/ruby, no AppImage. The audit reads
   # it as that build, whatever the platform's Ruby pin names.
   def write_archive_tree
-    openssl = YAML.safe_load_file(File.expand_path("../runtime/sources.yml", __dir__)).dig("musl-ruby", "openssl", "version")
+    pins = YAML.safe_load_file(File.expand_path("../runtime/sources.yml", __dir__)).fetch("musl-ruby")
+    openssl = pins.dig("openssl", "version")
+    libyaml = pins.dig("libyaml", "version")
     FileUtils.rm_f(File.join(@tree, "launcher"))
     write("bin/ruby", Binaries.elf(needed: %w[libcrypt.so.2 libc.so.6], payload: "ruby 4.1.0preview1 (revision 2d08b5f42f) #{FLEDGE_RUST} GCC: (Ubuntu 11.4.0)"))
     write("#{ARCH}/openssl.so", Binaries.elf(needed: %w[libc.so.6], payload: "OpenSSL #{openssl} "))
+    write("#{ARCH}/psych.so", Binaries.elf(needed: %w[libc.so.6], payload: "#{libyaml}\0"))
     write("libexec/cert.pem", CaBundles.curl)
+    FileUtils.ln_s("libcrypt.so.2", File.join(@tree, "lib/libcrypt.so"))
     FileUtils.rm_f(File.join(@tree, "lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb"))
   end
 
@@ -308,7 +312,23 @@ class LicenseAuditTest < Minitest::Test
     _run, report = archive_audit
 
     assert_empty report.violations.map(&:to_s)
-    assert_equal %w[ca-certificates gcc-runtime gem-csv-3.3.5 libxcrypt openssl-fledge ruby rust-std-fledge], report.present.map(&:id).sort
+    assert_equal %w[ca-certificates gcc-runtime gem-csv-3.3.5 libxcrypt libyaml-fledge openssl-fledge ruby rust-std-fledge], report.present.map(&:id).sort
+  end
+
+  # A symbolic link holds no code, so the LGPL library may own the one a
+  # gem's -lcrypt finds it by, as long as it points at the library's own
+  # file.
+  def test_an_lgpl_library_may_own_a_link_to_its_own_file_and_to_nothing_else
+    write_archive_tree
+    _run, report = archive_audit
+
+    assert_equal "libxcrypt", report.owners.fetch("lib/libcrypt.so").id
+    assert_empty report.violations.map(&:to_s)
+    FileUtils.rm_f(File.join(@tree, "lib/libcrypt.so"))
+    FileUtils.ln_s("../bin/ruby", File.join(@tree, "lib/libcrypt.so"))
+    _run, report = archive_audit
+
+    assert_includes rules(report), ["policy", "lib/libcrypt.so"]
   end
 
   def test_the_audit_of_the_archive_refuses_a_runtimes_files

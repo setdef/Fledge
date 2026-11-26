@@ -61,12 +61,25 @@ class LicenseAudit
 
       @violate.call("policy", where, "#{component.id} is #{component.license} and needs a source pin in runtime/sources.yml") unless @sources.key?(component.source.to_s)
       report.owned(component).each do |path|
+        next if report.symlink?(path) && link_to_own_file?(component, path, report)
+
         format = report.binaries[path]&.format
         @violate.call("policy", path, "#{component.id} is #{component.license}, so this file must be a shared library, not #{format.inspect}") unless %i[elf pe macho].include?(format)
       end
       return if report.embedded_in(component).all? { |path| report.owners[path].equal?(component) }
 
       @violate.call("policy", where, "#{component.id} is #{component.license} and is compiled into a file it does not own")
+    end
+
+    # Whether the symbolic link +path+ points at a file +component+ owns.
+    # A link holds no code, so a library may own one, such as the
+    # libcrypt.so that Fledge's own Ruby archive has beside libcrypt.so.2,
+    # for a gem's -lcrypt; a link to another component's file is not the
+    # library's.
+    private def link_to_own_file?(component, path, report)
+      link = File.join(report.tree, path)
+      target = File.expand_path(File.readlink(link), File.dirname(link))
+      report.owners[target.delete_prefix("#{report.tree}/")].equal?(component)
     end
 
     # An LGPL library linked into other files: each must be owned by a

@@ -357,7 +357,7 @@ watched:
     pins: [mobile.libyaml, musl-ruby.libyaml]
     github: yaml/libyaml
     tag: '\A(?<version>\d+\.\d+\.\d+)\z'
-    licenses: [libyaml-mobile, libyaml-musl]
+    licenses: [libyaml-mobile, libyaml-musl, libyaml-fledge]
     named: [doc/contributors/design/runtimes.md]
   libffi:
     pins: [mobile.libffi, musl-ruby.libffi]

@@ -427,8 +427,8 @@ components:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
         evidence: "0.2.5\0"
 
-  # libyaml as Fledge's own build of Ruby compiles it on macOS and glibc
-  # Linux, with its header and static library for compiling gems.
+  # libyaml as the Ruby that rv-ruby publishes compiles it on macOS and
+  # glibc Linux, with its header and static library for compiling gems.
   - id: libyaml-glibc
     name: libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems
     version: 0.2.5
@@ -438,12 +438,29 @@ components:
     notice: libyaml
     ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against"
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
-    ruby_build: [upstream, fledge]
+    ruby_build: upstream
     files: ["{prefix}lib/libyaml.a", "{prefix}include/yaml.h", "{prefix}lib/pkgconfig/yaml-0.1.pc"]
     binaries: ["{prefix}lib/libyaml.a"]
     embedded:
       - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
         evidence: "0.2.5\0"
+
+  # libyaml as Fledge's own build of Ruby compiles it, from the pin the
+  # musl runtimes' Ruby takes. It links libyaml statically into psych and
+  # installs no header or library of it.
+  - id: libyaml-fledge
+    name: libyaml, compiled into Ruby's psych extension
+    version: 0.2.6
+    license: MIT
+    kind: program
+    download: https://github.com/yaml/libyaml/releases/download/0.2.6/yaml-0.2.6.tar.gz
+    notice: libyaml
+    ships: "compiled into lib/ruby/{abi}/{arch}/psych.{so}"
+    platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
+    ruby_build: fledge
+    embedded:
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/psych.{so}"]
+        evidence: "0.2.6\0"
 
   - id: libyaml-musl
     name: libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems
@@ -955,7 +972,9 @@ components:
     source: libxcrypt
     ships: lib/libcrypt.so.2, a shared library the launcher and bin/ruby load when they start
     platforms: [x86_64-linux, aarch64-linux]
-    files: [lib/libcrypt.so.2]
+    # lib/libcrypt.so is the link a gem's -lcrypt finds the library by,
+    # which Fledge's own Ruby archive holds and a runtime does not.
+    files: [lib/libcrypt.so.2, lib/libcrypt.so]
     binaries: [lib/libcrypt.so.2]
     embedded:
       - files: [lib/libcrypt.so.2]

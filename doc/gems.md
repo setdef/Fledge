@@ -23,7 +23,7 @@ $ bundle lock --add-checksums
 ```
 <!-- SPDX-SnippetEnd -->
 
-For iPhone, iPad, and Android, lock `ruby` as a platform too (`bundle lock --add-platform ruby`).
+Lock `ruby` as a platform too (`bundle lock --add-platform ruby`) for iPhone, iPad, and Android, and for a gem whose precompiled builds all exclude the app's Ruby, such as sqlite3 2.10.2 under Ruby 4.1: Bundler then locks the gem's source build, which Fledge compiles.
 
 ## The Bundler that wrote your lockfile
 
@@ -42,7 +42,7 @@ $ bundle lock --add-checksums
 
 ## Gems with compiled extensions
 
-Fledge ships precompiled gems as they are. It compiles gems that ship as source, and gems from git, on your computer, against the app's Ruby, and the app holds each such gem's folder as `gem install` leaves it, with every file its build wrote there. Install a compiler first:
+Fledge ships a gem's precompiled build as it is when one of the gem's builds fits your platform and admits the app's Ruby. When none does, it compiles the gem on your computer, against the app's Ruby, and the app holds the gem's folder as `gem install` leaves it, with every file its build wrote there. That happens for a gem that ships only as source, a gem from git, a gem whose precompiled builds all require another Ruby, and a gem whose line in the Gemfile has `force_ruby_platform: true`. sqlite3 2.10.2 is the third kind: its precompiled builds require Ruby `>= 3.2, < 4.1.dev`, so under Fledge's Ruby 4.1 runtimes it compiles from its source build, which your lockfile holds once you [lock `ruby` as a platform](#lock-every-platform). With no source build locked, `fledge build` stops and names the gem. Install a compiler first:
 
 - **macOS:** Xcode's command line tools.
 - **Linux:** a C compiler and `make`, such as Debian's and Ubuntu's `build-essential`, or Alpine's `build-base` with `linux-headers`, the kernel's headers, which build-base leaves out and the libffi that ffi carries needs.
@@ -63,7 +63,7 @@ A gem that compiles from source may link a library your computer has and the app
 
 OpenSSL and libyaml are the exception on macOS and Linux. A gem whose extension links either one, such as Puma, which links OpenSSL for TLS, or the psych gem at a version other than the one Ruby comes with, compiles against the copy Fledge's runtime carries for this, the copy Ruby's own `openssl` and `psych` were built with. It links it in, needs nothing of the computers the app goes to, and asks nothing of yours: no `libssl-dev`, no `fledge.yml` key. The copy is the runtime's, so a fix to OpenSSL reaches your app when a Fledge release moves the runtime's OpenSSL and you build the app again. Your app holds that copy only inside the gem's extension, beside Ruby's own.
 
-ffi is the one most Linux apps meet, once the Ruby it builds for is newer than its precompiled gems (Ruby 4.1's preview, for one). Its `extconf.rb` links the libffi it finds first, and `fledge build` refuses: "ffi 1.17.4's lib/ffi_c.so needs libffi.so.8, which neither linux, nor Fledge's runtime, nor the gem itself provides". Ask ffi to build the libffi it carries, which then ships inside `ffi_c.so`:
+ffi is the one most Linux apps meet, when none of its precompiled builds admits the app's Ruby, as none of sqlite3's does. Its `extconf.rb` links the libffi it finds first, and `fledge build` refuses: "ffi 1.17.4's lib/ffi_c.so needs libffi.so.8, which neither linux, nor Fledge's runtime, nor the gem itself provides". Ask ffi to build the libffi it carries, which then ships inside `ffi_c.so`:
 
 ```sh
 bundle config set --local build.ffi --disable-system-libffi

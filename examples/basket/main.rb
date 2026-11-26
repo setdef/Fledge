@@ -19,12 +19,14 @@
 # runs on the thread those widgets belong to, and on Windows runs without
 # a console.
 
+require_relative "lib/basket/data_folder"
 require_relative "lib/basket/list"
 
-# The list's file, among the app's own: an iOS app keeps its files in
-# Documents, and an Android app in its files folder, which is HOME.
-documents = File.join(Dir.home, "Documents")
-list = Basket::List.new(File.join(File.directory?(documents) ? documents : Dir.home, "basket.json"))
+# The list's file, in the folder its system keeps an app's data in, which
+# Etcetera finds (lib/basket/data_folder.rb). Its path is logged, for a
+# person who looks for the list.
+puts "Basket keeps its list in #{Basket::DataFolder.list_path}"
+list = Basket::List.new(Basket::DataFolder.list_path)
 
 # Whether this Ruby runs on an iPhone or iPad: on a system whose
 # Objective-C runtime has UIKit to load, which a Mac does not.

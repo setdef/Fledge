@@ -5,13 +5,15 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
+require "fileutils"
 require "json"
 
 # Basket, a shopping list whose screen each phone's own widgets draw.
 module Basket
   # The shopping list: its items, in the order they were added, kept as
-  # JSON in a file of the app's own. A phone can stop an app in the
-  # background without running at_exit, so each change saves at once.
+  # JSON in a file of the app's own, in a folder the list makes when it
+  # first saves. A phone can stop an app in the background without running
+  # at_exit, so each change saves at once.
   class List
     # The items, each a String.
     attr_reader :items
@@ -39,6 +41,7 @@ module Basket
     end
 
     private def save
+      FileUtils.mkdir_p(File.dirname(@path))
       File.write(@path, JSON.generate(@items))
     end
   end

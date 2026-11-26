@@ -1,0 +1,25 @@
+# frozen_string_literal: true
+
+#--
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT-0
+#++
+
+source "https://rubygems.org"
+
+# Fiddle, a bundled gem, which each system's screen reaches its widgets
+# with: a Gemfile has to name it for require "fiddle" to find it. Etcetera
+# says where each system keeps an app's data, and reaches Windows' Known
+# Folders over Fiddle. Both are pure Ruby apart from Fiddle's
+# extension, which Ruby bundles, so one Gemfile.lock serves every
+# platform Fledge targets.
+gem "etcetera", "0.12.0"
+gem "fiddle", "1.1.8"
+
+# Minitest, another bundled gem, which test/ runs with, on your
+# computer and inside the app on a phone (test/phone.rb). Version 5 needs
+# no other gem, where 6 needs prism, which has C to compile for each
+# platform.
+group :test do
+  gem "minitest", "5.27.0"
+end

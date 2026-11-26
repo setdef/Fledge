@@ -6,10 +6,10 @@
 # examples/basket, starts its program from / with no Ruby on its PATH,
 # and uses it as a person does, with real input: types Milk and presses
 # Return, then clicks the button that removes the row, and the Undo that
-# the toast offers. It fails unless Basket logs "Basket added Milk",
-# "Basket removed Milk", and "Basket restored Milk", and ends with status
-# 0 when it gets SIGTERM, which it takes through GLib's main
-# loop (examples/basket/lib/basket/gtk.rb).
+# the toast offers. It fails unless Basket logs where it keeps its list,
+# "Basket added Milk", "Basket removed Milk", and "Basket restored Milk",
+# and ends with status 0 when it gets SIGTERM, which it takes through
+# GLib's main loop (examples/basket/lib/basket/gtk.rb).
 #
 #   deliver-basket.sh ARCHIVE [without-gtk]
 #
@@ -42,6 +42,9 @@ cleanup() {
 }
 trap cleanup EXIT
 log="$work/basket.log"
+# Where Basket keeps its list: XDG's data folder, $HOME/.local/share, since
+# the clean environment below sets no XDG_DATA_HOME.
+list="$work/home/.local/share/basket/basket.json"
 
 place="$work/My Apps"
 mkdir -p "$place" "$work/empty-path" "$work/home" "$work/runtime"
@@ -112,6 +115,7 @@ basket DISPLAY="$DISPLAY" >"$log" 2>&1 &
 app=$!
 window=$(timeout 30 xdotool search --sync --onlyvisible --name '^Basket$' | head -n 1) || true
 [ -n "$window" ] || fail "Basket opened no window named Basket in 30 seconds"
+wait_for "Basket keeps its list in $list"
 wait_for "Basket shows 0 items"
 sleep 1
 eval "$(xdotool getwindowgeometry --shell "$window")"
@@ -133,15 +137,15 @@ xdotool mousemove $((X + WIDTH - 40)) $((Y + 128)) click 1
 wait_for "Basket removed Milk"
 shot 3-removed
 
-[ "$(cat "$work/home/basket.json")" = "[]" ] || fail "basket.json is $(cat "$work/home/basket.json"), not []"
-echo "ok: basket.json is empty again"
+[ "$(cat "$list")" = "[]" ] || fail "the list is $(cat "$list"), not []"
+echo "ok: the list is empty again"
 
 # The toast's Undo button, at the bottom of the window, puts Milk back.
 xdotool mousemove $((X + 300)) $((Y + 467)) click 1
 wait_for "Basket restored Milk"
 shot 4-restored
-[ "$(cat "$work/home/basket.json")" = '["Milk"]' ] || fail "basket.json is $(cat "$work/home/basket.json"), not [\"Milk\"]"
-echo "ok: basket.json holds Milk again"
+[ "$(cat "$list")" = '["Milk"]' ] || fail "the list is $(cat "$list"), not [\"Milk\"]"
+echo "ok: the list holds Milk again"
 
 # SIGTERM ends Basket through GLib's main loop, as a desktop's logout
 # or a terminal's kill does, with status 0.

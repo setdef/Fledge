@@ -1,0 +1,28 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    etcetera (0.12.0)
+      fiddle (~> 1.1)
+    fiddle (1.1.8)
+    minitest (5.27.0)
+
+PLATFORMS
+  aarch64-linux
+  arm64-darwin
+  ruby
+  x64-mingw-ucrt
+  x86_64-linux
+
+DEPENDENCIES
+  etcetera (= 0.12.0)
+  fiddle (= 1.1.8)
+  minitest (= 5.27.0)
+
+CHECKSUMS
+  bundler (4.0.20) sha256=7978a8ac648767f5e635bc522445b79e80a52b907a39a36c2d8085ed6bc762ae
+  etcetera (0.12.0) sha256=6c1b99c2d06c126ae059ecb37c4fba55faf2605c25f583b5e1e1d443b55fb2ec
+  fiddle (1.1.8) sha256=7fa8ee3627271497f3add5503acdbc3f40b32f610fc1cf49634f083ef3f32eee
+  minitest (5.27.0) sha256=2d3b17f8a36fe7801c1adcffdbc38233b938eb0b4966e97a6739055a45fa77d5
+
+BUNDLED WITH
+  4.0.20

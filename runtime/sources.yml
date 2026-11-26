@@ -231,14 +231,16 @@ images:
     image: archlinux:base-devel@sha256:2de80105abb49f813a85393c6758a4334deb6bcec4a2411bd2f059c0bee6ee4c
 
 # The Alpine 3.24 packages CI installs in images.alpine-ruby and
-# images.alpine, by exact version, as apk names them: what builds a musl
+# images.alpine, by version as apk names them: what builds a musl
 # runtime, what a developer on Alpine builds apps with, and what Delivery
-# and the parity check run there. .github/scripts/alpine-packages.sh
+# and the parity check run there. Each is the build last proven, and CI
+# installs its upstream version, the pin without its -rN, as NAME~VERSION,
+# which any build of it satisfies. .github/scripts/alpine-packages.sh
 # says which each job takes, and reads their versions here, where the
 # move can rewrite them. An Alpine branch keeps only each package's
-# newest build, so a pin the branch no longer serves stops every musl job
-# until it moves (doc/contributors/design/runtimes.md, "Alpine's
-# packages").
+# newest build, so a pin whose upstream version the branch no longer
+# serves stops every musl job until it moves (doc/contributors/design/
+# runtimes.md, "Alpine's packages").
 alpine-packages:
   binutils: 2.45.1-r1
   build-base: 0.5-r4

@@ -32,10 +32,13 @@
 #
 # Each package's version is pinned in runtime/sources.yml, under
 # alpine-packages, beside this script's checkout, where the pin move can
-# rewrite it. An Alpine branch keeps only each package's newest build, so
-# a pin that stops resolving fails the job until the pin watch moves it
-# (doc/contributors/design/runtimes.md, "Alpine's packages"). The
-# versions are read with awk, since Delivery's Alpine has no Ruby.
+# rewrite it, and installed as NAME~UPSTREAM: the pinned version with
+# its build number (-rN) taken off, which apk takes as a prefix and so
+# matches any build of that upstream version. An Alpine branch keeps
+# only each package's newest build, so a rebuild of the pinned version
+# installs and a new upstream version fails the job until the pin watch
+# moves it (doc/contributors/design/runtimes.md, "Alpine's packages").
+# The versions are read with awk, since Delivery's Alpine has no Ruby.
 
 set -eu
 
@@ -59,6 +62,6 @@ for name in $names; do
     echo "alpine-packages.sh: $sources pins no version of $name under alpine-packages" >&2
     exit 2
   fi
-  set -- "$@" "$name=$version"
+  set -- "$@" "$name~${version%-r[0-9]*}"
 done
 apk add --no-cache "$@"

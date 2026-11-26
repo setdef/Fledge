@@ -364,10 +364,6 @@ watched:
     github: libffi/libffi
     tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
     licenses: [libffi-mobile, libffi-musl]
-    # runtimes.md calls one release of libffi a bug-fix and security
-    # release, and tabulates it as the newest on a day, facts about that
-    # release that stay true when the pin moves to it.
-    named: [doc/contributors/design/runtimes.md]
   zlib:
     pins: [musl-ruby.zlib]
     github: madler/zlib

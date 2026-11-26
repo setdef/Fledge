@@ -29,8 +29,8 @@
 # SysListView32, and messages a WinUI window ignores), so the setting keeps
 # the job's proof the same on every runner: that the built app, with no
 # Ruby, draws the screen that a Windows without the runtime gets. WinUI's
-# screen is checked by check-basket-winui.ps1, in a step of its own, and by
-# its tests (examples/basket/test/winui_test.rb).
+# screen is not checked here; its tests (examples/basket/test/winui_test.rb)
+# run on a Windows that has the runtime.
 
 param(
   [Parameter(Mandatory)] [string] $Archive,

@@ -318,7 +318,12 @@ module Basket
     end
 
     # Runs Basket: gives the main thread to WinUI, which then calls for the
-    # window, where Screen goes.
+    # window, where Screen goes. WinUI may fail to start on a Windows that
+    # has the Windows App Runtime, as it did on ARM64 Windows, where
+    # activating the Fluent styles failed. Then +run+ logs one line that
+    # says why and calls the block, which draws another screen, as
+    # Basket does where the runtime is missing; with no block, the failure
+    # reaches the caller.
     def self.run(list)
       WinRT.start do
         screen = Screen.new(list)
@@ -328,6 +333,11 @@ module Basket
         rows = screen.rows
         puts "Basket shows #{rows} #{(rows == 1) ? 'item' : 'items'}"
       end
+    rescue WinRT::Error, Fiddle::DLError => e
+      raise unless block_given?
+
+      puts "Basket could not start WinUI (#{e.message}), so it draws Win32's screen"
+      yield
     end
   end
 end

@@ -54,13 +54,14 @@ elsif RUBY_PLATFORM.include?("linux")
   require_relative "lib/basket/linux"
   exit Basket::Linux.run(list)
 elsif Gem.win_platform?
-  # WinUI's screen where Windows has the Windows App Runtime, and Win32's
-  # common controls, which every Windows has, where it has not.
+  # WinUI's screen where Windows has the Windows App Runtime and WinUI
+  # starts, and Win32's common controls, which every Windows has, where it
+  # has not or does not.
   require_relative "lib/basket/winui"
+  require_relative "lib/basket/windows"
   if Basket::WinUI.available?
-    Basket::WinUI.run(list)
+    Basket::WinUI.run(list) { Basket::Windows.run(list) }
   else
-    require_relative "lib/basket/windows"
     Basket::Windows.run(list)
   end
 else

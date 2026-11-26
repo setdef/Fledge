@@ -18,6 +18,7 @@
 
 require "minitest/autorun"
 require "fileutils"
+require "stringio"
 require "tmpdir"
 require_relative "../lib/basket/list"
 
@@ -238,6 +239,113 @@ class WinUIScreenTest < Minitest::Test
     send_message(handle, Basket::WinUI::WM_DPICHANGED, (192 << 16) | 192, suggested.to_i)
 
     assert_equal [100, 120, 1060, 1400], window_rect(handle)
+  end
+end
+
+# What Basket does when WinUI fails to start, which the tests make it do
+# in two ways: with a stand-in for WinRT.start that raises, on any system
+# whose Ruby loads Fiddle, and with WinUI itself, on a Windows that has the
+# Windows App Runtime, by giving the screen markup that XamlReader
+# cannot parse, so that the failure is WinUI's, raised in OnLaunched as the
+# one on ARM64 Windows was (issue 162). Neither changes anything installed
+# on the computer.
+class WinUIFallbackTest < Minitest::Test
+  # What the screen's markup is when WinUI is made to fail: a Grid whose
+  # attribute XamlReader cannot parse.
+  BROKEN_MARKUP = '<Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Padding="not a thickness"/>'
+
+  # Skips where Fiddle cannot be loaded.
+  def setup
+    skip WINUI_NOT_LOADED if WINUI_NOT_LOADED
+
+    @dir = Dir.mktmpdir
+    @list = Basket::List.new(File.join(@dir, "basket.json"))
+  end
+
+  # Deletes the test's folder.
+  def teardown
+    FileUtils.rm_rf(@dir) if @dir
+  end
+
+  # Runs the block with Basket::WinRT.start replaced by +replacement+.
+  def with_start(replacement)
+    singleton = Basket::WinRT.singleton_class
+    original = Basket::WinRT.method(:start)
+    singleton.__send__(:remove_method, :start)
+    singleton.__send__(:define_method, :start, &replacement)
+    yield
+  ensure
+    singleton.__send__(:remove_method, :start)
+    singleton.__send__(:define_method, :start, original)
+  end
+
+  # Runs the block, and returns what it printed to standard output.
+  def printed
+    out = StringIO.new
+    was = $stdout
+    $stdout = out
+    yield
+    out.string
+  ensure
+    $stdout = was
+  end
+
+  # Runs the block with the screen's markup replaced by +markup+.
+  def with_markup(markup)
+    original = Basket::WinUI::MARKUP
+    Basket::WinUI.__send__(:remove_const, :MARKUP)
+    Basket::WinUI.const_set(:MARKUP, markup)
+    yield
+  ensure
+    Basket::WinUI.__send__(:remove_const, :MARKUP)
+    Basket::WinUI.const_set(:MARKUP, original)
+  end
+
+  # When WinUI fails to start, the block that run is given draws the other
+  # screen, and Basket logs one line that says why.
+  def test_a_failed_start_draws_the_fallback_screen_and_logs_why
+    failing = proc { |*| raise Basket::WinRT::Error, "RoActivateInstance Microsoft.UI.Xaml.Controls.XamlControlsResources failed: 0x80004005" }
+    drawn = []
+    output = with_start(failing) { printed { Basket::WinUI.run(@list) { drawn << :fallback } } }
+
+    assert_equal [:fallback], drawn
+    assert_equal "Basket could not start WinUI (RoActivateInstance Microsoft.UI.Xaml.Controls.XamlControlsResources failed: 0x80004005), so it draws Win32's screen\n", output
+  end
+
+  # A start that works draws no fallback and logs nothing of the kind.
+  def test_a_start_that_works_draws_no_fallback
+    drawn = []
+    output = with_start(proc { |*| nil }) { printed { Basket::WinUI.run(@list) { drawn << :fallback } } }
+
+    assert_empty drawn
+    assert_empty output
+  end
+
+  # With no fallback to draw, the failure reaches the caller.
+  def test_a_failed_start_without_a_fallback_raises
+    failing = proc { |*| raise Basket::WinRT::Error, "no window" }
+
+    assert_raises(Basket::WinRT::Error) { with_start(failing) { Basket::WinUI.run(@list) } }
+  end
+
+  # WinUI itself fails to start, as it did on ARM64 Windows: Basket gets to
+  # its Win32 screen on the same thread, with the list's rows, and logs why.
+  def test_winui_that_fails_in_on_launched_gives_way_to_win32
+    skip WINUI_UNAVAILABLE if WINUI_UNAVAILABLE
+
+    @list.add("Milk")
+    rows = nil
+    output = with_markup(BROKEN_MARKUP) do
+      printed do
+        Basket::WinUI.run(@list) do
+          require_relative "../lib/basket/windows"
+          rows = Basket::Windows::Screen.new(@list).rows
+        end
+      end
+    end
+
+    assert_equal 1, rows
+    assert_match(/\ABasket could not start WinUI \(.*\), so it draws Win32's screen\n\z/, output)
   end
 end
 

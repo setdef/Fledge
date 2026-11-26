@@ -106,16 +106,6 @@ int fledge_ruby_add_extension(const char *feature, void (*init)(void));
  */
 int fledge_ruby_forward_output(const char *tag);
 
-#ifdef __ANDROID__
-/*
- * The process's Java VM, a JavaVM *, which Java gave this library as it
- * loaded it, or NULL before. Ruby's bridge to Android's classes,
- * Fledge::JNI, reaches Java through it, from the thread that calls
- * each function (doc/contributors/design/phone-widgets.md).
- */
-void *fledge_ruby_java_vm(void);
-#endif
-
 #ifdef __cplusplus
 }
 #endif

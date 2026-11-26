@@ -212,7 +212,6 @@ class RuntimeBuilder
       end
       File.write(File.join(stage, LINKS), links.join)
       merge_trees(stage)
-      copy_bridge(File.join(stage, "lib", "ruby"), "jni")
       FileUtils.cp(File.join(MOBILE, "fledge_ruby.h"), File.join(stage, "include"))
       copy_certificates(File.join(stage, "libexec"))
       pack_aar(libraries, File.join(stage, "FledgeRuby.aar"))

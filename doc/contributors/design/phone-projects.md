@@ -118,7 +118,7 @@ The app stays open when the program ends: iOS's guidelines and Android's leave q
 An app whose Ruby draws its screen with the phone's own widgets, `kind: windowed` in `fledge.yml`, is hosted the other way round, since those widgets are the main thread's alone (`doc/contributors/design/phone-widgets.md`, "Threads"):
 
 - on iOS, `project.yml` compiles `Host/main.m` with `FLEDGE_WINDOWED=1` (the mark `@@DEFINITIONS@@` in `GCC_PREPROCESSOR_DEFINITIONS`) and links it with `-Wl,-stack_size,0x4000000` (in `@@LDFLAGS@@`), and `main.m` then runs the app on the main thread, where its program calls `UIApplicationMain` itself with the delegates it writes in Ruby, `SceneDelegate` among them, as `Info.plist` names it; `main` returns the program's status only if the program ends first. `ENABLE_DEBUG_DYLIB` is `NO` for every app, since the linker takes `-stack_size` only for an executable;
-- on Android, `MainActivity` (the mark `@@WINDOWED@@`, `true` or `false`) starts the app with `FledgeRuby.startAppOnMainThread`, and the program draws on the activity `FledgeRuby.activity()` names.
+- on Android, `MainActivity` (the mark `@@WINDOWED@@`, `true` or `false`) starts the app with `FledgeRuby.startAppOnMainThread`, and the program finds the activity Android made and draws on it, with no help from `FledgeRuby`.
 
 ## The privacy manifest
 

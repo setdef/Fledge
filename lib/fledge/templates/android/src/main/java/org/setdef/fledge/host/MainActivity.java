@@ -24,7 +24,7 @@ import org.setdef.fledge.FledgeRuby;
  * <p>An app whose Ruby draws its own screen with Android's views
  * (kind: windowed in fledge.yml) runs that Ruby on the main thread, the
  * one Android's views belong to, and its program replaces this screen's
- * content with its own, on the activity FledgeRuby.activity() names
+ * content with its own, on the activity Android made
  * (doc/contributors/design/phone-widgets.md).
  */
 public class MainActivity extends Activity {

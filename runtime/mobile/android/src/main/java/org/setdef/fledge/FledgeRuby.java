@@ -17,7 +17,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.function.IntConsumer;
@@ -44,10 +43,9 @@ import java.util.zip.ZipInputStream;
  *
  * <p>An app whose Ruby draws its own screen with Android's views runs
  * that Ruby on the main thread instead, the one Android's views belong
- * to, with {@link #startAppOnMainThread}, and its program reaches the
- * views through Fledge::JNI, the runtime's bridge from Ruby to Java,
- * which finds the activity that started it with {@link #activity}
- * (doc/contributors/design/phone-widgets.md).
+ * to, with {@link #startAppOnMainThread}. Fledge hands that program
+ * nothing: it reaches Java, and its views, as any Ruby program on
+ * Android does (doc/contributors/design/phone-widgets.md).
  */
 public final class FledgeRuby {
     /** The stack of the thread {@link #start} runs Ruby on, as the spike's host gave it. */
@@ -57,18 +55,7 @@ public final class FledgeRuby {
         System.loadLibrary("fledgeruby");
     }
 
-    /** The activity that last started the app's Ruby, for {@link #activity}. */
-    private static volatile WeakReference<Activity> started = new WeakReference<>(null);
-
     private FledgeRuby() {}
-
-    /**
-     * The activity that started the app's Ruby, with {@link #startApp} or
-     * {@link #startAppOnMainThread}, while Android keeps it, or null.
-     */
-    public static Activity activity() {
-        return started.get();
-    }
 
     private static native int nativeForwardOutput(byte[] tag);
 
@@ -128,11 +115,7 @@ public final class FledgeRuby {
         append(strings, root.getPath());
         append(strings, new File(new File(root, "app"), script).getPath());
         for (String argument : arguments) append(strings, argument);
-        try {
-            return nativeRun(strings.toByteArray(), arguments.length);
-        } finally {
-            RubyProxy.rubyEnded();
-        }
+        return nativeRun(strings.toByteArray(), arguments.length);
     }
 
     /**
@@ -151,11 +134,7 @@ public final class FledgeRuby {
         ByteArrayOutputStream strings = new ByteArrayOutputStream();
         append(strings, root.getPath());
         for (String argument : arguments) append(strings, argument);
-        try {
-            return nativeRunApp(strings.toByteArray(), arguments.length);
-        } finally {
-            RubyProxy.rubyEnded();
-        }
+        return nativeRunApp(strings.toByteArray(), arguments.length);
     }
 
     /**
@@ -176,7 +155,6 @@ public final class FledgeRuby {
      * unpacked. Returns the started thread.
      */
     public static Thread startApp(Context context, String asset, String[] arguments, IntConsumer exited) {
-        remember(context);
         Context app = context.getApplicationContext();
         return onRubyThread(app, exited, () -> runApp(app, asset, arguments));
     }
@@ -185,17 +163,16 @@ public final class FledgeRuby {
      * Unpacks {@code asset} on a thread of its own, then runs the app
      * fledge build put in it on the main thread, as {@link #runApp} does,
      * for an app whose Ruby draws its own screen with Android's views,
-     * which only the main thread may touch. The program builds its views
-     * on {@link #activity} and hands the main thread back to Android with
-     * Fledge::JNI.loop, from which Android's messages, and the calls of
-     * the views' listeners into Ruby, then come. Calls {@code exited} with
+     * which only the main thread may touch. The program finds the activity
+     * Android made and builds its views on it, then hands the main thread
+     * back to Android by running its loop of messages, from which the
+     * views' listeners then call into Ruby. Calls {@code exited} with
      * the app's exit status if its program ends, or with 70 (EX_SOFTWARE)
      * when the asset could not be unpacked. The main thread's stack is
      * the process's, which Ruby takes as it takes a desktop's main
      * thread's.
      */
     public static void startAppOnMainThread(Activity activity, String asset, String[] arguments, IntConsumer exited) {
-        remember(activity);
         Context app = activity.getApplicationContext();
         Handler main = new Handler(Looper.getMainLooper());
         new Thread(() -> {
@@ -209,10 +186,6 @@ public final class FledgeRuby {
             }
             main.post(() -> exited.accept(runAppIn(root, arguments)));
         }, "fledge-unpack").start();
-    }
-
-    private static void remember(Context context) {
-        if (context instanceof Activity) started = new WeakReference<>((Activity) context);
     }
 
     /** What {@link #onRubyThread} runs: Ruby, returning its exit status. */

@@ -17,9 +17,8 @@ android {
 
     defaultConfig {
         minSdk = 26
-        // Fledge::JNI reaches these classes from Ruby, by name, so an
-        // app that shrinks its code with R8 keeps them
-        // (doc/contributors/design/phone-widgets.md).
+        // The library's native methods are found by name, so an app that
+        // shrinks its code with R8 keeps them.
         consumerProguardFiles 'consumer-rules.pro'
     }
 

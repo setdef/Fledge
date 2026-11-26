@@ -146,14 +146,13 @@ class LicensingPageFromRuntimesTest < Minitest::Test
   end
 
   # A phone's app has no Fledge launcher: the host app starts Ruby, so
-  # its section names only the RubyGems defaults and, on Android, the
-  # widget bridge among Fledge's files.
+  # its section names only the RubyGems defaults among Fledge's files.
   def test_a_phones_section_names_no_launcher_the_apps_user_runs
     text = page
     ["iOS and iPadOS (arm64-ios, arm64-ios-simulator)", "Android (aarch64-linux-android, x86_64-linux-android)"].each do |title|
       phone = section(text, title)
 
-      assert_includes phone, "| Fledge's RubyGems defaults and Android widget bridge |", title
+      assert_includes phone, "| Fledge's RubyGems defaults |", title
       assert_includes phone, "which RubyGems loads as the app's Ruby starts", title
       refute_includes phone, "the program the app's user runs", title
     end

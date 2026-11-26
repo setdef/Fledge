@@ -15,7 +15,7 @@ A phone's Ruby has the standard library and gems of a desktop's, `fiddle` among 
 
 ## Your app's screen
 
-Draw your app's screen in Ruby with each phone's own widgets, so that it looks and behaves as the phone's own apps do: UIKit's views on iOS, Android's views on Android. You make the platform's own objects and send them the platform's own messages, as Apple's and Google's documentation names them; Fledge adds no widgets of its own. On iOS your Ruby reaches UIKit as it would under `ruby` on a Mac, with Ruby's own `fiddle`; Android's runtime carries a bridge to Java.
+Draw your app's screen in Ruby with each phone's own widgets, so that it looks and behaves as the phone's own apps do: UIKit's views on iOS, Android's views on Android. You make the platform's own objects and send them the platform's own messages, as Apple's and Google's documentation names them; Fledge adds no widgets of its own. On iOS your Ruby reaches UIKit as it would under `ruby` on a Mac, with Ruby's own `fiddle`, and on Android your Ruby reaches Java the same way, with `fiddle` alone.
 
 Say `kind: windowed` in `fledge.yml`. A phone's widgets belong to its main thread, so an app of that kind runs its Ruby there, and your program hands the thread back to the phone when its screen is ready. An app without it runs its Ruby on a thread of its own and shows its name, as before.
 
@@ -46,20 +46,18 @@ end
 ObjC.application_main(AppDelegate)
 ```
 
-On Android, `require "fledge/jni"`. `Fledge::JNI.import` names a Java class, its methods and static fields are Ruby methods of the same names, and `Fledge::JNI.implement` makes a listener of a Ruby object or a Hash of lambdas. Draw on the activity `org.setdef.fledge.FledgeRuby.activity` names, and end your program with `Fledge::JNI.loop`:
+On Android, Fledge carries no bridge: your Ruby calls Java through JNI, with `fiddle`, as any Ruby program on Android can. [`examples/basket/lib/basket/android/`](../examples/basket/lib/basket/android) holds what Basket uses, about 500 lines of Ruby that you can copy into your app and change: it finds the Java VM, calls a Java method by its name and JNI signature as Android's reference lists them, finds the activity Android made, and makes a listener of a Ruby lambda. Your program draws on that activity and ends with `Looper.loop()`, which hands the main thread back to Android. Basket's own screen reads, for a button:
 
 ```ruby
-require "fledge/jni"
-JNI = Fledge::JNI
-
-activity = JNI.import("org.setdef.fledge.FledgeRuby").activity
-label = JNI.import("android.widget.TextView").new(activity)
-label.setText("Hello from Ruby")
-activity.setContentView(label)
-JNI.loop
+button = Button.new("(Landroid/content/Context;)V", activity)
+button.call("setText", "(Ljava/lang/CharSequence;)V", "Add")
+button.call("setOnClickListener", "(Landroid/view/View$OnClickListener;)V",
+  Listener.implement(["android.view.View$OnClickListener"], onClick: -> (_view) { add }))
 ```
 
-Both use `fiddle`: if your app has a `Gemfile`, add `gem "fiddle"` to it. [`examples/basket`](../examples/basket) is a shopping list drawn this way on both phones, its screen for each in a file of its own. Basket's iOS bridge does not pass a struct such as `CGRect` or make an Objective-C block, which it has no need of, and lays its screen out with Auto Layout's anchors; Fledge's Android bridge cannot subclass a Java class such as `View`, so implement listeners' interfaces there. Touch the widgets only from the main thread, as in any phone app: a Ruby thread of your own posts its work there.
+Basket reaches the activity through four members of Android's own `ActivityThread` that Android lists as unsupported: they work for every app today, and a later Android may take them away. Tell Android from iOS as any Ruby program tells platforms apart, with `RUBY_PLATFORM`.
+
+Both phones use `fiddle`: if your app has a `Gemfile`, add `gem "fiddle"` to it. [`examples/basket`](../examples/basket) is a shopping list drawn this way on both phones, its screen for each in a file of its own. Basket's iOS bridge does not pass a struct such as `CGRect` or make an Objective-C block, which it has no need of, and lays its screen out with Auto Layout's anchors; neither phone's Ruby here subclasses a Java class such as `View`, so implement listeners' interfaces on Android. Touch the widgets only from the main thread, as in any phone app: a Ruby thread of your own posts its work there.
 
 ## Test your app on a Simulator or emulator
 

@@ -727,3 +727,33 @@ echo "app dir holds $(find "$APP" -type f | wc -l) files, $(du -sm "$APP" | cut 
 
 mise x http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc -- ruby "$WORK/probe.rb" "$APP" "$FRAGS"
 ```
+
+## 2026-11-25: the text box on the signed-in desktop
+
+The note above ran each probe on a desktop made for the run and guessed that this desktop caused the text box's failure (section 5). Three more runs, on the same Windows 11 computer (build 10.0.26300), ran on its signed-in desktop. Run 1 and run 2 printed the name of their desktop (`GetThreadDesktop`, `GetUserObjectInformationW`), which was `Default`. Each used the probe of Appendix A with the text box in the window, with the bootstrapper in place of the packages' DLLs (the last form of Appendix A), so the process loaded `Microsoft.UI.Xaml.dll` from the Windows App Runtime 2.7.0 framework package that Windows had registered. No run injected input, and none installed anything.
+
+Basket does not take the self-contained route of section 1. It would use the framework package that Microsoft provides: the bootstrapper for a program that runs unpackaged, and an MSIX package that depends on the framework for an app that ships. The runs below therefore used the bootstrapper, and the self-contained route stands only as a comparison, from the earlier runs' crash records.
+
+**Run 1, the failing case on the signed-in desktop.** `MddBootstrapInitialize2` returned 0, the probe printed "window activated", and the process ended. Its exit status was 123, the low byte of 0xC000027B. The text box still ends the process.
+
+**Run 2, the fault's message and record.** The probe now had a handler for `Application.UnhandledException`. It printed `0x80040111: Windows.ApplicationModel.LimitedAccessFeatures`, the same text as on the private desktop, and `cmd.exe` reported the exit code -1073741189, which is 0xC000027B. Windows' Application log recorded an Application Error with faulting module `Microsoft.UI.Xaml.dll` 3.3.0.0 (the file in `C:\Program Files\WindowsApps\Microsoft.WindowsAppRuntime.2_2.7.0.0_x64__8wekyb3d8bbwe`), exception code 0xc000027b, fault offset 0x3d1a49. The earlier self-contained run on the private desktop left an event with the same module version, code, and offset, with the module in the probe's folder. So the fault is at one place in `Microsoft.UI.Xaml.dll` on both routes and both desktops, and the private desktop is not its cause. The same run read `ruby.exe`'s embedded manifest: 377 bytes that set only `longPathAware`, with no `supportedOS` entry.
+
+**Run 3, the manifest.** Hypothesis, stated before the run: Windows treats a process whose manifest lists no Windows 10 `supportedOS` as an older program, and WinUI's call into `LimitedAccessFeatures` fails for that reason. The run copied the Ruby installation into the run's temporary folder, wrote a manifest into the copy's `ruby.exe` with `UpdateResourceW` that adds the Windows 10 and 11 `supportedOS` GUID, read it back, and ran the same probe under the copy. The result was the same: "window activated", the same `0x80040111` message, and the exit code -1073741189. The manifest is not the cause.
+
+**What stays open.** The cause is not found. The runs rule out the private desktop and, for Windows 10 compatibility, the host's manifest, on this computer and this build of Windows. Two hypotheses are left, and each needs something the runs here could not do:
+
+- `Windows.ApplicationModel.LimitedAccessFeatures` needs the caller to have a package identity, which a process that `ruby.exe` starts lacks and a packaged app has. Testing it takes a package installed on the computer, which no run may do. The same package would test whether a packaged Basket has the problem at all.
+- The build of Windows, 10.0.26300, differs from the one Microsoft tests WinUI 3 on. Testing it takes a computer of another build.
+
+A working screen with a text box, and the Fluent styles, were not reached: the probe never got a text box that lived. The screen of section 4 with its text box left out is still the most that the note proves. WinUI 3 from pure Ruby cannot carry Basket's screen on this computer until a text box starts.
+
+### What an MSIX package that depends on the framework needs from `fledge build`
+
+This comes from Microsoft's pages and from the packages, and no run built or installed such a package. `Fledge::Msix#manifest` writes one `PackageDependency`, on the Visual C++ runtime's framework package, only when the app's gems need it (`lib/fledge/msix.rb`, lines 183 to 186). A package for a WinUI 3 app would add a second `PackageDependency` element, as the generated manifest of Microsoft's WinUI 3 templates has ("Deploy packaged apps", section "Stable version", lines 34 to 46):
+
+- `Name` is `Microsoft.WindowsAppRuntime.2`, the package name in the Runtime package's `Microsoft.WindowsAppSDK.AppXReference.props` (`WinAppSDKPackageName`).
+- `Publisher` is `CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US`, from the same file, and the same publisher as the Visual C++ dependency's.
+- `MinVersion` is `2.7.0.0` for this release, the Foundation version that the Runtime package's `MicrosoftWindowsAppSDKFoundationAppXVersion.props` and `WindowsAppSDK-VersionInfo.json` give.
+- The VCLibs framework dependency that the same page lists as a prerequisite for a packaged app is already one of Fledge's two cases (`visual_c_runtime: central`).
+
+The package then carries no file of Microsoft's, and `fledge build` downloads nothing: a package the Store installs gets the framework with it, and a package installed by hand needs the framework already registered or given to `Add-AppxPackage` with `-DependencyPath`, as for the Visual C++ runtime ("Deploy packaged apps", line 61). The page says the Main and Singleton packages cannot be declared as dependencies, and gives the Deployment API as the way to deploy them, which an app needs only for features outside the framework package, push notifications among them. The process of such a package has a package graph made from its manifest, so it does not call the bootstrapper, which is for unpackaged programs. Whether a Ruby process in that package finds `Microsoft.UI.Xaml.*` through the package graph with no activation context was not tried. The same computer had the framework package 2.7.0 registered for its account, in the folder the Application log shows above.

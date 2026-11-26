@@ -153,13 +153,13 @@ The cost is size, about that of the source bundle on each Linux and Windows runt
 
 ## Fledge's own Ruby archive
 
-`tasks/ruby_archive.rb` ("Fledge's own Ruby builds", `runtimes.md`) builds a Ruby prefix that a developer unpacks and conveys, so its licenses bind whoever publishes it, and Fledge publishes it. `RubyArchive#license` reuses the runtime's pieces: `RuntimeBuilder#license` with `archive: true` runs `LicenseAudit`, `Notices`, and `Spdx` over the prefix, and `SourceBundle#copy_into` puts the source of each component that asks for it into the prefix's `notices/sources/`. `archive: true` changes three things, and nothing else:
+`tasks/ruby_archive.rb` ("Fledge's own Ruby builds", `runtimes.md`) builds a Ruby prefix that a developer unpacks and conveys, so its licenses bind whoever publishes it, and Fledge publishes it. The audit of a runtime expects the tree the runtime builder has pruned ("What a runtime prunes, and why nothing reads it", `runtimes.md`): on the unpruned tree that Ruby's install leaves, it reports the compiled files in `*.dSYM` folders as `unlisted-binary` and nkf's JRuby sources, which name the LGPL, as `copyleft-text`. So `RubyArchive#prune` removes first what a runtime removes, with the same code, and the audit reads the pruned prefix. `RubyArchive#license` then reuses the runtime's pieces: `RuntimeBuilder#license` with `archive: true` runs `LicenseAudit`, `Notices`, and `Spdx` over the prefix, and `SourceBundle#copy_into` puts the source of each component that asks for it into the prefix's `notices/sources/`. `archive: true` changes three things, and nothing else:
 
 - **The build is Fledge's own,** whatever the platform's Ruby pin names (`LicenseAudit.entries`), so its Rust, OpenSSL, zlib, and libffi are the versions `ruby-build` and `musl-ruby` pin.
 - **Entries marked `archive: false` do not apply:** the launcher, AppImage and what it links, and Fledge's BLAKE3 extension are a runtime's alone, so a launcher in an archive fails as unaccounted.
 - **NOTICES speaks of the archive,** with no app, no Fledge file, and no release's source bundle, since the pre-release holds only the archives. The SBOM is the same.
 
-Its LGPL library, libxcrypt on glibc Linux, ships as its own shared library as in a runtime, with its source beside it. OpenSSL, libyaml, libffi, and zlib are permissive and need no source, as the issue that asked for this (setdef/Fledge#29) guessed. The Mac's entries for the same four were taken from the Linux entries' names and evidence strings, and are proven by the first audit of a Mac's archive.
+Its LGPL library, libxcrypt on glibc Linux, ships as its own shared library as in a runtime, with its source beside it. OpenSSL, libyaml, libffi, and zlib are permissive and need no source. The build fails when the audit refuses the archive, and the archive is then never packed.
 
 ## The replaceability jobs
 

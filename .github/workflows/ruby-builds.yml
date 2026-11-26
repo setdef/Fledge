@@ -7,9 +7,12 @@
 # pins, and can publish both archives on a pre-release of this
 # repository for a runtime's pin to name
 # (doc/contributors/design/runtimes.md, "Fledge's own Ruby builds").
-# The build runs the archive's own checks: its glibc floor, YJIT and
-# ZJIT, the libraries bin/ruby links, and no build folder left in
-# rbconfig.rb, pkg-config, or the headers. Each archive is kept as the
+# The build prunes the archive as a runtime is pruned, runs the
+# archive's own checks (its glibc floor, YJIT and ZJIT, the libraries
+# bin/ruby links, and no build folder left in rbconfig.rb, pkg-config, or
+# the headers), and runs the license audit, which writes the archive's
+# notices, its SBOM, and the source of its LGPL library, and fails the
+# build when the archive breaks the policy. Each archive is kept as the
 # run's artifact, and its SHA-256 printed.
 #
 # It runs on each push to trunk that changes the recipe or its pins, so
@@ -28,10 +31,16 @@ on:
       - .github/scripts/ruby-archive.sh
       - .github/scripts/ruby-archive-publish.sh
       - .github/workflows/ruby-builds.yml
+      - runtime/licenses.yml
+      - runtime/notices/**
       - runtime/sources.yml
+      - tasks/license_audit.rb
+      - tasks/license_audit/**
       - tasks/ruby_archive.rb
       - tasks/runtime_builder.rb
+      - tasks/runtime_builder/gem_repack.rb
       - tasks/runtime_builder/linux.rb
+      - tasks/runtime_builder/pruning.rb
       - tasks/runtime_builder/ruby_build.rb
   workflow_dispatch:
     inputs:

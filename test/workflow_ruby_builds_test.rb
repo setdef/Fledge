@@ -72,11 +72,14 @@ class WorkflowRubyBuildsTest < Minitest::Test
     %w[tasks/ruby_archive.rb tasks/runtime_builder/ruby_build.rb runtime/sources.yml .github/scripts/ruby-archive.sh].each do |path|
       assert_includes push.fetch("paths"), path
     end
-    push.fetch("paths").each { |path| assert File.file?(File.join(ROOT, path)), "#{path} is no file the build reads" }
+    push.fetch("paths").each { |path| assert_predicate Dir.glob(File.join(ROOT, path)), :any?, "#{path} is no file the build reads" }
+    %w[tasks/runtime_builder/pruning.rb tasks/license_audit.rb runtime/licenses.yml].each do |path|
+      assert_includes push.fetch("paths"), path
+    end
   end
 
   def test_the_image_is_pinned_by_digest
-    assert_match(/^IMAGE=docker\.io\/library\/ubuntu:22\.04@sha256:\h{64}$/, script)
+    assert_match(%r{^IMAGE=docker\.io/library/ubuntu:22\.04@sha256:\h{64}$}, script)
   end
 
   def test_every_package_apt_installs_is_pinned_by_version

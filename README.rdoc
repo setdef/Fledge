@@ -63,7 +63,11 @@ that folder, build your project by its path:
 
 Fledge ships the gems <tt>bundle exec</tt> would load, from every group in
 your +Gemfile+, +development+ and +test+ included. To leave a group out,
-name it in Bundler's +without+ setting.
+name it in Bundler's +without+ setting. A gem's precompiled build ships as
+it is when one fits your platform and admits the app's Ruby. When none
+does, Fledge compiles the gem on your computer: a gem published only as
+source, a gem from git, and a gem whose precompiled builds all require
+another Ruby.
 
 [Terminal apps]
   A <tt>.tar.gz</tt> on macOS and Linux, and a <tt>.zip</tt> on Windows,

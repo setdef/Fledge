@@ -113,7 +113,7 @@ $env:BASKET_SCREEN = 'win32'
 $env:HOME = $home_folder
 $env:USERPROFILE = $home_folder
 $env:APPDATA = Join-Path $Work 'Basket app data'
-$list = Join-Path $env:APPDATA 'setdef\Basket\data\basket.json'
+$listFile = Join-Path $env:APPDATA 'setdef\Basket\data\basket.json'
 Remove-Item -LiteralPath $env:APPDATA -Recurse -ErrorAction SilentlyContinue
 $out = Join-Path $Work 'basket.out'
 $err = Join-Path $Work 'basket.err'
@@ -175,9 +175,9 @@ Expect 'the exit status' $process.ExitCode 0
 $lines = @(Get-Content -LiteralPath $out)
 # Basket logs its list's path with the slashes Ruby's Pathname joins it
 # with, which Windows reads as the same path.
-Expect 'where Basket said it keeps its list' ($lines[0] -replace '/', '\') "Basket keeps its list in $list"
+Expect 'where Basket said it keeps its list' ($lines[0] -replace '/', '\') "Basket keeps its list in $listFile"
 Expect 'what Basket logged after that' ($lines[1..($lines.Count - 1)] -join '|') 'Basket shows 0 items|Basket added Milk|Basket removed Milk'
-Expect 'what Basket saved in its list' ((Get-Content -LiteralPath $list -Raw) -replace '\s+$', '') '[]'
+Expect 'what Basket saved in its list' ((Get-Content -LiteralPath $listFile -Raw) -replace '\s+$', '') '[]'
 Expect 'what Basket wrote to standard error' ((Get-Content -LiteralPath $err -Raw) -replace '\s+$', '') ''
 
 Write-Host 'Delivered: Basket, on Windows'

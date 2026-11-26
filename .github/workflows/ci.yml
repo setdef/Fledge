@@ -1785,8 +1785,8 @@ jobs:
       # party's GUI gem, whose precompiled gems carry libui-ng's library,
       # which links GTK 3 on Linux, named under linux: system_libraries.
       # And examples/libui_app, Focus Timer, the same gem in an app a
-      # person would use, built but not uploaded: the probe is what
-      # Delivery runs, since a timer nobody watches reports nothing.
+      # person would use, which Delivery runs as well as the probe, and
+      # a release carries (.github/scripts/deliver-focus-timer.sh).
       # Neither on musl Linux (build-musl) nor aarch64-mingw-ucrt: LibUI
       # publishes no gem with its library for them, so neither could run
       # there under bundle exec either. On x64-mingw-ucrt their DLL
@@ -1800,12 +1800,13 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: |
           ruby -I lib exe/fledge build -o dist test/fixtures/libui
-          ruby -I lib exe/fledge build -o "$RUNNER_TEMP/libui-example" examples/libui_app
+          ruby -I lib exe/fledge build -o dist examples/libui_app
 
       # examples/lota_pop, Pop, a game written with Lota, whose gem is
       # not on RubyGems.org: the script takes it from Lota's release,
       # checked against the SHA-256 it pins, into the project's
-      # vendor/cache. Built but not uploaded, as Focus Timer is. Not on
+      # vendor/cache. Delivery plays it (.github/scripts/deliver-pop.sh
+      # and deliver-pop.ps1), and a release carries it. Not on
       # musl Linux (build-musl): Lota publishes no gem for it.
       - name: Build Pop, a Lota game, for ${{ matrix.platform }}
         shell: bash
@@ -1819,7 +1820,7 @@ jobs:
             *) gem_platform=${{ matrix.platform }} ;;
           esac
           .github/scripts/lota-pop.sh examples/lota_pop "$gem_platform"
-          ruby -I lib exe/fledge build -o "$RUNNER_TEMP/lota-pop" examples/lota_pop
+          ruby -I lib exe/fledge build -o dist examples/lota_pop
 
       # Plan 003, "A Linux build takes the icon sizes a developer has":
       # windowed_app with only three of its PNGs builds, warns, and ships
@@ -2616,6 +2617,41 @@ jobs:
       - name: Add an item to Basket and remove it
         run: .github/scripts/deliver-basket-mac.sh "$RUNNER_TEMP/delivered/Basket-${{ matrix.platform }}.tar.gz"
 
+  # Focus Timer and Pop on a Mac, started as Finder starts them with no
+  # Ruby on their PATH: Focus Timer's window must be among the window
+  # server's, and Pop must play for twelve seconds and end itself with
+  # its score (.github/scripts/deliver-focus-timer.sh and deliver-pop.sh
+  # say why no click is sent from outside on a Mac).
+  delivery-games-arm64-darwin:
+    name: Delivery of Focus Timer and Pop (${{ matrix.platform }})
+    needs: build-arm64-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
+            platform: arm64-darwin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: ${{ runner.temp }}/delivered
+
+      - name: Open Focus Timer's window and end it
+        run: .github/scripts/deliver-focus-timer.sh "$RUNNER_TEMP/delivered/Focus Timer-${{ matrix.platform }}.tar.gz" libui.arm64.dylib
+
+      - name: Play Pop until it ends itself
+        run: .github/scripts/deliver-pop.sh "$RUNNER_TEMP/delivered/Pop-${{ matrix.platform }}.tar.gz"
+
   delivery-windowed-x86_64-linux:
     name: Delivery of a windowed app (${{ matrix.platform }})
     needs: build-x86_64-linux
@@ -2845,6 +2881,66 @@ jobs:
 
       - name: Run Basket, add an item, and remove it
         run: .github/scripts/deliver-basket.sh "delivered/Basket-${{ matrix.platform }}.tar.gz"
+
+  # Focus Timer and Pop on a computer the way GNOME has it: a fresh
+  # Ubuntu 24.04 container with no Ruby, where apt installs GTK 3, an X
+  # server with no screen, a window manager, xdotool, Mesa's drivers,
+  # and a font. Focus Timer's window must stay still while paused,
+  # change once Start is pressed, and end the program with 0 when it is
+  # closed (.github/scripts/deliver-focus-timer.sh); Pop must pop a dot
+  # that a sweep of clicks reaches and end itself with its score
+  # (.github/scripts/deliver-pop.sh).
+  delivery-games-x86_64-linux:
+    name: Delivery of Focus Timer and Pop (${{ matrix.platform }}, ubuntu-noble)
+    needs: [changes, build-x86_64-linux]
+    runs-on: ${{ matrix.os }}
+    container: ${{ fromJSON(needs.changes.outputs.images)['ubuntu-noble'] }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: x86_64-linux
+    steps: &delivery-games-steps
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: delivered
+
+      - name: Fetch apt's package lists and the packages the job installs
+        run: .github/scripts/apt-update.sh libgtk-3-0t64 xvfb openbox xdotool libgl1-mesa-dri libglx-mesa0 fonts-dejavu-core
+
+      - name: Install GTK 3 and a desktop's X server with apt
+        run: DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgtk-3-0t64 xvfb openbox xdotool libgl1-mesa-dri libglx-mesa0 fonts-dejavu-core
+
+      - name: Open Focus Timer's window, start it, and close it
+        run: |
+          platform=${{ matrix.platform }}
+          .github/scripts/deliver-focus-timer.sh "delivered/Focus Timer-$platform.tar.gz" "libui.${platform%-linux}.so"
+
+      - name: Play Pop until it ends itself
+        run: .github/scripts/deliver-pop.sh "delivered/Pop-${{ matrix.platform }}.tar.gz"
+
+  delivery-games-aarch64-linux:
+    name: Delivery of Focus Timer and Pop (${{ matrix.platform }}, ubuntu-noble)
+    needs: [changes, build-aarch64-linux]
+    runs-on: ${{ matrix.os }}
+    container: ${{ fromJSON(needs.changes.outputs.images)['ubuntu-noble'] }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            platform: aarch64-linux
+    steps: *delivery-games-steps
 
   # Delivery where the glibc floor says an app runs (runtimes.md, "The
   # glibc floor"), in the oldest systems it admits, each pinned by
@@ -3113,6 +3209,13 @@ jobs:
       - name: Start Basket.exe's Win32 screen, add an item, and remove it
         shell: pwsh
         run: pwsh -NoProfile -File .github/scripts/check-basket-window.ps1 -Archive "$env:RUNNER_TEMP/delivered/Basket-$env:PLATFORM.zip"
+
+      # Pop, a Lota game, started as Explorer starts it and clicked
+      # with the messages a mouse sends: it must pop a dot and end
+      # itself with its score (.github/scripts/deliver-pop.ps1).
+      - name: Start Pop.exe, click its dots, and let it end itself
+        shell: pwsh
+        run: pwsh -NoProfile -File .github/scripts/deliver-pop.ps1 -Archive "$env:RUNNER_TEMP/delivered/Pop-$env:PLATFORM.zip"
 
       # test/fixtures/programs: a GUI and a console program from one
       # folder, with one project and one Ruby, sharing one save

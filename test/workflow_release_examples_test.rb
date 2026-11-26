@@ -29,6 +29,32 @@ class WorkflowReleaseExamplesTest < Minitest::Test
     end
   end
 
+  # A release carries Focus Timer and Pop (issue 154), so the Build job
+  # leaves each in dist, where Delivery and the staging read it, and a
+  # Delivery job runs each on every platform that carries it. Focus
+  # Timer's x64 Windows app carries Microsoft's Visual C++ runtime, so
+  # that build stays outside dist.
+  def test_focus_timer_and_pop_are_built_into_dist_and_delivered_on_every_platform_that_carries_them
+    steps = jobs("ci.yml").fetch("build-arm64-darwin").fetch("steps").filter_map { |step| step["run"] }.join("\n")
+
+    assert_includes steps, "fledge build -o dist examples/libui_app"
+    assert_includes steps, "fledge build -o dist examples/lota_pop"
+    refute_match(/libui-example|lota-pop"/, steps)
+    windows = jobs("ci.yml").fetch("build-x64-mingw-ucrt").fetch("steps").filter_map { |step| step["run"] }.join("\n")
+    assert_includes windows, 'fledge build -o "$(cygpath -w "$probe")" examples/libui_app'
+
+    {
+"delivery-games-arm64-darwin" => %w[deliver-focus-timer.sh deliver-pop.sh],
+"delivery-games-x86_64-linux" => %w[deliver-focus-timer.sh deliver-pop.sh],
+"delivery-games-aarch64-linux" => %w[deliver-focus-timer.sh deliver-pop.sh],
+"delivery-windows-x64-mingw-ucrt" => %w[deliver-pop.ps1],
+"delivery-windows-aarch64-mingw-ucrt" => %w[deliver-pop.ps1],
+}.each do |name, scripts|
+      run = runs(jobs("ci.yml").fetch(name)).join("\n")
+      scripts.each { |script| assert_includes run, script, "#{name} does not run #{script}" }
+    end
+  end
+
   def test_the_musl_jobs_stage_inside_the_container_that_built_them_and_know_their_platform
     job = jobs("ci.yml").fetch("build-musl")
     docker = runs(job).find { |run| run.include?("docker run") }

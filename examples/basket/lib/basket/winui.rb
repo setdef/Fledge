@@ -67,6 +67,14 @@ module Basket
     WINDOW_SIZE = [480, 640].freeze
     # What a monitor at 100 percent scale has for DPI.
     BASE_DPI = 96
+    # WM_SETTINGCHANGE
+    WM_SETTINGCHANGE = 0x1A
+    # WM_DPICHANGED, which WinUI's window procedure answers by taking
+    # the rectangle Windows suggests, so Basket handles it no further.
+    WM_DPICHANGED = 0x02E0
+    # What lParam of WM_SETTINGCHANGE holds when the person changes the
+    # app mode, or the system mode.
+    APP_MODE_CHANGED = "ImmersiveColorSet"
     # SWP_NOZORDER, SWP_NOMOVE, and SWP_NOACTIVATE, for SetWindowPos.
     KEEP_PLACE = 0x0004 | 0x0002 | 0x0010
     # HKEY_CURRENT_USER, which a 64-bit HKEY holds sign-extended, as a signed number.
@@ -237,20 +245,76 @@ module Basket
       status.zero? && data[0, 4].unpack1("L").zero?
     end
 
+    # The HWND that holds +window+.
+    def self.handle(window)
+      window.qi(IID_WINDOW_NATIVE).out(3, what: "get_WindowHandle")
+    end
+
     # Fits +window+ to the monitor it is on: WINDOW_SIZE at the monitor's
-    # scale, leaving where it is alone, and a title bar in the colors the
-    # controls take, since Windows draws the title bar of a window like this
-    # one in its light colors until the app asks for dark.
+    # scale, leaving where it is alone.
     def self.fit(window)
-      handle = window.qi(IID_WINDOW_NATIVE).out(3, what: "get_WindowHandle")
+      handle = handle(window)
       dpi = WinRT::Win.function("user32.dll", "GetDpiForWindow", [WinRT::POINTER], WinRT::INT).call(handle)
       width, height = window_pixels(dpi.zero? ? BASE_DPI : dpi)
       WinRT::Win.function("user32.dll", "SetWindowPos", [WinRT::POINTER, WinRT::POINTER, WinRT::INT, WinRT::INT, WinRT::INT, WinRT::INT, WinRT::UINT], WinRT::INT)
         .call(handle, 0, 0, 0, width, height, KEEP_PLACE)
+    end
+
+    # Gives the title bar of the window at +handle+ the colors the
+    # controls take, since Windows draws the title bar of a window like
+    # this one in its light colors until the app asks for dark.
+    def self.color_title_bar(handle)
       mode = WinRT::Win.buffer(4)
       mode[0, 4] = [dark? ? 1 : 0].pack("l")
       WinRT::Win.function("dwmapi.dll", "DwmSetWindowAttribute", [WinRT::POINTER, WinRT::INT, WinRT::POINTER, WinRT::INT], WinRT::INT)
         .call(handle, USE_IMMERSIVE_DARK_MODE, mode, 4)
+    end
+
+    # Makes the window of +screen+, with its title and its size, and shows it.
+    def self.show(screen)
+      window = WinRT.activate("Microsoft.UI.Xaml.Window").qi(IID_WINDOW)
+      window.hr(9, [WinRT::POINTER], screen.content.ptr, what: "put_Content")
+      window.hr(15, [WinRT::POINTER], WinRT::Win.hstring("Basket"), what: "put_Title")
+      window.hr(26, what: "Activate")
+      fit(window)
+      color_title_bar(handle(window))
+      follow_app_mode(handle(window))
+      window
+    end
+
+    # Whether lParam of a WM_SETTINGCHANGE, +lparam+, is the string +name+,
+    # compared a character at a time so as to read no further than a
+    # shorter string goes.
+    def self.setting?(lparam, name)
+      return false if lparam.zero?
+
+      pointer = Fiddle::Pointer.new(lparam)
+      "#{name}\0".encode(Encoding::UTF_16LE).bytes.each_slice(2).with_index.all? do |pair, index|
+        pointer[index * 2, 2] == pair.pack("C*")
+      end
+    end
+
+    # Has the window at +handle+ color its title bar again whenever
+    # Windows says the app mode changed. Windows sends every top-level
+    # window WM_SETTINGCHANGE, with "ImmersiveColorSet" for lParam, when the
+    # person chooses another mode. WinUI recolors its controls, and
+    # Microsoft's "Support Dark and Light themes in Win32 apps" says to
+    # set DWMWA_USE_IMMERSIVE_DARK_MODE again for the title bar.
+    # UISettings.ColorValuesChanged, which that page also uses, is a
+    # WinRT event that may finish on a thread Ruby did not make, so
+    # Basket takes the message in the window's procedure instead.
+    def self.follow_app_mode(handle)
+      next_proc = WinRT::Win.function("comctl32.dll", "DefSubclassProc", [WinRT::POINTER, WinRT::UINT, WinRT::INT64, WinRT::INT64], WinRT::INT64)
+      callback = Fiddle::Closure::BlockCaller.new(WinRT::INT64, [WinRT::POINTER, WinRT::UINT, WinRT::INT64, WinRT::INT64, WinRT::INT64, WinRT::INT64]) do |window, message, wparam, lparam, _id, _data|
+        color_title_bar(window.to_i) if message == WM_SETTINGCHANGE && setting?(lparam, APP_MODE_CHANGED)
+        next_proc.call(window, message, wparam, lparam)
+      rescue Exception => e
+        warn "Basket: #{e.class}: #{e.message}", *e.backtrace.first(6)
+        next_proc.call(window, message, wparam, lparam)
+      end
+      WinRT::Implementation::KEEP << callback
+      WinRT::Win.function("comctl32.dll", "SetWindowSubclass", [WinRT::POINTER, WinRT::POINTER, WinRT::INT64, WinRT::INT64], WinRT::INT)
+        .call(handle, callback, 1, 0)
     end
 
     # Runs Basket: gives the main thread to WinUI, which then calls for the
@@ -258,11 +322,7 @@ module Basket
     def self.run(list)
       WinRT.start do
         screen = Screen.new(list)
-        window = WinRT.activate("Microsoft.UI.Xaml.Window").qi(IID_WINDOW)
-        window.hr(9, [WinRT::POINTER], screen.content.ptr, what: "put_Content")
-        window.hr(15, [WinRT::POINTER], WinRT::Win.hstring("Basket"), what: "put_Title")
-        window.hr(26, what: "Activate")
-        fit(window)
+        window = show(screen)
         screen.focus
         WinRT::Implementation::KEEP << window << screen
         rows = screen.rows

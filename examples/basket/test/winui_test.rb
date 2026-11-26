@@ -155,6 +155,80 @@ class WinUIScreenTest < Minitest::Test
 
     assert_equal ["Eggs"], @list.items
   end
+
+  # A window's HWND, made as Basket makes its window.
+  def window_handle
+    Basket::WinUI.handle(Basket::WinUI.show(Basket::WinUI::Screen.new(@list)))
+  end
+
+  # A function of user32.dll or dwmapi.dll, which each take a window.
+  def native(file, name, args, ret)
+    Basket::WinRT::Win.function(file, name, args, ret)
+  end
+
+  # Whether the title bar of the window at +handle+ is dark, as DWM has it.
+  def title_dark?(handle)
+    mode = Basket::WinRT::Win.buffer(4)
+    native("dwmapi.dll", "DwmGetWindowAttribute", [Basket::WinRT::POINTER, Basket::WinRT::INT, Basket::WinRT::POINTER, Basket::WinRT::INT], Basket::WinRT::INT)
+      .call(handle, Basket::WinUI::USE_IMMERSIVE_DARK_MODE, mode, 4)
+    mode[0, 4].unpack1("l") != 0
+  end
+
+  # Makes the title bar of the window at +handle+ dark or light, as Windows
+  # leaves it until Basket asks.
+  def title_dark=(dark)
+    mode = Basket::WinRT::Win.buffer(4)
+    mode[0, 4] = [dark ? 1 : 0].pack("l")
+    native("dwmapi.dll", "DwmSetWindowAttribute", [Basket::WinRT::POINTER, Basket::WinRT::INT, Basket::WinRT::POINTER, Basket::WinRT::INT], Basket::WinRT::INT)
+      .call(@handle, Basket::WinUI::USE_IMMERSIVE_DARK_MODE, mode, 4)
+  end
+
+  # Sends the window at +handle+ the message +message+, as Windows does:
+  # SendMessageW, which returns once the window's procedure has run.
+  def send_message(handle, message, wparam, lparam)
+    native("user32.dll", "SendMessageW", [Basket::WinRT::POINTER, Basket::WinRT::UINT, Basket::WinRT::INT64, Basket::WinRT::INT64], Basket::WinRT::INT64)
+      .call(handle, message, wparam, lparam)
+  end
+
+  # The window's left, top, right, and bottom edges, in pixels.
+  def window_rect(handle)
+    rect = Basket::WinRT::Win.buffer(16)
+    native("user32.dll", "GetWindowRect", [Basket::WinRT::POINTER, Basket::WinRT::POINTER], Basket::WinRT::INT).call(handle, rect)
+    rect[0, 16].unpack("l4")
+  end
+
+  # When Windows says the app mode changed (WM_SETTINGCHANGE with
+  # "ImmersiveColorSet"), the title bar takes the mode's colors.
+  def test_title_bar_follows_a_change_of_app_mode
+    @handle = window_handle
+    self.title_dark = !Basket::WinUI.dark?
+    setting = Basket::WinRT::Win.wide("ImmersiveColorSet")
+    send_message(@handle, Basket::WinUI::WM_SETTINGCHANGE, 0, setting.to_i)
+
+    assert_equal Basket::WinUI.dark?, title_dark?(@handle)
+  end
+
+  # Another setting's change leaves the title bar as it is.
+  def test_title_bar_ignores_other_settings
+    @handle = window_handle
+    self.title_dark = !Basket::WinUI.dark?
+    setting = Basket::WinRT::Win.wide("intl")
+    send_message(@handle, Basket::WinUI::WM_SETTINGCHANGE, 0, setting.to_i)
+
+    assert_equal !Basket::WinUI.dark?, title_dark?(@handle)
+  end
+
+  # When Windows moves the window to a monitor of another scale
+  # (WM_DPICHANGED), the window takes the rectangle Windows suggests for
+  # the new scale, as Microsoft's page on the message says an app does.
+  def test_window_takes_the_rectangle_windows_suggests_for_a_new_scale
+    handle = window_handle
+    suggested = Basket::WinRT::Win.buffer(16)
+    suggested[0, 16] = [100, 120, 100 + 960, 120 + 1280].pack("l4")
+    send_message(handle, Basket::WinUI::WM_DPICHANGED, (192 << 16) | 192, suggested.to_i)
+
+    assert_equal [100, 120, 1060, 1400], window_rect(handle)
+  end
 end
 
 # What chooses the screen, which every Windows and every other system can ask.

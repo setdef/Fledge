@@ -20,11 +20,21 @@ require "minitest/autorun"
 require "fileutils"
 require "tmpdir"
 require_relative "../lib/basket/list"
-require_relative "../lib/basket/winui"
+
+# Why Basket's WinUI screen cannot be loaded on this computer, or nil when
+# it can: it is Fiddle's, which Bundler hides until a Gemfile lists it.
+WINUI_NOT_LOADED = begin
+  require_relative "../lib/basket/winui"
+  nil
+rescue LoadError => e
+  e.message
+end
 
 # Why these tests cannot run on this computer, or nil when they can: the
 # screen is WinUI's, which needs Windows and its Windows App Runtime.
-WINUI_UNAVAILABLE = if !Gem.win_platform?
+WINUI_UNAVAILABLE = if WINUI_NOT_LOADED
+  WINUI_NOT_LOADED
+elsif !Gem.win_platform?
   "Basket's WinUI screen draws with the Windows App Runtime, which only Windows has"
 elsif !Basket::WinUI.available?
   "this Windows has no Windows App Runtime 2.7 or later, which Basket's WinUI screen draws with"
@@ -233,6 +243,11 @@ end
 
 # What chooses the screen, which every Windows and every other system can ask.
 class WinUIChoiceTest < Minitest::Test
+  # Skips where Fiddle cannot be loaded.
+  def setup
+    skip WINUI_NOT_LOADED if WINUI_NOT_LOADED
+  end
+
   # A person can make Basket draw Win32's screen where Windows has the
   # Windows App Runtime, with BASKET_SCREEN, whatever Windows has.
   def test_win32_screen_can_be_asked_for
@@ -247,6 +262,11 @@ end
 
 # The window's size, which every system can compute.
 class WinUIWindowSizeTest < Minitest::Test
+  # Skips where Fiddle cannot be loaded.
+  def setup
+    skip WINUI_NOT_LOADED if WINUI_NOT_LOADED
+  end
+
   # Microsoft's effective pixels are 1 to 1 at 96 DPI, which Windows calls 100 percent.
   def test_size_at_100_percent_is_the_effective_size
     assert_equal [480, 640], Basket::WinUI.window_pixels(96)

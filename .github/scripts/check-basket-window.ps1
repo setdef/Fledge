@@ -19,6 +19,18 @@
 # is a GUI program, so its log is its standard output redirected to a file.
 # WORK is the one folder the script writes in: RUNNER_TEMP on a runner,
 # and the system's temporary folder elsewhere.
+#
+# The script runs Basket with BASKET_SCREEN=win32, which makes it draw its
+# Win32 screen whatever the runner holds. Basket draws WinUI 3's screen instead
+# on a Windows that has the Windows App Runtime registered, and a runner
+# image may or may not have it, so without the setting this job would
+# check one screen on one image and the other on the next. Everything
+# above is of Win32's controls (the BasketWindow class, comctl32.dll,
+# SysListView32, and messages a WinUI window ignores), so the setting keeps
+# the job's proof the same on every runner: that the built app, with no
+# Ruby, draws the screen that a Windows without the runtime gets. WinUI's
+# screen is not checked here; its tests (examples/basket/test/winui_test.rb)
+# run on a Windows that has the runtime.
 
 param(
   [Parameter(Mandatory)] [string] $Archive,
@@ -97,6 +109,7 @@ $env:PATH = "$system\System32;$system;$system\System32\Wbem;$system\System32\Win
 if (Get-Command ruby -ErrorAction SilentlyContinue) { Fail "Get-Command still finds a Ruby on $env:PATH" }
 $home_folder = Join-Path $Work 'Basket home'
 New-Item -ItemType Directory -Force $home_folder | Out-Null
+$env:BASKET_SCREEN = 'win32'
 $env:HOME = $home_folder
 $env:USERPROFILE = $home_folder
 $env:APPDATA = Join-Path $Work 'Basket app data'

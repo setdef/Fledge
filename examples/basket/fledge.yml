@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# Basket's Gemfile names etcetera, which finds the folder each system
+# Basket's Gemfile lists etcetera, which finds the folder each system
 # keeps an app's data in, and fiddle, which each system's screen reaches
 # its widgets with. The identifier is what iOS and Android know it by
 # (doc/contributors/design/phone-projects.md). kind: windowed says that its
@@ -11,3 +11,6 @@
 name: Basket
 identifier: com.setdef.fledge.Basket
 kind: windowed
+# The files in icons/, which icons/render.rb draws from icons/icon.svg:
+# icon.icns, icon.ico, and the PNGs each system takes.
+icon: icons/icon

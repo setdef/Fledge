@@ -1,0 +1,36 @@
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#46C48D"/>
+      <stop offset="1" stop-color="#17765A"/>
+    </linearGradient>
+    <clipPath id="body-clip">
+      <path d="M284 506 L740 506 L688 790 Q684 812 662 812 L362 812 Q340 812 336 790 Z"/>
+    </clipPath>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#ground)"/>
+  <g transform="translate(512 519) scale(1.1) translate(-512 -540)">
+    <!-- What the basket holds: an orange and a loaf. -->
+    <circle cx="438" cy="442" r="86" fill="#FF8F3F"/>
+    <path d="M462 404 q22 -44 62 -50 q-4 46 -62 50 z" fill="#BFE9A0"/>
+    <g transform="rotate(16 598 400)">
+      <rect x="548" y="300" width="100" height="200" rx="50" fill="#E6A95B"/>
+      <path d="M560 360 l76 18 M560 420 l76 18" stroke="#B9782F" stroke-width="14" stroke-linecap="round"/>
+    </g>
+    <!-- The handle. -->
+    <path d="M334 470 C330 214 694 214 690 470" fill="none" stroke="#FFF1D6" stroke-width="46" stroke-linecap="round"/>
+    <!-- The body and its weave. -->
+    <path d="M284 506 L740 506 L688 790 Q684 812 662 812 L362 812 Q340 812 336 790 Z" fill="#FFF1D6"/>
+    <g clip-path="url(#body-clip)" stroke="#D9B677" stroke-width="20" stroke-linecap="butt" fill="none">
+      <path d="M394 506 L428 812 M512 506 L512 812 M630 506 L596 812"/>
+      <path d="M270 618 L754 618 M270 716 L754 716"/>
+    </g>
+    <!-- The rim. -->
+    <rect x="248" y="460" width="528" height="64" rx="32" fill="#FFF1D6"/>
+    <rect x="248" y="508" width="528" height="16" rx="8" fill="#D9B677"/>
+  </g>
+</svg>

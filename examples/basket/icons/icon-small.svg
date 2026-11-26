@@ -1,0 +1,30 @@
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3CB482"/>
+      <stop offset="1" stop-color="#17765A"/>
+    </linearGradient>
+    <clipPath id="body-clip">
+      <path d="M264 520 L760 520 L702 800 Q698 826 672 826 L352 826 Q326 826 322 800 Z"/>
+    </clipPath>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#ground)"/>
+  <g transform="translate(512 512) scale(1.26) translate(-512 -488)">
+    <!-- The one fruit that stays at 16 pixels. -->
+    <circle cx="512" cy="450" r="116" fill="#FF8F3F"/>
+    <!-- The handle, thick enough to keep a pixel of its own. -->
+    <path d="M318 500 C314 190 710 190 706 500" fill="none" stroke="#FFF1D6" stroke-width="80" stroke-linecap="round"/>
+    <!-- The body, with one band of weave. -->
+    <path d="M264 520 L760 520 L702 800 Q698 826 672 826 L352 826 Q326 826 322 800 Z" fill="#FFF1D6"/>
+    <g clip-path="url(#body-clip)">
+      <path d="M250 676 L774 676" stroke="#D9B677" stroke-width="52" fill="none"/>
+    </g>
+    <!-- The rim. -->
+    <rect x="228" y="470" width="568" height="84" rx="42" fill="#FFF1D6"/>
+    <rect x="228" y="534" width="568" height="20" rx="10" fill="#D9B677"/>
+  </g>
+</svg>

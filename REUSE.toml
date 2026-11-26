@@ -33,9 +33,10 @@ SPDX-License-Identifier = "CC0-1.0"
 
 # The windowed apps' icon, drawn by a script, saved as a PNG, and
 # made into each system's files with sips and iconutil, none of which
-# has a place for a header.
+# has a place for a header; and Basket's, drawn as SVG, which
+# examples/basket/icons/render.rb makes into each system's files.
 [[annotations]]
-path = ['test/fixtures/windowed_app/icons/**', 'test/fixtures/mobile_app/icons/**', 'examples/libui_app/icons/**', 'examples/markdown_to_html/icons/**']
+path = ['test/fixtures/windowed_app/icons/**', 'test/fixtures/mobile_app/icons/**', 'examples/libui_app/icons/**', 'examples/markdown_to_html/icons/**', 'examples/basket/icons/**']
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT-0"
 

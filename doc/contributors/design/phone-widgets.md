@@ -81,6 +81,18 @@ CRuby runs Ruby only on a thread it made. A callback that arrives on another thr
 
 What Basket's does not do, since Basket needs none of it: return a struct by value, pass one that is not of doubles, make a block, or call a superclass's implementation from a Ruby method. Plain Fiddle reaches them on an iPhone (research note, section 3): an `NSRange` is two integers, passed as such; a struct result comes back whole through `NSInvocation`; and a block is a structure in memory Ruby owns, whose class is `_NSConcreteGlobalBlock` and whose function is a `Fiddle::Closure`. Answering a message on a thread Ruby did not make ends the process ("Threads").
 
+## Basket on a Mac
+
+`examples/basket` draws the same list on a Mac with AppKit, in `lib/basket/macos.rb`, over the same `objc.rb`. Nothing of Fledge's is in it. `main.rb` asks whether UIKit loads and, when it does not, whether AppKit does, as any Ruby program on a Mac could. `fledge build` makes a bundle of a `kind: windowed` app (`desktop-apps.md`), and the launcher runs the app's program on the process's main thread (`launcher.md`), where AppKit needs it. So `Basket::MacOS.run` sends `NSApplication` `run`, as an Objective-C `main` does, with no `NSApplicationMain` and no `NSPrincipalClass` key in `Info.plist`, which the research found AppKit does not need (`doc/contributors/research/2026-11-26-pure-ruby-appkit.md`, sections 1 and 2).
+
+The screen follows Apple's Human Interface Guidelines for the Mac:
+
+- **The window.** A text field and an Add button above a table, in a stack view with the 20-point margin of a window's content. The table has one column and no header, and each row is an `NSTableCellView` with a label, as AppKit's own lists make it, so a row has the standard inset.
+- **The menu bar.** The app's menu (About, Hide, Hide Others, Show All, Quit), File, Edit, and Window, in the order the guidelines list. Edit has Undo, Redo, Cut, Copy, Paste, Delete, and Select All: without it Command-C and Command-V do not reach the text field (research, section 5).
+- **Add.** The button is the window's default button, so Return presses it.
+- **Delete.** A row goes by Edit > Delete with Command-Delete, by the row's context menu, and by the Delete key, which the table's `deleteBackward:` handles. The guidelines call these one command, and each runs `Screen#remove`. Delete is dimmed while no row is selected.
+- **The list's file** is in Application Support, where Etcetera finds a Mac app's data folder (`lib/basket/data_folder.rb`).
+
 ## Android: no bridge of Fledge's
 
 An app's Ruby reaches Android's views with what Ruby gives every program: `fiddle`, `zlib`, and `digest`. The runtime holds no pointer to the Java VM, no Java class for Ruby to call, and no Ruby library for either, so the same Ruby runs under any Ruby on Android. `examples/basket` does it in `lib/basket/android/`, about 590 lines of Ruby, which a reader can take as an example or copy. What each part rests on, and the phones it ran on, is in `doc/contributors/research/2026-11-25-pure-ruby-android-views.md`:
@@ -105,6 +117,7 @@ In the app, on both phones: Basket's `lib/basket/objc.rb` and `lib/basket/androi
 ## How it is checked
 
 - `examples/basket/test/objc_test.rb`, which `test/basket_bridge_test.rb` runs among Fledge's unit tests, loads Basket's bridge into the test's Ruby on a Mac, whose libobjc and Foundation are iOS's: messages and keywords, strings past the first plane, arrays, a class written in Ruby that Objective-C calls, a protocol's encoding, an exception printed and not raised, a struct of doubles passed as an Array and any other struct refused by name, an NSArray read as an Array, and the reference each object holds. It skips elsewhere, and `test/phone.rb` runs it on an iPhone or in the Simulator too.
+- `examples/basket/test/screen_test.rb` makes Basket's Mac screen from AppKit's views and drives it without showing a window, in Fledge's unit tests on a Mac (`test/basket_bridge_test.rb`) and under `ruby` there: Add pressed with text in the field, a row's view being a table cell view, and Edit > Delete, Command-Delete, the context menu, and the Delete key each taking a row away. It skips elsewhere, saying AppKit is a Mac's.
 - `test/integration/mobile_closures_test.rb` reads the iOS runtime's device slice and fails unless its `fiddle.bundle` defines `ffi_closure_alloc`, without which a closure on an iPhone would take the `mprotect` path a device kills the process for.
 - `examples/basket/test/java_test.rb` checks what Basket does with the text Java lists for a class (the methods and constructors it reads, the JNI signatures it builds, and the overload it chooses for given arguments), which `test/basket_bridge_test.rb` runs on any computer, and, in the app, calls a list, a constant, and a static method by name.
 - `examples/basket/test/dex_test.rb` checks the dex file Basket writes for Android, as a computer's Ruby can: its header, its checksum and signature, and the order of its tables. The calls into Java and from it are proven on a phone, by the next item and by `fledge test android test/phone.rb`, which runs Basket's tests of its screen in the app.

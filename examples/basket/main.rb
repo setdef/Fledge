@@ -5,19 +5,19 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# Basket, a shopping list for iOS, iPadOS, Android, Linux, and Windows:
-# type an item, add it, and remove it once it is in the cart. Each draws
-# it with that system's widgets, UIKit's on iOS, Android's views on
-# Android, GTK 4 with libadwaita on Linux, and Win32's common controls on
-# Windows, which this Ruby makes and drives: on iOS through
-# lib/basket/objc.rb, Basket's few lines over Fiddle, which Ruby bundles,
-# on Android through lib/basket/android/, Basket's calls into Java over
-# Fiddle, zlib, and digest, which Ruby bundles too, on Linux through
-# lib/basket/gtk.rb, Basket's calls into GTK's C API over Fiddle, and on
-# Windows through lib/basket/win32.rb, Basket's calls into user32 and
-# comctl32 over Fiddle. fledge.yml says kind: windowed, so the app's Ruby
-# runs on the thread those widgets belong to, and on Windows runs without
-# a console.
+# Basket, a shopping list for macOS, iOS, iPadOS, Android, Linux, and
+# Windows: type an item, add it, and remove it once it is in the cart.
+# Each draws it with that system's widgets, AppKit's on a Mac, UIKit's on
+# iOS, Android's views on Android, GTK 4 with libadwaita on Linux, and
+# Win32's common controls on Windows, which this Ruby makes and drives: on
+# a Mac and iOS through lib/basket/objc.rb, Basket's few lines over
+# Fiddle, which Ruby bundles, on Android through lib/basket/android/,
+# Basket's calls into Java over Fiddle, zlib, and digest, which Ruby
+# bundles too, on Linux through lib/basket/gtk.rb, Basket's calls into
+# GTK's C API over Fiddle, and on Windows through lib/basket/win32.rb,
+# Basket's calls into user32 and comctl32 over Fiddle. fledge.yml says
+# kind: windowed, so the app's Ruby runs on the thread those widgets
+# belong to, and on Windows runs without a console.
 
 require_relative "lib/basket/data_folder"
 require_relative "lib/basket/list"
@@ -28,14 +28,19 @@ require_relative "lib/basket/list"
 puts "Basket keeps its list in #{Basket::DataFolder.list_path}"
 list = Basket::List.new(Basket::DataFolder.list_path)
 
-# Whether this Ruby runs on an iPhone or iPad: on a system whose
-# Objective-C runtime has UIKit to load, which a Mac does not.
-ios = RUBY_PLATFORM.include?("darwin") && begin
+# Whether this Ruby runs on an iPhone or iPad, or on a Mac: on a system
+# whose Objective-C runtime has UIKit to load, or else AppKit.
+if RUBY_PLATFORM.include?("darwin")
   require_relative "lib/basket/objc"
-  Basket::ObjC.load_framework("UIKit")
+  objc = Basket::ObjC
 end
+ios = objc&.load_framework("UIKit")
+mac = !ios && objc&.load_framework("AppKit")
 
-if ios
+if mac
+  require_relative "lib/basket/macos"
+  Basket::MacOS.run(list)
+elsif ios
   require_relative "lib/basket/ios"
   Basket::IOS.run(list)
 elsif RUBY_PLATFORM.include?("android")
@@ -48,5 +53,5 @@ elsif Gem.win_platform?
   require_relative "lib/basket/windows"
   Basket::Windows.run(list)
 else
-  abort "Basket is for iOS, Android, Linux, and Windows: build it with fledge build ios, fledge build android, or fledge build on Linux or Windows."
+  abort "Basket is for macOS, iOS, Android, Linux, and Windows: build it with fledge build, fledge build ios, or fledge build android."
 end

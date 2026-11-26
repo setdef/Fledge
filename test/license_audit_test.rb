@@ -331,6 +331,25 @@ class LicenseAuditTest < Minitest::Test
     assert_includes rules(report), ["policy", "lib/libcrypt.so"]
   end
 
+  # Ruby names its architecture folder for the Darwin of the Mac that
+  # built it (arm64-darwin25 for jdx/ruby's, arm64-darwin27 for a Mac
+  # that runs macOS 27), so the audit of an archive reads the folder from
+  # the tree, as it reads the ABI's, and the map's extensions are found
+  # wherever the build ran.
+  def test_a_macs_archive_is_audited_by_the_architecture_folder_it_holds
+    TestReaders.need(self, :macho)
+    Dir.mktmpdir do |tree|
+      %w[zlib.bundle openssl.bundle].each do |name|
+        FileUtils.mkdir_p(File.join(tree, "lib/ruby/4.1.0+5/arm64-darwin27"))
+        File.binwrite(File.join(tree, "lib/ruby/4.1.0+5/arm64-darwin27", name), Binaries.macho(needed: %w[/usr/lib/libSystem.B.dylib], payload: "deflate 1.3.2 "))
+      end
+      report = LicenseAudit.new(platform: "arm64-darwin", tree:, fledge_version: "0.0.0", archive: true).call
+
+      assert_includes report.present.map(&:id), "zlib"
+      assert_empty rules(report).select { |rule, _path| rule == "unlisted-binary" }
+    end
+  end
+
   def test_the_audit_of_the_archive_refuses_a_runtimes_files
     write_archive_tree
     write("launcher", Binaries.elf(needed: %w[libc.so.6], payload: "#{FLEDGE_RUST} GCC: (Ubuntu 11.4.0)"))

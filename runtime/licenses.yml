@@ -516,7 +516,7 @@ components:
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
     ruby_build: [upstream, fledge]
     embedded:
-      - files: ["{prefix}lib/ruby/{abi}/{arch}/zlib.so"]
+      - files: ["{prefix}lib/ruby/{abi}/{arch}/zlib.{so}"]
         evidence: "deflate 1.3.2 "
 
   - id: zlib-musl
@@ -858,7 +858,7 @@ components:
     platforms: [arm64-darwin, x86_64-linux, aarch64-linux]
     ruby_build: [upstream, fledge]
     embedded:
-      - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
+      - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.{so}"]
         evidence: "3.5.2\0"
 
   - id: libffi-musl

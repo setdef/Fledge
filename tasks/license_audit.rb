@@ -74,6 +74,7 @@ class LicenseAudit
     @sources = YAML.safe_load_file(sources)
     @fledge_version = fledge_version || fledge_version_from_source
     @facts = @map.fetch("platforms").fetch(platform) { raise ArgumentError, "no platform #{platform} in #{map}" }
+    @facts = archive_facts(@facts) if archive
     @violations = []
     @archived = {}
   end
@@ -176,6 +177,20 @@ class LicenseAudit
 
       found.first.to_s.delete_suffix("/").then { |name| name.empty? ? pattern : name }
     end
+  end
+
+  # The platform's facts for an archive. Ruby names its architecture
+  # folder for the Darwin of the Mac that built it (arm64-darwin25 for
+  # jdx/ruby's builds, which the map records), and Fledge's own archive is
+  # built on whichever Mac builds it, so a Mac's archive says its own
+  # arch and gem_arch, as the tree holds them.
+  private def archive_facts(facts)
+    return facts unless facts.fetch("os") == "darwin"
+
+    found = Dir.glob("lib/ruby/[0-9]*.*/arm64-darwin*", base: tree).map { |path| File.basename(path) }.uniq
+    return facts unless found.size == 1
+
+    facts.merge("arch" => found.first, "gem_arch" => found.first.sub(/darwin(?=\d)/, "darwin-"))
   end
 
   def expand(pattern)

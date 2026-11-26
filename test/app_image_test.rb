@@ -101,6 +101,25 @@ class AppImageTest < Minitest::Test
     File.binread(File.join(out, "com.example.MyApp.png"))
   end
 
+  # mksquashfs refuses SOURCE_DATE_EPOCH beside -mkfs-time or -all-time
+  # (squashfs-tools' mksquashfs.c, check_env_var), so with the variable
+  # set the AppImage leaves the options out and takes its time from it.
+  def test_an_appimage_is_written_with_source_date_epoch_set
+    Dir.mktmpdir do |dir|
+      listed = with_env("SOURCE_DATE_EPOCH" => "1700000000", "TZ" => "UTC") { listing(build(dir)) }
+
+      assert_match %r{^-rwxr-xr-x root/root .* 2023-11-14 22:13 /My App$}, listed
+    end
+  end
+
+  def with_env(vars)
+    saved = vars.keys.to_h { |key| [key, ENV.fetch(key, nil)] }
+    ENV.update(vars)
+    yield
+  ensure
+    ENV.update(saved)
+  end
+
   def test_a_runtime_without_an_appimage_runtime_is_refused
     Dir.mktmpdir do |dir|
       [nil, dir].each do |tools|

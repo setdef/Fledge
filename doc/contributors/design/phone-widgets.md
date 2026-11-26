@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Phone Widgets
 
-This document says what Fledge gives an app whose Ruby draws its screen with each phone's widgets, UIKit's on iOS and iPadOS and Android's views on Android, and on which thread that Ruby runs. Fledge gives it nothing beyond what Ruby gives every program, and runs it on the main thread, the one thread that may touch those widgets. ADR 104 records the decision; this document holds how it works, the ways weighed, and their citations. How the runtimes are built is `phone-runtimes.md`; the projects `fledge build` writes around them, `phone-projects.md`; what a developer does, `doc/phones.md`. `examples/basket` is such an app, and its README and its code say how it is written.
+This document says what Fledge gives an app whose Ruby draws its screen with each phone's widgets, UIKit's on iOS and iPadOS and Android's views on Android, and on which thread that Ruby runs. Fledge gives it nothing beyond what Ruby gives every program, and runs it on the main thread, the one thread that may touch those widgets. ADR 105 records the decision; this document holds how it works, the ways weighed, and their citations. How the runtimes are built is `phone-runtimes.md`; the projects `fledge build` writes around them, `phone-projects.md`; what a developer does, `doc/phones.md`. `examples/basket` is such an app, and its README and its code say how it is written.
 
 ## The problem
 
@@ -40,7 +40,7 @@ CRuby runs Ruby only on a thread it made. A callback that arrives on another thr
 - **Ruby's other threads** run meanwhile: Fiddle lets Ruby's lock go during each foreign call, `UIApplicationMain` and `Looper.loop` among them, and each callback takes it again. As in a native app, a thread other than the main one leaves the widgets alone, and posts its work to the main thread: on iOS with `performSelectorOnMainThread:withObject:waitUntilDone:` to an object of a class written in Ruby, on Android with a `Handler`'s `post` and a `Runnable` written in Ruby.
 - **A program that draws nothing** runs on the main thread too, and shows nothing while it runs, since the host shows no screen of its own. As in a native app, while Ruby holds the main thread and has not handed it to the system, no frame is drawn and no touch is handled.
 
-No key chooses the thread. A program that a host ran on a thread of its own could read that its `Thread.main` is not the process's main thread, could never answer a widget's callback, and would see a screen of the host's that no Ruby gives a program, so every program runs on the main thread (ADR 104). A host that is not Fledge's, as SDL's is, runs Ruby where its framework does and is not touched (`phone-projects.md`, "A host that owns the main loop").
+No key chooses the thread. A program that a host ran on a thread of its own could read that its `Thread.main` is not the process's main thread, could never answer a widget's callback, and would see a screen of the host's that no Ruby gives a program, so every program runs on the main thread (ADR 105). A host that is not Fledge's, as SDL's is, runs Ruby where its framework does and is not touched (`phone-projects.md`, "A host that owns the main loop").
 
 ### A program that runs long
 
@@ -53,8 +53,8 @@ Each system bounds how long a program may hold the main thread, and the bound re
 A program that must run longer on an iPhone does what an iOS program does: it calls `UIApplicationMain` within the 20 seconds, with delegates written in Ruby, and does its long work on a Ruby thread of its own meanwhile, which runs while the main thread is inside `UIApplicationMain`, since Fiddle lets Ruby's lock go during the call ("Ruby's other threads", above), or from a callback once the app has launched. That is the program's code, and Ruby's, not Fledge's. On an iPhone, launched with no debugger, a program that called `UIApplicationMain` at once and kept a Ruby thread working ran that thread for 45 seconds, and the process for minutes after. Three other ways were weighed:
 
 1. **Fledge's host calls `UIApplicationMain` and runs Ruby inside the run loop once the app has launched,** as SDL's `SDL_RunApp` runs a game's main function. No program would meet the watchdog, but every app would carry an application delegate and a scene of Fledge's, a program that draws with UIKit could not call `UIApplicationMain`, since UIKit makes one `UIApplication` a process, and a program would start inside a callback of Fledge's rather than from `main`, as no program does under `ruby main.rb`.
-2. **A thread of its own for a program that draws nothing:** it loses on design precedence 2 (ADR 104), and gives a program a `Thread.main` that no Ruby gives it.
-3. **A helper of Fledge's** that a program calls to keep iOS waiting: a library no Ruby has under `ruby main.rb`, which ADR 104 rules out.
+2. **A thread of its own for a program that draws nothing:** it loses on design precedence 2 (ADR 105), and gives a program a `Thread.main` that no Ruby gives it.
+3. **A helper of Fledge's** that a program calls to keep iOS waiting: a library no Ruby has under `ruby main.rb`, which ADR 105 rules out.
 
 `fledge test ios` runs only in the Simulator, where a suite of any length runs to its end on the main thread, so the watchdog never meets it (`phone-projects.md`, "Tests in the app"). A suite run on an iPhone by other means, as by Xcode's Run, meets the watchdog unless the debugger holds it off, which was not measured.
 

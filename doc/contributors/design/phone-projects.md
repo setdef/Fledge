@@ -113,7 +113,7 @@ Each template's host is as small as the embedding API allows, and the developer'
 - it passes no arguments, since a phone has no command line, and logs `NAME exited with status N` when the program ends, on Android under the identifier and `.host`, a tag the program's output is not logged under;
 - on Android, it starts Ruby once per process, so an Activity Android creates again does not start it again, and it loads nothing but what `FledgeRuby` loads itself: the runtime opens `libfledgeext.so` before Ruby boots ("Linking extensions on Android").
 
-When the program ends, an iOS app ends with it, since `main` returns; an Android app's activity stays, empty, until the person leaves it. Through 0.17.0 each host ran every program's Ruby on a thread of its own with a 64 MB stack, beside a screen that showed the app's name: such a program could read that its `Thread.main` was not the process's main thread, and could never answer a widget's callback (ADR 104). A framework replaces the host with its own files (see "Host files"), keeping the two calls.
+When the program ends, an iOS app ends with it, since `main` returns; an Android app's activity stays, empty, until the person leaves it. Through 0.17.0 each host ran every program's Ruby on a thread of its own with a 64 MB stack, beside a screen that showed the app's name: such a program could read that its `Thread.main` was not the process's main thread, and could never answer a widget's callback (ADR 105). A framework replaces the host with its own files (see "Host files"), keeping the two calls.
 
 ## The privacy manifest
 

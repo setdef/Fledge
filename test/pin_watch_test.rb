@@ -442,21 +442,34 @@ class PinWatchTest < Minitest::Test
     PinWatch.new(sources:, upstreams:, unwatched: {}).run(Answers.new(bodies.to_h)).first
   end
 
-  def test_an_alpine_package_is_behind_when_its_branch_serves_another_build_and_ahead_of_nothing
+  def test_an_alpine_package_is_current_while_its_branch_serves_any_build_of_the_pinned_upstream_version
     rebuilt = alpine("2.88.4-r0", x86_64: "2.88.4-r1")
     older = alpine("2.88.4-r1", x86_64: "2.88.4-r0")
+    apart = alpine("2.88.4-r0", x86_64: "2.88.4-r1", aarch64: "2.88.4-r2")
 
-    assert_equal ["alpine-packages.glib", ["alpine-packages.glib"], :newer, "2.88.4-r0", "2.88.4-r1"],
-      [rebuilt.name, rebuilt.pins, rebuilt.status, rebuilt.current, rebuilt.newer], "the branch keeps only its newest build"
-    assert_equal "2.88.4-r0", older.newer, "what the branch serves is the only build that installs, whatever its number"
+    assert_equal ["alpine-packages.glib", :current, "2.88.4-r0", nil], [rebuilt.name, rebuilt.status, rebuilt.current, rebuilt.newer],
+      "a rebuild changes no upstream version, and apk's ~ installs it"
+    assert_equal [:current, nil], [older.status, older.newer]
+    assert_equal [:current, nil], [apart.status, apart.newer], "each architecture serves a build of the pinned version"
     assert_equal :current, alpine("2.88.4-r1", x86_64: "2.88.4-r1").status
   end
 
+  def test_an_alpine_package_is_behind_when_its_branch_serves_another_upstream_version
+    newer = alpine("2.88.4-r0", x86_64: "2.88.5-r0")
+    older = alpine("2.88.5-r0", x86_64: "2.88.4-r3")
+
+    assert_equal ["alpine-packages.glib", ["alpine-packages.glib"], :newer, "2.88.4-r0", "2.88.5-r0"],
+      [newer.name, newer.pins, newer.status, newer.current, newer.newer], "the move writes the full version of the build served"
+    assert_equal "2.88.4-r3", older.newer, "what the branch serves is the only version that installs, whatever its number"
+  end
+
   def test_an_alpine_package_its_architectures_serve_differently_or_not_at_all_is_an_error
-    apart = alpine("2.88.4-r0", x86_64: "2.88.4-r1", aarch64: "2.88.4-r0")
+    apart = alpine("2.88.4-r0", x86_64: "2.88.5-r0", aarch64: "2.88.4-r1")
+    differ = alpine("2.88.4-r0", x86_64: "2.88.5-r0", aarch64: "2.88.5-r1")
     missing = alpine("2.88.4-r0", x86_64: nil)
 
-    assert_equal "Alpine's indexes serve glib 2.88.4-r1 on x86_64 and 2.88.4-r0 on aarch64, and no one build of it on every architecture", apart.error
+    assert_equal "Alpine's indexes serve glib 2.88.5-r0 on x86_64 and 2.88.4-r1 on aarch64, and no one build of it on every architecture", apart.error
+    assert_equal "Alpine's indexes serve glib 2.88.5-r0 on x86_64 and 2.88.5-r1 on aarch64, and no one build of it on every architecture", differ.error
     assert_equal "Alpine's indexes serve no glib on x86_64 or on aarch64", missing.error
     assert_equal :current, alpine("2.88.4-r0", x86_64: nil, community: { "glib" => "2.88.4-r0" }).status, "a package may be in either repository"
   end

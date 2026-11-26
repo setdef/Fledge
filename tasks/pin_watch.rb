@@ -135,10 +135,19 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
 
   # One Alpine package, read from its branch's index for each repository
   # and architecture (apk in runtime/upstreams.yml). A branch keeps only
-  # each package's newest build, so the build its indexes serve is the
-  # only one that installs, and a pin of any other is behind, whichever
-  # number is higher: apk's versions need no order of their own.
+  # each package's newest build, and CI installs NAME~UPSTREAM, the
+  # version with its build number taken off, which any build of that
+  # upstream version satisfies (.github/scripts/alpine-packages.sh). So a
+  # pin is behind only when its indexes serve no build of its upstream
+  # version, whichever version is higher: apk's versions need no order
+  # of their own.
   class AlpinePackage < Data.define(:name, :indexes)
+    # The upstream version of the apk version +version+: itself with its
+    # build number (-rN) taken off.
+    def self.upstream(version)
+      version.sub(/-r\d+\z/, "")
+    end
+
     # The URLs of the indexes +entry+ names, by architecture, from the
     # template +url+.
     def self.indexes(url, entry)
@@ -147,12 +156,13 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       end
     end
 
-    # The build every architecture's index serves, when it is not
-    # +current+, asking +answer+ for each index; nil when each serves
-    # +current+.
+    # The build every architecture's index serves, when they do not each
+    # serve a build of the upstream version of +current+, asking +answer+
+    # for each index; nil when each does, whichever build it is.
     def newer(current, &answer)
       served = indexes.transform_values { |urls| urls.flat_map { |url| versions(answer.call(url), url) }.uniq }
-      return nil if served.values.all? { |versions| versions.include?(current) }
+      pinned = AlpinePackage.upstream(current)
+      return nil if served.values.all? { |versions| versions.any? { |version| AlpinePackage.upstream(version) == pinned } }
 
       common = served.values.reduce(:&)
       return common.first if common.one?

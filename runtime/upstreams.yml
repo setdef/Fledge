@@ -268,9 +268,12 @@ watched:
     ships: false
   # The Alpine packages CI installs, one upstream for each package of
   # the mapping alpine-packages, read from the branch's index for each
-  # repository and architecture. A branch keeps only each package's
-  # newest build, so a pin is behind when every architecture serves one
-  # other build, older or newer, since the pinned one no longer installs.
+  # repository and architecture. CI installs NAME~UPSTREAM, the pin
+  # without its -rN, which any build of that version satisfies, so a pin
+  # is behind only when every architecture serves one other build and
+  # none is a build of the pinned version. A branch keeps only each
+  # package's newest build, so the one it serves is the next version,
+  # older or newer.
   # The branch is the image's: 3.25 moves with images.alpine, by a person.
   # None ships: what the musl runtimes compile in from GCC and Rust is
   # recorded in runtime/licenses.yml by its upstream version, which the

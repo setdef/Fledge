@@ -28,6 +28,9 @@ module Basket
   # on that thread too, with the lock Ruby holds, so Thread.main is the
   # thread that makes the controls. A WinRT call that finishes on another
   # thread would end the process, since Ruby does not know that thread.
+  # The one exception is each object's AddRef and Release, which are
+  # native code, since Windows may call them on a thread it made when
+  # the process ends (see Implementation).
   module WinRT
     # What WinRT's functions take and give, in Fiddle's type codes.
     # A pointer.
@@ -88,6 +91,11 @@ module Basket
       # The C function +name+ of the library +file+.
       def self.function(file, name, args, ret)
         @functions[[file, name]] ||= Fiddle::Function.new(Fiddle::Handle.new(file)[name], args, ret)
+      end
+
+      # The address of the C function +name+ of the library +file+.
+      def self.address(file, name)
+        Fiddle::Handle.new(file)[name]
       end
 
       # A buffer of +size+ zeroed bytes, which Ruby frees.
@@ -202,7 +210,8 @@ module Basket
 
     # A COM object implemented in Ruby, for WinUI to call. Each interface
     # is 16 bytes of memory that start with a pointer to a table of
-    # Fiddle::Closure. +interfaces+ maps an IID to its methods after
+    # Fiddle::Closure, except for AddRef and Release, which hold native
+    # code. +interfaces+ maps an IID to its methods after
     # IUnknown's and IInspectable's, each [argument types, block]. A
     # delegate (an event handler) has IUnknown's methods and Invoke.
     class Implementation
@@ -259,11 +268,25 @@ module Basket
 
       # IUnknown's three methods, and IInspectable's three, which tell
       # WinRT nothing about the object but its name.
+      #
+      # AddRef and Release hold the address of kernel32's
+      # GetCurrentThreadId, not a closure. At process exit, Windows may
+      # release a COM object on a thread it made, and a closure that
+      # runs there asks Ruby for its lock from a thread Ruby did not make,
+      # which ends the process with "[BUG] rb_thread_call_with_gvl() is
+      # called by non-ruby thread". Microsoft's documentation says of what
+      # each returns, "This value is intended to be used only for test
+      # purposes" (IUnknown::AddRef and IUnknown::Release), and KEEP holds
+      # every object for the life of the process, so no count frees
+      # anything. GetCurrentThreadId, on x64 and on ARM64, ignores the
+      # registers that hold its arguments, returns a nonzero value, and
+      # calls no Ruby.
       private def base_closures(inspectable:)
+        count = Win.address("kernel32.dll", "GetCurrentThreadId")
         list = [
           closure([POINTER, POINTER, POINTER]) { |_this, riid, ppv| query(riid, ppv) },
-          closure([POINTER]) { |_this| 2 },
-          closure([POINTER]) { |_this| 1 },
+          count,
+          count,
         ]
         return list unless inspectable
 

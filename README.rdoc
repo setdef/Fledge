@@ -20,7 +20,8 @@ settings. Your code can see a few
 each listed with its reason.
 
 Fledge runs on Ruby 4.1, with Bundler, and until Ruby 4.1.0 is released,
-on its preview, 4.1.0-preview1. Add it to your project's +Gemfile+:
+on a preview of it, which the Ruby badge on the README shows. Add it to
+your project's +Gemfile+:
 
   gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.17.0", group: :development
 
@@ -41,15 +42,18 @@ of the app, look like this:
   $ /tmp/Greet-arm64-darwin/Greet Ruby
   {"greeting":"Hello, Ruby!"}
 
-The archive is 29 MB. Anyone with an Apple silicon Mac on macOS 26 or newer
-can run it, whether or not they have Ruby. On Windows, the same command
+The app carries a whole Ruby runtime, so the archive and the unpacked
+folder are tens of megabytes: <tt>du -sh dist/Greet-arm64-darwin</tt> shows
+the size of the folder you built. Anyone with an Apple silicon Mac on
+macOS 26 or newer can run it, whether or not they have Ruby. On Windows, the same command
 writes <tt>dist/Greet-x64-mingw-ucrt.zip</tt>, which holds +Greet.exe+, and
 on Linux, a <tt>.tar.gz</tt> for your processor, such as
 <tt>dist/Greet-x86_64-linux.tar.gz</tt>.
 
-That archive holds Fledge too, about 3 MB of it, as it holds your other
-development gems, because Bundler installs a gem from git as its whole
-repository. You can't leave Fledge out with Bundler's +without+ setting,
+That app holds Fledge too, as it holds your other development gems,
+because Bundler installs a gem from git as its whole repository. To see its
+size, build the app both ways and compare <tt>du -sh</tt> of the two folders
+in +dist+. You can't leave Fledge out with Bundler's +without+ setting,
 because <tt>without development</tt> would leave it out of your bundle as
 well. To build apps without it, put the line above in a +Gemfile+ in a
 folder outside your project, run <tt>bundle install</tt> there, and from

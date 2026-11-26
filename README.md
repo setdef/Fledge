@@ -59,7 +59,7 @@ $ /tmp/Greet-arm64-darwin/Greet Ruby
 ```
 <!-- SPDX-SnippetEnd -->
 
-The archive is 29 MB, and 88 MB unpacked. Anyone with an Apple silicon Mac on macOS 26 or newer can run `Greet`, whether or not they have Ruby. On Windows, the same command writes `dist/Greet-x64-mingw-ucrt.zip`, which holds `Greet.exe`, and on Linux, a `.tar.gz` for your processor, such as `dist/Greet-x86_64-linux.tar.gz`.
+The app carries a whole Ruby runtime, so the archive and the unpacked folder are tens of megabytes: `du -sh dist/Greet-arm64-darwin` shows the size of the folder you built. Anyone with an Apple silicon Mac on macOS 26 or newer can run `Greet`, whether or not they have Ruby. On Windows, the same command writes `dist/Greet-x64-mingw-ucrt.zip`, which holds `Greet.exe`, and on Linux, a `.tar.gz` for your processor, such as `dist/Greet-x86_64-linux.tar.gz`.
 
 ### What Fledge builds
 
@@ -88,7 +88,7 @@ Fledge borrows its design from other languages: [LÖVE](https://love2d.org/)'s f
 
 ## Compatibility
 
-Fledge and the apps it builds run on Ruby 4.1, the version on the Ruby badge, and until Ruby 4.1.0 is released, on its preview, 4.1.0-preview1. You build with [Bundler](https://bundler.io/).
+Fledge and the apps it builds run on Ruby 4.1, the version on the Ruby badge, which is a preview until Ruby 4.1.0 is released. You build with [Bundler](https://bundler.io/).
 
 | Platform | Your users run it on | You build it on |
 | --- | --- | --- |
@@ -122,7 +122,7 @@ gem "fledge", git: "https://github.com/setdef/Fledge", tag: "v0.17.0", group: :d
 
 Then run `bundle install`, and `bundle exec fledge --version` prints `fledge 0.17.0`. [Bundler](https://bundler.io/) installs Fledge from a git tag, and the [releases page](https://github.com/setdef/Fledge/releases) lists every tag. Each release also carries the `.gem` built from its tag, attached to it as `fledge-X.Y.Z.gem`, which `gem install` takes from a file if a registry or git host is down.
 
-Each app you build from this `Gemfile` carries Fledge too, as it carries your other development gems. Bundler installs a gem from git as its whole repository, so Fledge adds about 3 MB to the archive your users download, and 8 MB once they unpack it. You can't leave it out with Bundler's `without` setting, because `without development` would leave Fledge out of your bundle as well. To build apps without Fledge in them, put the same line in a `Gemfile` in a folder outside your project, run `bundle install` there, and from that folder, build your project by its path:
+Each app you build from this `Gemfile` carries Fledge too, as it carries your other development gems. Bundler installs a gem from git as its whole repository, so the app carries Fledge's whole repository. To see its size, build the app both ways and compare `du -sh` of the two folders in `dist`. You can't leave it out with Bundler's `without` setting, because `without development` would leave Fledge out of your bundle as well. To build apps without Fledge in them, put the same line in a `Gemfile` in a folder outside your project, run `bundle install` there, and from that folder, build your project by its path:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -135,7 +135,7 @@ $ bundle exec fledge build ~/code/greet
 ```
 <!-- SPDX-SnippetEnd -->
 
-Fledge writes the app to `dist` in the folder you run it from, here `~/fledge/dist`, unless you pass `--out`. Built this way, the `greet` archive is 26 MB.
+Fledge writes the app to `dist` in the folder you run it from, here `~/fledge/dist`, unless you pass `--out`. Built this way, the `greet` app leaves out Fledge's repository, and its folder in `~/fledge/dist` is smaller by that much.
 
 ## Usage
 

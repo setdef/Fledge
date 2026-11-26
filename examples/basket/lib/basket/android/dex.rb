@@ -152,9 +152,5 @@ module Basket
         dex
       end
     end
-
-    if $PROGRAM_NAME == __FILE__
-      File.binwrite(ARGV.fetch(0), Dex.handler_class("basket.Handler"))
-    end
   end
 end

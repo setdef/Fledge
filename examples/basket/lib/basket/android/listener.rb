@@ -32,11 +32,10 @@ module Basket
       INVOKE = "(Ljava/lang/Object;Ljava/lang/reflect/Method;[Ljava/lang/Object;)Ljava/lang/Object;"
       # The JNI signature of Proxy.newProxyInstance.
       NEW_PROXY = "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;"
-      # How to read a boxed Java number or boolean as Ruby's, by class.
+      # How to read a boxed Java number as Ruby's, by class.
       UNBOXING = {
         "java.lang.Integer" => ["intValue", "()I"],
         "java.lang.Long" => ["longValue", "()J"],
-        "java.lang.Boolean" => ["booleanValue", "()Z"],
       }.freeze
 
       @proxies = []
@@ -45,8 +44,8 @@ module Basket
         # A Java object of the interfaces named +interfaces+ whose methods
         # run the lambdas of +handlers+, by method name. A method with no
         # lambda does nothing, and answers false, zero, or null. Each lambda
-        # takes the method's arguments, with a Java number or boolean as
-        # Ruby's, and a boolean method's lambda answers true or false.
+        # takes the method's arguments, with a Java number as Ruby's, and
+        # a boolean method's lambda answers true or false.
         def implement(interfaces, handlers)
           classes = Java.array(Java::Klass["java.lang.Class"], interfaces.map { |name| Java::Klass[name] })
           proxy = Java::Klass["java.lang.reflect.Proxy"].call("newProxyInstance", NEW_PROXY, loader, classes, handler)

@@ -97,13 +97,16 @@ module Basket
       @functions = {}
 
       class << self
-        # This thread's JNIEnv, attaching the thread to Java first when
-        # Java has not seen it, as a Ruby thread of the program's own.
+        # This thread's JNIEnv, from the Java VM's GetEnv. Basket calls
+        # Java only from Android's main thread, which Java started and so
+        # already knows. A thread Java did not start has no JNIEnv, and
+        # this raises Error for it.
         def env
           Thread.current.thread_variable_get(:basket_jni_env) || begin
             slot = Fiddle::Pointer.malloc(WORD, FREE)
             status = through(VM.pointer, 6, [P, P, I], I).call(VM.pointer, slot, VERSION_1_6)
-            through(VM.pointer, 4, [P, P, P], I).call(VM.pointer, slot, nil) unless status.zero?
+            raise Error, "Java has no JNIEnv for this thread (GetEnv returned #{status})" unless status.zero?
+
             Thread.current.thread_variable_set(:basket_jni_env, slot[0, WORD].unpack1("J"))
           end
         end
@@ -275,9 +278,6 @@ module Basket
         # The class's global reference, a jclass.
         attr_reader :ref
 
-        # The name the class was found by.
-        attr_reader :name
-
         # The class that +instance+, a java.lang.Class object, is, as a
         # loader other than the system's found it, named +name+.
         def self.of(name, instance)
@@ -286,7 +286,6 @@ module Basket
 
         # Finds the class named +name+, unless +instance+ is it.
         def initialize(name, instance = nil)
-          @name = name
           if instance
             @instance = instance
             @ref = instance.ref

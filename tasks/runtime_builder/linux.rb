@@ -49,7 +49,8 @@ class RuntimeBuilder
       analyze_with_gcc(cc, sources)
       static = File.join(@prefix, "lib", "libruby-static.a")
       FileUtils.mkdir_p(File.dirname(output))
-      @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *Hardening::COMPILE.fetch(:glibc), *includes, *sources, *Hardening::LINK.fetch(:glibc), "-rdynamic", "-static-libgcc",
+      objects = compile_objects(cc, output, sources, *Hardening::COMPILE.fetch(:glibc))
+      @builder.run(cc, *objects, *Hardening::LINK.fetch(:glibc), "-rdynamic", "-static-libgcc",
         "-Wl,--whole-archive", static, "-Wl,--no-whole-archive", "-L#{File.join(xcrypt, 'lib')}", "-lcrypt",
         "-Wl,--disable-new-dtags,-rpath,#{rpath}", "-lrt", "-ldl", "-lm", "-lpthread", "-o", output)
       @builder.run("strip", "--strip-unneeded", output)

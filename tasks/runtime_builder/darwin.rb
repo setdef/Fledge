@@ -24,13 +24,7 @@ class RuntimeBuilder
       static = Dir.glob(File.join(@prefix, "lib", "libruby.*-static.a")).first or raise "#{@prefix} has no static libruby"
       FileUtils.mkdir_p(File.dirname(output))
       minimum = "-mmacosx-version-min=#{Fledge::Platform::MACOS_MINIMUM}"
-      objects = sources.map do |source|
-        object = File.join(@build_dir, "objects", File.basename(output), "#{File.basename(source, '.c')}.o")
-        FileUtils.mkdir_p(File.dirname(object))
-        @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, minimum, *Hardening::COMPILE.fetch(:darwin), *includes, "-c", source, "-o", object)
-        object
-      end
-      (@objects ||= []) << objects
+      objects = compile_objects(cc, output, sources, minimum, *Hardening::COMPILE.fetch(:darwin))
       @builder.run(cc, minimum, *objects, *Hardening::LINK.fetch(:darwin),
         "-Wl,-force_load,#{static}", *frameworks(sources), "-ldl", "-lobjc", "-lpthread", "-o", output)
       @builder.run("strip", "-x", output)
@@ -42,13 +36,6 @@ class RuntimeBuilder
 
     def hardening_kind
       :darwin
-    end
-
-    # The object files of the launcher and of bin/ruby: libruby, which
-    # each program holds whole, brings its own canary and checked calls,
-    # so Fledge's own code is read before it is linked.
-    def objects
-      @objects || []
     end
 
     private def os_file

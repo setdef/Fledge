@@ -28,6 +28,28 @@ class RuntimeBuilder
       [File.join(stage, "launcher"), File.join(stage, "bin", "ruby")]
     end
 
+    # The object files of the launcher and of bin/ruby, one array for
+    # each, which Hardening reads: libruby, which each program holds
+    # whole, brings a canary and checked calls, so Fledge's code
+    # is read before it is linked.
+    def objects
+      @objects || []
+    end
+
+    # Compiles each of +sources+ to an object file for the program
+    # +output+, with +flags+ and then the Ruby headers' folders, and
+    # returns the object files, which it records for #objects.
+    private def compile_objects(cc, output, sources, *flags)
+      objects = sources.map do |source|
+        object = File.join(@build_dir, "objects", File.basename(output), "#{File.basename(source, '.c')}.o")
+        FileUtils.mkdir_p(File.dirname(object))
+        @builder.run(cc, "-std=gnu11", "-O2", *WARNINGS, *flags, *includes, "-c", source, "-o", object)
+        object
+      end
+      (@objects ||= []) << objects
+      objects
+    end
+
     # Ruby's own main.c, which chooses its locale as the launcher does,
     # and hands an app's own program back to its launcher.
     private def ruby_sources

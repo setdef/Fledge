@@ -137,6 +137,58 @@ class RuntimeHardeningTest < Minitest::Test
     assert_empty RuntimeBuilder::Hardening.pe("DLLCharacteristics [ (0x0)\n]\n")
   end
 
+  ELF_OBJECT_SYMBOLS = <<~OUTPUT
+    SYMBOL TABLE:
+    0000000000000000 l    df *ABS*\t0000000000000000 unix.c
+    0000000000000000         *UND*\t0000000000000000 __stack_chk_fail
+    0000000000000000         *UND*\t0000000000000000 __strcpy_chk
+    0000000000000000         *UND*\t0000000000000000 puts
+  OUTPUT
+
+  # An object file has no dynamic symbol table, so objdump -T refuses it:
+  # its undefined symbols are in objdump -t.
+  def test_an_elf_object_that_references_the_canary_check_and_a_checked_function_has_both
+    assert_equal ["stack protector", "FORTIFY"], RuntimeBuilder::Hardening.object(ELF_OBJECT_SYMBOLS)
+  end
+
+  def test_an_elf_object_that_references_neither_has_neither
+    assert_empty RuntimeBuilder::Hardening.object("SYMBOL TABLE:\n0000000000000000         *UND*\t0000000000000000 puts\n")
+  end
+
+  def test_the_object_files_of_a_linux_program_need_the_canary_and_on_glibc_checked_calls
+    required = RuntimeBuilder::Hardening::REQUIRED
+
+    assert_equal %w[stack\ protector FORTIFY], required.fetch(:glibc_objects)
+    assert_equal %w[stack\ protector], required.fetch(:musl_objects)
+  end
+
+  # objdump -p and -T read a linked program; an object file needs -t.
+  def test_the_elf_objects_of_a_program_are_read_with_the_symbol_table
+    Dir.mktmpdir do |dir|
+      canary = File.join(dir, "canary.o")
+      plain = File.join(dir, "plain.o")
+      [canary, plain].each { |path| File.binwrite(path, "\x7fELF".b + ("\0" * 12)) }
+      listings = {
+        canary => "SYMBOL TABLE:\n0000000000000000         *UND*\t0000000000000000 __stack_chk_fail\n0000000000000000         *UND*\t0000000000000000 __memcpy_chk\n",
+        plain => "SYMBOL TABLE:\n0000000000000000         *UND*\t0000000000000000 puts\n",
+      }
+      readers = Object.new
+      readers.define_singleton_method(:commands) { { elf: "objdump-stub" } }
+      asked = []
+      hardening = RuntimeBuilder::Hardening.new(kind: :glibc_objects, readers:)
+      hardening.define_singleton_method(:tool) do |_format, flag, path|
+        asked << flag
+        listings.fetch(path)
+      end
+
+      assert_empty hardening.missing(canary, plain)
+      assert_equal %w[stack\ protector FORTIFY], hardening.missing(plain)
+      assert_equal ["-t"], asked.uniq
+      error = assert_raises(RuntimeError) { hardening.check([[plain]]) }
+      assert_includes error.message, "#{plain} lacks stack protector, FORTIFY"
+    end
+  end
+
   # musl has no fortified calls, and Mach-O no RELRO: a platform asks only
   # for what it has.
   def test_each_kind_requires_only_what_its_platform_provides
@@ -200,10 +252,10 @@ class RuntimeHardeningTest < Minitest::Test
     end
   end
 
-  # The command that links the program, from a recipe whose compile runs
-  # against a stand-in builder; a Linux recipe then fails to find the
-  # libxcrypt it never built, after the link.
-  def link_command(recipe_class, include_dir)
+  # The commands that compile and link the program, and the recipe, from
+  # a recipe whose compile runs against a stand-in builder; a Linux recipe
+  # then fails to find the libxcrypt it never built, after the link.
+  def compile_commands(recipe_class, include_dir)
     Dir.mktmpdir do |dir|
       FileUtils.mkdir_p(File.join(dir, "prefix", "include", "ruby-4.0.0", include_dir))
       FileUtils.mkdir_p(File.join(dir, "xcrypt", "lib"))
@@ -212,13 +264,15 @@ class RuntimeHardeningTest < Minitest::Test
       recipe = recipe_class.new(builder: commands, build_dir: dir)
       recipe.instance_variable_set(:@prefix, File.join(dir, "prefix"))
       recipe.instance_variable_set(:@xcrypt, File.join(dir, "xcrypt"))
-      sources = [File.join(RuntimeBuilder::Recipe::LAUNCHER, "unix.c")]
+      sources = [File.join(RuntimeBuilder::Recipe::LAUNCHER, "unix.c"), File.join(RuntimeBuilder::Recipe::LAUNCHER, "scrub.c")]
       begin
         recipe.compile(File.join(dir, "launcher"), sources, "$ORIGIN/lib")
       rescue RuntimeError => e
         raise unless e.message == "libxcrypt built no libcrypt.so.N"
       end
-      commands.ran.find { |command| command.include?("-O2") }
+      compile = commands.ran.select { |command| command.include?("-O2") && command.include?("-c") }
+      link = commands.ran.find { |command| command.include?("-rdynamic") }
+      [compile, link, recipe, dir]
     end
   end
 
@@ -242,21 +296,40 @@ class RuntimeHardeningTest < Minitest::Test
     end
   end
 
-  def test_a_musl_compile_passes_the_flags_hardening_asks_for
-    command = link_command(RuntimeBuilder::Musl, "aarch64-linux-musl")
+  # Fledge's sources are compiled to object files with the compile
+  # flags alone, which Hardening reads, and then linked from them with
+  # the link flags: libruby, which each program holds whole, brings a
+  # canary and checked calls, so only the objects show whether
+  # Fledge's code was compiled with the flags.
+  def test_a_musl_compile_makes_object_files_with_the_flags_and_links_them
+    compile, link, recipe, dir = compile_commands(RuntimeBuilder::Musl, "aarch64-linux-musl")
+    object = File.join(dir, "objects", "launcher", "unix.o")
 
-    (RuntimeBuilder::Hardening::COMPILE.fetch(:musl) + RuntimeBuilder::Hardening::LINK.fetch(:musl)).each do |flag|
-      assert_includes command, flag
+    assert_equal 2, compile.size
+    compile.each do |command|
+      RuntimeBuilder::Hardening::COMPILE.fetch(:musl).each { |flag| assert_includes command, flag }
+      refute_includes command.join(" "), "_FORTIFY_SOURCE"
+      refute_includes command, "-pie"
     end
-    refute_includes command.join(" "), "_FORTIFY_SOURCE"
+    RuntimeBuilder::Hardening::LINK.fetch(:musl).each { |flag| assert_includes link, flag }
+    assert_includes link, object
+    refute(link.any? { |word| word.end_with?(".c") }, "the link takes the objects, not the sources")
+    assert_equal [[object, File.join(dir, "objects", "launcher", "scrub.o")]], recipe.objects
   end
 
-  def test_a_glibc_compile_passes_the_flags_hardening_asks_for_with_fortify
-    command = link_command(RuntimeBuilder::Linux, "x86_64-linux")
+  def test_a_glibc_compile_makes_object_files_with_the_flags_and_fortify_and_links_them
+    compile, link, recipe, dir = compile_commands(RuntimeBuilder::Linux, "x86_64-linux")
+    object = File.join(dir, "objects", "launcher", "unix.o")
 
-    (RuntimeBuilder::Hardening::COMPILE.fetch(:glibc) + RuntimeBuilder::Hardening::LINK.fetch(:glibc)).each do |flag|
-      assert_includes command, flag
+    assert_equal 2, compile.size
+    compile.each do |command|
+      RuntimeBuilder::Hardening::COMPILE.fetch(:glibc).each { |flag| assert_includes command, flag }
+      assert_includes command, "-D_FORTIFY_SOURCE=3"
+      refute_includes command, "-pie"
     end
-    assert_includes command, "-D_FORTIFY_SOURCE=3"
+    RuntimeBuilder::Hardening::LINK.fetch(:glibc).each { |flag| assert_includes link, flag }
+    assert_includes link, object
+    refute(link.any? { |word| word.end_with?(".c") }, "the link takes the objects, not the sources")
+    assert_equal [[object, File.join(dir, "objects", "launcher", "scrub.o")]], recipe.objects
   end
 end

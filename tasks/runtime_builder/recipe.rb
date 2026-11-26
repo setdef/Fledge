@@ -36,18 +36,21 @@ class RuntimeBuilder
     end
 
     # The object files, one array for each program, that this recipe
-    # linked its programs from, which Hardening reads too (as
-    # :darwin_objects): none.
+    # linked its programs from, which Hardening reads too (as the kind's
+    # objects: :glibc_objects, :musl_objects, or :darwin_objects): none.
     def objects
       []
     end
 
     # Raises, naming what each compiled program lacks, when one lacks a
     # protection Hardening asks for (+stage+ is the runtime's folder).
+    # A program's object files are read too, where the program holds
+    # libruby, whose own canary and checked calls would otherwise pass
+    # for Fledge's.
     def verify_hardening(stage)
       kind = hardening_kind or return
       Hardening.new(kind:, readers:).check(programs(stage))
-      Hardening.new(kind: :darwin_objects, readers:).check(objects) unless objects.empty?
+      Hardening.new(kind: :"#{kind}_objects", readers:).check(objects) unless objects.empty?
     end
 
     # The tools the license audit reads the runtime's compiled files with

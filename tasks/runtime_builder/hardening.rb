@@ -67,6 +67,8 @@ class RuntimeBuilder
       glibc: %w[PIE RELRO BIND_NOW non-executable\ stack stack\ protector FORTIFY],
       musl: %w[PIE RELRO BIND_NOW non-executable\ stack stack\ protector],
       darwin: %w[PIE stack\ protector FORTIFY],
+      glibc_objects: %w[stack\ protector FORTIFY],
+      musl_objects: %w[stack\ protector],
       darwin_objects: %w[stack\ protector FORTIFY],
       windows: %w[DYNAMIC_BASE HIGH_ENTROPY_VA NX_COMPAT],
     }.freeze
@@ -79,11 +81,13 @@ class RuntimeBuilder
 
     attr_reader :kind
 
-    # +kind+ is :glibc, :musl, :darwin, :windows, or :darwin_objects (the
-    # object files a Mac's programs are linked from, which show whether
-    # Fledge's own code was compiled with the flags, where the program
-    # also holds libruby's); +readers+ the Fledge::Binary::Readers that
-    # read this kind's files.
+    # +kind+ is :glibc, :musl, :darwin, :windows, or the kind of a Unix
+    # platform's object files, :glibc_objects, :musl_objects, or
+    # :darwin_objects (the files a program is linked from, which show
+    # whether Fledge's code was compiled with the flags, where the
+    # program also holds libruby's, which brings a canary and checked
+    # calls); +readers+ the Fledge::Binary::Readers that read
+    # this kind's files.
     def initialize(kind:, readers:)
       raise ArgumentError, "no hardening of #{kind}" unless REQUIRED.key?(kind)
 
@@ -141,6 +145,13 @@ class RuntimeBuilder
       headers.scan(/IMAGE_DLL_CHARACTERISTICS_(\w+)/).flatten.map(&:to_s)
     end
 
+    # The stack protector and fortified calls an ELF object file
+    # references, from what <tt>objdump -t</tt> printed of it: an object
+    # has no dynamic symbol table, so <tt>objdump -T</tt> refuses it.
+    def self.object(listing)
+      symbols(listing)
+    end
+
     # The stack protector and fortified calls among the symbols a
     # listing names, each symbol the last word of a line.
     def self.symbols(listing)
@@ -155,11 +166,15 @@ class RuntimeBuilder
     private def protections(path)
       format = Fledge::Binary.format_of(File.binread(path, 8).to_s) or raise "#{path} is not a compiled program"
       case format
-      when :elf then Hardening.elf(tool(:elf, "-p", path), tool(:elf, "-T", path))
+      when :elf then objects? ? Hardening.object(tool(:elf, "-t", path)) : Hardening.elf(tool(:elf, "-p", path), tool(:elf, "-T", path))
       when :macho then Hardening.macho(tool(:macho, "-p", path), tool(:macho, "-t", path))
       when :pe then Hardening.pe(tool(:pe, "--file-headers", path))
       else raise "#{path} is a #{format} file, not a program"
       end
+    end
+
+    private def objects?
+      kind.end_with?("_objects")
     end
 
     private def tool(format, *arguments)

@@ -101,6 +101,7 @@ class MemberTest < Minitest::Test
     assert_equal 1, member.cost("java.lang.Object", nil)
     assert_equal 0, member.cost("android.view.View", FakeObject.new(["android.view.View"]))
     assert_nil member.cost("android.view.View", FakeObject.new([]))
+    assert_nil member.cost("int", FakeObject.new(["int"])), "no object is an int"
   end
 
   # A call no overload takes is an Error that says so.
@@ -139,6 +140,18 @@ if RUBY_PLATFORM.include?("android")
       assert_equal 2_147_483_647, integer.MAX_VALUE
       assert_equal 42, integer.valueOf(42).intValue
       assert_equal "42", integer.toString(42)
+    end
+
+    # Ruby's collector runs a finalizer wherever it likes, and one must
+    # leave the exception Java is throwing for the call that made Java
+    # throw it.
+    def test_a_finalizer_leaves_the_exception_a_call_is_about_to_check
+      java = Basket::Android::Java
+      extra = java.call(:new_global_ref, [java::P], java::P, ARRAY_LIST.ref).to_i
+      java.raw(:find_class, [java::P], java::P, "int")
+      java::Instance.release(extra).call
+
+      assert_raises(java::Error) { java.check }
     end
 
     # A method no class has is a NoMethodError, and a call no overload

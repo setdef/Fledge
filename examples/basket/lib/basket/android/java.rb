@@ -98,6 +98,7 @@ module Basket
       STRING = "Ljava/lang/String;"
 
       @functions = {}
+      @discarded = []
 
       class << self
         # This thread's JNIEnv, from the Java VM's GetEnv. Basket calls
@@ -118,7 +119,18 @@ module Basket
         # works too), whose Fiddle types after the JNIEnv are +arguments+,
         # and raises Error if Java threw.
         def call(index, arguments, returns, *values)
+          release_discarded
           raw(index, arguments, returns, *values).tap { check }
+        end
+
+        # Queues the global reference +ref+ for deletion, which the next
+        # call makes. Ruby's collector runs a finalizer wherever it
+        # likes, and one that called Java would do so between a call
+        # that made Java throw and the check that clears the exception:
+        # it would find the exception first, raise it in the finalizer,
+        # and leave the call's check nothing to raise.
+        def discard(ref)
+          @discarded << ref
         end
 
         # Like call, but leaves a thrown exception for the caller.
@@ -127,6 +139,13 @@ module Basket
           index = TABLE.fetch(index) if index.is_a?(Symbol)
           function = (@functions[[index, arguments, returns]] ||= through(env, index, [P] + arguments, returns))
           function.call(env, *values)
+        end
+
+        # Deletes the global references that finalizers queued.
+        private def release_discarded
+          while (ref = @discarded.shift)
+            raw(:delete_global_ref, [P], V, ref)
+          end
         end
 
         # Raises an Error for the exception Java is throwing, if any,
@@ -361,10 +380,10 @@ module Basket
       # A Java object, held by a global reference that Ruby's collector
       # deletes. It calls Java's methods by name.
       class Instance
-        # What deletes the global reference +ref+, for Ruby's collector to
-        # call.
+        # What queues the global reference +ref+ for deletion, for Ruby's
+        # collector to call.
         def self.release(ref)
-          proc { Java.call(:delete_global_ref, [P], V, ref) }
+          proc { Java.discard(ref) }
         end
 
         # The global reference, a jobject.

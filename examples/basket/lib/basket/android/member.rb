@@ -71,7 +71,8 @@ module Basket
         # 0 for the type itself, more for a wider one, nil for none. A
         # Ruby Integer is an int or a long, a Float a float, a String a
         # String or a wider type, and nil any object. Anything else is a
-        # Java object, which fits when it is an instance of +type+.
+        # Java object, which fits when it is an instance of +type+, and
+        # never a primitive type, which no object is an instance of.
         def self.cost(type, value)
           case value
           when true, false then (type == "boolean") ? 0 : nil
@@ -79,7 +80,7 @@ module Basket
           when ::Float then (type == "float") ? 0 : nil
           when ::String then { "java.lang.String" => 0, "java.lang.CharSequence" => 1, "java.lang.Object" => 2 }[type]
           when nil then PRIMITIVES.key?(type) ? nil : 1
-          else (value.respond_to?(:instance_of_type?) && value.instance_of_type?(type)) ? 0 : nil
+          else (!PRIMITIVES.key?(type) && value.respond_to?(:instance_of_type?) && value.instance_of_type?(type)) ? 0 : nil
           end
         end
 

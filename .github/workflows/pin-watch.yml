@@ -182,9 +182,11 @@ jobs:
         run: .github/scripts/pin-prove.sh tmp/pin-watch.json "$PIN"
 
   # The commit to release: Move's release output, the move's own commit
-  # or a later one that holds it, whose own run is green; or else the
-  # last move that Alone landed, found on trunk by its author and
-  # subject, since a matrix's jobs share one set of outputs.
+  # or a later one that holds it, whose own run is green; or else, for
+  # what Alone landed, whose matrix's jobs share no outputs, the newest
+  # move of this run, found on trunk by its author and subject, and the
+  # first commit from it on whose own run is green
+  # (tasks/green_walk.rb).
   pick:
     name: Pick the move to release
     needs: [move, alone]
@@ -203,6 +205,12 @@ jobs:
           ref: trunk
           fetch-depth: 200
 
+      - uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+        with:
+          cache_save: ${{ github.ref == 'refs/heads/trunk' }}
+          version: 2026.10.11
+          install_args: ruby
+
       - name: Pick the newest move this run landed
         id: pick
         env:
@@ -212,7 +220,15 @@ jobs:
           commit=$RELEASE
           if [ -z "$commit" ]; then
             since=$(gh run view "$GITHUB_RUN_ID" --json createdAt --jq .createdAt)
-            commit=$(git log --format=%H --author='github-actions\[bot\]' --since="$since" --grep='^chore: move ' -1)
+            moved=$(git log --format=%H --author='github-actions\[bot\]' --since="$since" --grep='^chore: move ' -1)
+            # A move that was rebased has no green run of its own when a
+            # push followed it: the first commit from it on with one holds it.
+            if [ -n "$moved" ]; then
+              commit=$(ruby tasks/green_walk.rb "$moved" trunk) || {
+                echo "::warning::The move $moved landed on trunk, and no commit from it to trunk's head has a green run of ci.yml: nothing to release"
+                commit=
+              }
+            fi
           fi
           # A move of pins that ship nothing adds no CHANGELOG line, and
           # a release of nothing fails (releases.md, "How a release is

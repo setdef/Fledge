@@ -17,6 +17,14 @@
  * entry holds goes as several entries in a row (fledge_log_chunk), and a
  * NUL byte goes as a stand-in a log can carry (NUL_FORM).
  *
+ * When a developer tool holds a stream, as `devicectl device process
+ * launch --console` holds an iPhone app's two (a pipe or a terminal in
+ * place of the /dev/null a launch from the Home Screen gives), each line
+ * goes to the tool as well as to the log, through the descriptor the
+ * stream was before the pipe replaced it: the pipe would otherwise take
+ * the console's only source away, and the console showed none of the
+ * app's output unless the tool also set OS_ACTIVITY_DT_MODE.
+ *
  * When the log itself copies each entry to standard error for a
  * developer tool (fledge_log_echoes), the tool already reads the
  * streams, and forwarding standard error would send each entry back to
@@ -33,8 +41,10 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 /* Whitespace the unified log trims from the end of an entry. */
@@ -122,6 +132,39 @@ log_line(int error, const char *line, size_t length)
     log_entries(error, line, length);
 }
 
+/* What a forwarding thread reads, and where its lines go besides the log. */
+struct stream {
+    int fd;
+    int error;
+    int console; /* a descriptor a developer tool reads, or -1 */
+};
+
+/* Writes all of the length bytes of text to the descriptor console, giving it up for good when a write fails. */
+static void
+write_console(int *console, const char *text, size_t length)
+{
+    while (*console >= 0 && length > 0) {
+        ssize_t count = write(*console, text, length);
+        if (count < 0) {
+            if (errno == EINTR) continue;
+            close(*console);
+            *console = -1;
+            return;
+        }
+        text += count;
+        length -= (size_t)count;
+    }
+}
+
+/* Sends the line of length bytes, and its newline when newline is nonzero, to the console and the log. */
+static void
+emit(struct stream *stream, const char *line, size_t length, int newline)
+{
+    /* The newline is the byte after the line, so one write carries both. */
+    write_console(&stream->console, line, length + (newline ? 1 : 0));
+    log_line(stream->error, line, length);
+}
+
 /*
  * Reads the pipe with read(2), not stdio, so that the thread holds no
  * FILE's lock while it waits: glibc's exit() takes every stream's lock to
@@ -130,9 +173,8 @@ log_line(int error, const char *line, size_t length)
 static void *
 forward(void *argument)
 {
-    intptr_t value = (intptr_t)argument;
-    int error = (int)(value & 1);
-    int fd = (int)(value >> 1);
+    struct stream *stream = argument;
+    int fd = stream->fd;
     size_t capacity = 4096, length = 0;
     char *line = malloc(capacity);
     ssize_t count;
@@ -146,7 +188,7 @@ forward(void *argument)
         length += (size_t)count;
         char *start = line, *end;
         while ((end = memchr(start, '\n', length - (size_t)(start - line))) != NULL) {
-            log_line(error, start, (size_t)(end - start));
+            emit(stream, start, (size_t)(end - start), 1);
             start = end + 1;
         }
         length -= (size_t)(start - line);
@@ -154,7 +196,7 @@ forward(void *argument)
         if (length == capacity) {
             char *grown = realloc(line, capacity * 2);
             if (grown == NULL) {
-                log_line(error, line, length);
+                emit(stream, line, length, 0);
                 length = 0;
                 continue;
             }
@@ -162,10 +204,37 @@ forward(void *argument)
             capacity *= 2;
         }
     }
-    if (length > 0) log_line(error, line, length);
+    if (length > 0) emit(stream, line, length, 0);
     free(line);
     close(fd);
+    if (stream->console >= 0) close(stream->console);
+    free(stream);
     return NULL;
+}
+
+/*
+ * A copy of descriptor fd when a developer tool may read what it
+ * carries, as one may unless it is closed or is the null device, which is
+ * where a launch from the Home Screen points a phone app's streams; else
+ * -1.
+ */
+static int
+console_of(int fd)
+{
+    struct stat have, null;
+    int copy = dup(fd);
+
+    if (copy < 0) return -1;
+    if (fstat(copy, &have) != 0 ||
+        (S_ISCHR(have.st_mode) && stat("/dev/null", &null) == 0 && have.st_rdev == null.st_rdev)) {
+        close(copy);
+        return -1;
+    }
+#ifdef F_SETNOSIGPIPE
+    /* A tool that ends while the app runs must not end the app with SIGPIPE. */
+    fcntl(copy, F_SETNOSIGPIPE, 1);
+#endif
+    return copy;
 }
 
 /* Makes descriptor fd the write end of a pipe a new thread forwards. */
@@ -174,19 +243,31 @@ forward_descriptor(int fd, int error)
 {
     int ends[2];
     pthread_t thread;
+    struct stream *stream = malloc(sizeof *stream);
 
-    if (pipe(ends) != 0) return -1;
+    if (stream == NULL) return -1;
+    if (pipe(ends) != 0) {
+        free(stream);
+        return -1;
+    }
+    stream->console = console_of(fd);
     if (dup2(ends[1], fd) < 0) {
         int saved = errno;
         close(ends[0]);
         close(ends[1]);
+        if (stream->console >= 0) close(stream->console);
+        free(stream);
         errno = saved;
         return -1;
     }
     close(ends[1]);
-    int status = pthread_create(&thread, NULL, forward, (void *)(((intptr_t)ends[0] << 1) | error));
+    stream->fd = ends[0];
+    stream->error = error;
+    int status = pthread_create(&thread, NULL, forward, stream);
     if (status != 0) {
         close(ends[0]);
+        if (stream->console >= 0) close(stream->console);
+        free(stream);
         errno = status;
         return -1;
     }

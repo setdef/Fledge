@@ -50,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An iPhone app launched with `xcrun devicectl device process launch --console` shows the lines its Ruby prints on that console, as it did only when the launch also set `OS_ACTIVITY_DT_MODE`: the forwarding to the log keeps a copy of each stream a tool holds and writes each line to it too.
 - On Android and iOS, a NUL byte in an app's output no longer cuts the log entry short: the whole line reaches the log, the NUL as the two bytes `0xC0 0x80` on Android, as CPython's Android streams write it, and as U+2400 on iOS, whose log drops an entry of bytes that are no UTF-8.
 - A `.tar.gz` app records owner id 0 and group id 0 with no names, not the numeric ids and names of the account that built it.
 - A build with Bundler's `only` setting (`BUNDLE_ONLY`, `bundle config only`) ships only those groups' gems, and the app's `.bundle/config` now carries `BUNDLE_ONLY` too, so the app sets up the groups it shipped instead of stopping at a missing gem.

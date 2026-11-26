@@ -100,6 +100,8 @@ int fledge_ruby_add_extension(const char *feature, void (*init)(void));
  * are warnings. Name the app, as by its bundle identifier or package.
  * A line longer than a log entry holds goes as several entries in a row.
  * Each of Ruby's lines arrives as it is printed (fledge_ruby_run).
+ * A stream a developer tool holds, as devicectl's console holds an
+ * iPhone app's, gets each line too.
  * When the log already copies its entries to standard error, as Apple's
  * does for a developer tool that sets OS_ACTIVITY_DT_MODE, it leaves the
  * streams to that tool. Returns 0, or -1 with errno set.

@@ -135,7 +135,7 @@ $ bundle exec fledge build ~/code/greet
 ```
 <!-- SPDX-SnippetEnd -->
 
-Fledge writes the app to `dist` in the folder you run it from, here `~/fledge/dist`, unless you pass `--out`. Built this way, the `greet` app leaves out Fledge's repository, and its folder in `~/fledge/dist` is smaller by that much.
+Fledge writes the app to `dist` in the folder you run it from, here `~/fledge/dist`, unless you pass `--out`. An app built this way holds no copy of Fledge.
 
 ## Usage
 

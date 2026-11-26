@@ -58,7 +58,8 @@ because <tt>without development</tt> would leave it out of your bundle as
 well. To build apps without it, put the line above in a +Gemfile+ in a
 folder outside your project, run <tt>bundle install</tt> there, and from
 that folder, build your project by its path:
-<tt>bundle exec fledge build ~/code/greet</tt>.
+<tt>bundle exec fledge build ~/code/greet</tt>. An app built this way
+holds no copy of Fledge.
 
 
 ---

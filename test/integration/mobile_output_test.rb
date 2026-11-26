@@ -123,6 +123,70 @@ class MobileOutputTest < Minitest::Test
     end
   end
 
+  # A program that forwards its output, ends both forwarding threads by
+  # closing the descriptors that write to their pipes, and, once each
+  # thread has closed the read end it held, fills the lowest descriptor
+  # numbers with pipes that each hold a byte, so that whichever numbers
+  # the threads' read ends had are now other files', which a question
+  # about pending bytes answers with one. It then drains and prints
+  # how long that took in milliseconds: a drain that asked about the
+  # number it remembers would see a byte pending and wait out its limit.
+  REUSED_PROGRAM = <<~C
+    #include "fledge_ruby.h"
+    #include "mobile.h"
+    #include <stdio.h>
+    #include <string.h>
+    #include <time.h>
+    #include <unistd.h>
+
+    const char *fledge_ruby_certificates(void) { return NULL; }
+    int fledge_log_echoes(void) { return 0; }
+    int fledge_log_open(const char *tag) { (void)tag; return 0; }
+    void fledge_log_write(int error, const char *text, size_t length) { (void)error; (void)text; (void)length; }
+
+    int main(int argc, char **argv) {
+        (void)argc;
+        FILE *report = fopen(argv[1], "w");
+        if (fledge_ruby_forward_output("org.example.App") != 0) return 1;
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+        usleep(300000);
+        for (int index = 0; index < 32; index++) {
+            int ends[2];
+            if (pipe(ends) != 0) return 2;
+            if (write(ends[1], "x", 1) != 1) return 3;
+        }
+        struct timespec begin, end;
+        clock_gettime(CLOCK_MONOTONIC, &begin);
+        fledge_output_drain();
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        fprintf(report, "%ld\\n", (end.tv_sec - begin.tv_sec) * 1000 + (end.tv_nsec - begin.tv_nsec) / 1000000);
+        fclose(report);
+        return 0;
+    }
+  C
+
+  # The drain asks only about what its threads have not closed
+  # (issue 156): after both threads have ended, with other files at their
+  # descriptors' numbers, it returns at once.
+  def test_the_drain_does_not_ask_about_a_descriptor_a_thread_closed
+    skip "the mobile embedding API is for iOS and Android, which share POSIX's pipes; Windows has none" if Gem.win_platform?
+    compiler = RbConfig::CONFIG.fetch("CC").split.first
+    skip "no C compiler (#{compiler}) on this computer" unless system(compiler, "--version", out: File::NULL, err: File::NULL)
+
+    Dir.mktmpdir do |dir|
+      File.write(File.join(dir, "main.c"), REUSED_PROGRAM)
+      program = File.join(dir, "reused")
+      _, err, status = Open3.capture3(compiler, "-std=gnu11", "-Wall", "-Werror", "-I", MOBILE, File.join(dir, "main.c"),
+        File.join(MOBILE, "output.c"), "-lpthread", "-o", program)
+      assert status.success?, err
+      report = File.join(dir, "report.txt")
+      assert_predicate finish(Process.spawn(program, report, in: File::NULL, out: File::NULL, err: File::NULL), seconds: 15), :success?
+      milliseconds = Integer(File.read(report))
+      assert_operator milliseconds, :<, 500, "the drain waited #{milliseconds} ms on files that are not its threads'"
+    end
+  end
+
   # A program that forwards its output to Apple's real os_log
   # (apple.c), then prints a line to standard output and one to standard
   # error, waits, and prints one more to standard error, which blocks for

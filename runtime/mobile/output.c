@@ -145,7 +145,10 @@ log_line(int error, const char *line, size_t length)
  * and fledge_output_drain both reach them for as long as the process
  * lives. The thread keeps active set from before it reads bytes until it
  * has sent every line they made, so that a reader of active knows no line
- * is half sent.
+ * is half sent. It sets ended, and closes its descriptors, with the
+ * buffer's mutex held, so that whoever holds the mutex and finds ended
+ * clear knows fd is still the pipe: a closed descriptor's number is the
+ * next open's, and a question about it is about another file.
  */
 struct stream {
     int fd;
@@ -153,6 +156,7 @@ struct stream {
     int console;       /* a descriptor a developer tool reads, or -1 */
     atomic_int active; /* 1 from before the thread reads bytes until it has sent their lines */
     pthread_mutex_t buffer;
+    int ended; /* set, with buffer held, as the thread closes fd and console */
     char *line;
     size_t length, capacity;
 };
@@ -260,9 +264,10 @@ forward(void *argument)
     }
     pthread_mutex_lock(&stream->buffer);
     emit_rest(stream);
-    pthread_mutex_unlock(&stream->buffer);
+    stream->ended = 1;
     close(stream->fd);
     if (stream->console >= 0) close(stream->console);
+    pthread_mutex_unlock(&stream->buffer);
     return NULL;
 }
 
@@ -279,7 +284,6 @@ fledge_output_drain(void)
         struct stream *stream = &streams[index];
 
         for (int waited = 0; waited < DRAIN_LIMIT_MS; waited++) {
-            int pending = 0;
             /*
              * Bytes a thread has read are no longer in the pipe, and it set
              * active before it read them, so no bytes pending, read first,
@@ -287,13 +291,20 @@ fledge_output_drain(void)
              * far has been sent. The line a newline has not ended goes now:
              * the program is ending, and a terminal shows such a line. The
              * mutex is tried, not waited for, so that the limit holds when
-             * the log is slow.
+             * the log is slow. The thread closes the pipe with the mutex
+             * held and sets ended first, so with the mutex held, and ended
+             * clear, fd is the pipe; a thread that has ended has sent
+             * everything.
              */
-            if (ioctl(stream->fd, FIONREAD, &pending) != 0) break; /* the thread has ended and closed it */
-            if (pending == 0 && !atomic_load(&stream->active) && pthread_mutex_trylock(&stream->buffer) == 0) {
-                emit_rest(stream);
+            if (pthread_mutex_trylock(&stream->buffer) == 0) {
+                int pending = 0, done = stream->ended;
+                if (!done && ioctl(stream->fd, FIONREAD, &pending) == 0 && pending == 0 &&
+                    !atomic_load(&stream->active)) {
+                    emit_rest(stream);
+                    done = 1;
+                }
                 pthread_mutex_unlock(&stream->buffer);
-                break;
+                if (done) break;
             }
             usleep(1000);
         }

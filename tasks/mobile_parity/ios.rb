@@ -229,7 +229,7 @@ class MobileParity
         # simctl gives an app the variables of its own environment that
         # begin SIMCTL_CHILD_, without the prefix.
         env = app.https ? { "SIMCTL_CHILD_#{HTTPS::VARIABLE}" => @https_url } : {}
-        launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier, env:)
+        launched = launch_app(udid, app, env)
         pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
       end
       deadline = Time.now + timeout
@@ -244,6 +244,31 @@ class MobileParity
       add_and_delete(udid, app) if app.adds
       MobileParity.settled(interval: 5) { messages(udid, since, pid, app) }
         .tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
+    end
+
+    # The message of a launch that +command+ made and SpringBoard or
+    # another part of the Simulator refused: simctl's own words
+    # (+output+), the +state+ the device was in, and the +logged+ lines of
+    # the system's log about the app and about FrontBoard, which hold what
+    # SpringBoard's one-line denial leaves out.
+    def self.launch_failure(command, output, state, logged)
+      "#{command.join(' ')} failed:\n#{output}The device was #{state}. " \
+        "What the system logged of the app and FrontBoard in the last 3 minutes:\n#{logged.join("\n")}"
+    end
+
+    # Launches +app+ on +udid+ with simctl, and returns what it printed.
+    # It does not try again when the system denies the launch: it fails
+    # with what the Simulator held (IOS.launch_failure).
+    private def launch_app(udid, app, env)
+      command = ["xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier]
+      out, err, status = Open3.capture3(env, *command)
+      return out if status.success?
+
+      state = JSON.parse(capture("xcrun", "simctl", "list", "devices", "-j")).fetch("devices").values.flatten
+        .find { |device| device["udid"] == udid }&.fetch("state", nil) || "not listed"
+      logged = Open3.capture2e("xcrun", "simctl", "spawn", udid, "log", "show", "--last", "3m", "--style", "compact", "--predicate",
+        "eventMessage CONTAINS \"#{app.identifier}\" OR (process == \"SpringBoard\" AND eventMessage CONTAINS \"FrontBoard\")").first.lines.last(80).map(&:chomp)
+      raise IOS.launch_failure(command, "#{out}#{err}", state, logged)
     end
 
     # Runs the UI test of +app+'s own project (the scheme's test target,

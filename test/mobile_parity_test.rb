@@ -903,6 +903,20 @@ class MobileParityTest < Minitest::Test
     assert_equal ["SdlDemo drew 60 frames"], MobileParity::IOS.messages(ndjson, 7)
   end
 
+  # A launch SpringBoard denies says only that it did, in a line or two,
+  # so the failure carries simctl's own words and what the Simulator held
+  # when it was denied, which is what tells a person why.
+  def test_ios_launch_failure_carries_simctls_words_and_what_the_simulator_held
+    message = MobileParity::IOS.launch_failure(%w[xcrun simctl launch UDID com.example.App],
+      "Simulator device failed to launch com.example.App.\nThe request was denied by service delegate (SBMainWorkspace).\n",
+      "Booted", ["SpringBoard: denied com.example.App", "FrontBoard: busy"])
+
+    assert_includes message, "xcrun simctl launch UDID com.example.App failed"
+    assert_includes message, "denied by service delegate (SBMainWorkspace)"
+    assert_includes message, "The device was Booted"
+    assert_includes message, "SpringBoard: denied com.example.App\nFrontBoard: busy"
+  end
+
   # On Android the embedding API logs standard error as warnings and
   # standard output as information, as the host logs its status, which
   # logcat -v tag prints before each message, an empty one included.

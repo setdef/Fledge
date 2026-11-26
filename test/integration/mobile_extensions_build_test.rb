@@ -693,7 +693,7 @@ class MobileExtensionsBuildTest < Minitest::Test
     assert_equal Fledge::MobileExtensions::Stub.source("adder/adder"), File.read(stub), "lib/adder.rb's require_relative finds it"
     yml = File.read(File.join(project, "project.yml"))
     assert_includes yml, "- framework: FledgeExtensions.xcframework"
-    assert_includes yml, 'OTHER_LDFLAGS: "$(inherited) -lc++"'
+    assert_includes yml, 'OTHER_LDFLAGS: "$(inherited) -lc++ -Wl,-stack_size,0x4000000"'
     marks = Dir.glob(File.join(project, "fledge", "lib", "ruby", "gems", "*", "**", "gem.build_complete"))
     assert_empty marks, "a path gem needs no mark, as on a desktop"
     assert_rubys_extensions_are_what_xcode_makes(project)

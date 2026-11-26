@@ -29,7 +29,9 @@ module Fledge
   # Compiles an app's gems' C, C++, and Rust extensions for a phone
   # (doc/contributors/design/phone-projects.md, "Gems with extensions").
   #
-  # An app gem's extension cannot be a file on iOS (ADR 099), where only
+  # An app gem's extension cannot be a file on iOS
+  # (doc/contributors/design/phone-runtimes.md, "Why Ruby is a shared
+  # library, with each extension a file"), where only
   # frameworks hold code, so each one is compiled to a static archive,
   # linked into the app, and registered under the name <tt>require</tt>
   # asks for, which Ruby's own

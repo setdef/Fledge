@@ -6,7 +6,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 # Phone Runtimes
 
-This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, and what a phone runtime's licenses are. ADR 099 records why a phone's Ruby is a library Fledge builds from source, and why it was static on iOS until 0.17.0; "Ruby's extensions on iOS", below, says why it no longer is; the rest of the design, and why each part is as it is, is here. The projects `fledge build` writes around a runtime, and what CI checks before a store would, are `doc/contributors/design/phone-projects.md`. What a developer does with the project is in `doc/phones.md`; this document adds the internals.
+This document says how Fledge's phone runtimes are built and what they hold, how the embedding API starts an app's Ruby, and what a phone runtime's licenses are. ADR 099 records why Fledge builds a phone's Ruby from source; "Why Ruby is a shared library, with each extension a file", below, says why that Ruby is a shared library and not a static one on iOS, as it was until 0.17.0; the rest of the design, and why each part is as it is, is here. The projects `fledge build` writes around a runtime, and what CI checks before a store would, are `doc/contributors/design/phone-projects.md`. What a developer does with the project is in `doc/phones.md`; this document adds the internals.
 
 ## Targets
 
@@ -117,6 +117,37 @@ The last five mend bugs of CRuby's that a phone's C library brings out and a des
 A cross build cannot run its own miniruby, so `configure.ac` (lines 1628 to 1632 at Ruby 4.1.0-preview1) leaves out the builtin binary, and Ruby falls back to `mini_builtin.c`, which never loads `gem_prelude.rb`: such a Ruby boots with no RubyGems. An iseq binary depends only on Ruby's version, endianness, and word size (`compile.c`, `ibf_load_setup_bytes`), so the build makes a miniruby for the build machine from the same source, once per runtime, and has it write `builtin_binary.rbbin` from Ruby's own template into each target's build folder. It then sets the Makefile's `BUILTIN_BINARY` to `yes` and adds a rule to `GNUmakefile` that keeps `make` from replacing the file with the empty stub a cross build writes. It fails when the binary or the Makefile line is not what it expects.
 
 The build machine's miniruby is configured with the target's JITs, since the binary holds only the builtins it loaded, and a Ruby built with YJIT stops at boot without `yjit.rb`'s ("[BUG] builtin_lookup: can not find yjit"); the build compares the two Makefiles' `YJIT_SUPPORT` and `ZJIT_SUPPORT` and fails when they differ.
+
+## Why Ruby is a shared library, with each extension a file
+
+On a phone Ruby is a shared library, and each of its own extensions, its encodings and its bundled gems' among them, is a file at the path Ruby gives it. On Android that is `libfledgeruby.so` and one native library for each extension file ("Ruby's extensions on Android"). On iOS Ruby is `FledgeRuby.framework` and each extension is a framework of its own, which the app's bundle carries and Ruby loads from the path it expects ("Ruby's extensions on iOS"). ADR 099 records that Fledge builds this Ruby itself, with Ruby's own build; this section records the shape of what the build makes.
+
+**The problem.** The shape matters to the app. With Ruby's own extensions linked into the library, `$LOADED_FEATURES` records them under bare names and `archdir` holds no extension, where `ruby main.rb` records files under `archdir`. Android loads any library its installer extracted. iOS loads code only from frameworks, but a framework may hold one extension.
+
+**What it has to satisfy.** The app's Ruby code runs as under `ruby main.rb`: the whole standard library, every default and bundled gem (decisions 9, 10, and 20). The second rule of `doc/contributors/design/architecture.md`, "What the design answers to", allows no difference that can be closed.
+
+**The options weighed.**
+
+1. Ruby shared, with each of its extensions a file at the path Ruby gives it, which on iOS is a framework of its own. Ruby's own build makes every extension, the encodings and bundled gems' among them, as a file, and leaves no difference from `ruby main.rb` in how Ruby's own extensions load.
+2. The same build, with Ruby a static library on iOS and its extensions linked in, as Fledge's iOS runtime was until 0.17.0. An app carries no framework of Ruby's, builds faster, and is smaller. It lost because it left `$LOADED_FEATURES` and `archdir` different from `ruby main.rb` on iOS, a defect `doc/phones.md` had to tell developers about: an app's code that reads either sees what `ruby main.rb` does not.
+
+**One difference remains on iOS:** an extension of a gem the app itself brings is still linked into the app's executable, so `$LOADED_FEATURES` records its feature under a bare name. `doc/phones.md` says so.
+
+**What is shown.** It works in the iOS Simulator and on Android emulators. With Xcode 27.2, on an iPhone and an iPad in the Simulator, every parity app and the iOS integration tests pass, and ruby/spec shows no unjustified difference; every example archives unsigned for devices and passes Fledge's checks of an archive's structure. Android's shared library passed the same checks on an x86-64 emulator. Unproven: a real iPhone or iPad with a framework for each extension (the device runs on record predate it), App Store Connect's acceptance of an app with 99 frameworks, and how long such an app takes to start on a device. No recorded comparison says a framework for each extension is better than another way of closing the difference; it is the way iOS allows.
+
+**What it gives.** On both phones Ruby's own extensions load from files under `archdir`, as under `ruby main.rb`.
+
+**What it costs.**
+
+- An iOS app carries a framework for Ruby and one for each extension, and costs more to build. "Ruby's extensions on iOS", at its end, gives the numbers: 99 frameworks in the hello example and what each build and archive costs, most of the build's cost having been one `xcodebuild -create-xcframework` for each extension before the runtime held their indexes.
+- Every extension must export its `Init_` function for Ruby to find it by name, so the iOS runtime's extensions are built without hidden visibility, and the runtime build refuses an extension that does not export it.
+- OpenSSL's symbols are global in Android's `openssl.so`, so an app that links this runtime and another OpenSSL may see them clash; it is untried. On iOS OpenSSL is in the `openssl` extension's framework, and a clash there is untried too.
+- Every Android app's host `build.gradle` must set `useLegacyPackaging = true`, so that the installer extracts the extension files, and `fledge build android` refuses one that does not.
+- App Store review needs a developer account, which is paid for (`decisions.md`, 2026-11-04), and `doc/contributors/account-tests.md` lists that test. No app with this many frameworks has been through App Review.
+
+**What checks it.** The `mobile-apps-ios` and `mobile-apps-android` jobs build apps on the runtimes and run each in the Simulator and on emulators with 4 KB and 16 KB pages (`tasks/mobile_parity.rb`), and the mobile parity check compares the probe with `ruby main.rb`. The iOS runtime build refuses an extension that does not export its `Init_` function.
+
+**What reopens it.** An app gem's extension can be a framework on iOS.
 
 ## Ruby's extensions on Android
 

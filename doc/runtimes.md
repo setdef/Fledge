@@ -21,6 +21,8 @@ The first time you build for a platform, Fledge downloads its runtime from Fledg
 - **A server of yours.** Copy the release's files to it, one folder per tag, as `vVERSION/NAME`, and set `FLEDGE_RUNTIME_MIRROR` to its address, such as `https://files.example.com/fledge`. Fledge stops the build on a file that does not match or that the server lacks.
 - **No network.** Copy the release's runtime archives to a folder and set `FLEDGE_RUNTIME_DIR` to it, and Fledge never downloads one. Fledge checks each archive it takes from there against the SHA-256 it carries, and stops the build on one that does not match, naming both SHA-256s.
 
+The Mac runtime's Ruby comes from [jdx/ruby](https://github.com/jdx/ruby), whose builds declare the macOS of the runner they are built on. Fledge refuses a runtime that needs a newer macOS than its floor, macOS 26, so a later jdx/ruby build that declared a newer one would not ship until the floor moved, which only a major release does.
+
 A runtime you built yourself with `rake runtime`, from a checkout of Fledge, is not the release's, so it does not match. Set `FLEDGE_RUNTIME_DIR_UNCHECKED=1` beside `FLEDGE_RUNTIME_DIR` to build with it anyway. A Fledge that carries no SHA-256 for the runtime at all, as at a release commit before the commit that pins its runtimes, builds with it as it is. Either way, `fledge build` says on standard error that the runtime is unchecked.
 
 ## Updating Fledge

@@ -170,3 +170,17 @@ class WinUIChoiceTest < Minitest::Test
     ENV["BASKET_SCREEN"] = was
   end
 end
+
+# The window's size, which every system can compute.
+class WinUIWindowSizeTest < Minitest::Test
+  # Microsoft's effective pixels are 1 to 1 at 96 DPI, which Windows calls 100 percent.
+  def test_size_at_100_percent_is_the_effective_size
+    assert_equal [480, 640], Basket::WinUI.window_pixels(96)
+  end
+
+  # Windows scales a window by the monitor's DPI over 96.
+  def test_size_grows_with_the_monitor_scale
+    assert_equal [720, 960], Basket::WinUI.window_pixels(144)
+    assert_equal [1200, 1600], Basket::WinUI.window_pixels(240)
+  end
+end

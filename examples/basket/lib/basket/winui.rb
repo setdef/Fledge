@@ -22,6 +22,9 @@ module Basket
     # at their places in the interface, from Microsoft.UI.Xaml.winmd.
     # A Window: put_Content 9, put_Title 15, Activate 26.
     IID_WINDOW = "61f0ec79-5d52-56b5-86fb-40fa4af288b0"
+    # What a Window answers to give the HWND that holds it, an IUnknown
+    # interface: get_WindowHandle 3.
+    IID_WINDOW_NATIVE = "eecdbf0e-bae9-4cb6-a68e-9598e1cb57bb"
     # XamlReader's static methods: Load 6.
     IID_XAML_READER_STATICS = "82a4cd9e-435e-5aeb-8c4f-300cece45cae"
     # A FrameworkElement: FindName 77.
@@ -55,12 +58,33 @@ module Basket
     # What a SelectedIndex is when no row is selected.
     NONE = -1
 
+    # The window's size in effective pixels, which Windows scales for
+    # each monitor: Microsoft's "Screen sizes and breakpoints for
+    # responsive design" gives 480 by 854 for a window of the small
+    # class, which a column of rows is, and says a PC's windows are 1024
+    # by 640 or more. A list takes 480 for its width and 640 for its
+    # height, which fits a 1366 by 768 screen at 100 percent.
+    WINDOW_SIZE = [480, 640].freeze
+    # What a monitor at 100 percent scale has for DPI.
+    BASE_DPI = 96
+    # SWP_NOZORDER, SWP_NOMOVE, and SWP_NOACTIVATE, for SetWindowPos.
+    KEEP_PLACE = 0x0004 | 0x0002 | 0x0010
+    # HKEY_CURRENT_USER, which a 64-bit HKEY holds sign-extended, as a signed number.
+    HKEY_CURRENT_USER = -0x7fffffff
+    # RRF_RT_REG_DWORD
+    REG_DWORD = 0x10
+    # Where Windows keeps the person's choice of light or dark.
+    PERSONALIZE = 'Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'
+    # DWMWA_USE_IMMERSIVE_DARK_MODE
+    USE_IMMERSIVE_DARK_MODE = 20
+
     # The screen's controls, with the margins and gaps Microsoft's
     # guidelines give: 16 pixels around the content and 8 between
     # controls, and the list takes the height the window has.
     MARKUP = <<~XAML
       <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
             Padding="16" RowSpacing="8">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto"/>
@@ -195,6 +219,40 @@ module Basket
       ENV["BASKET_SCREEN"] != "win32" && WinRT.available?
     end
 
+    # The window's width and height in pixels on a monitor of +dpi+.
+    def self.window_pixels(dpi)
+      WINDOW_SIZE.map { |epx| (epx * dpi / BASE_DPI.to_f).round }
+    end
+
+    # Whether Windows asks apps for their dark colors: the person's
+    # "Choose your default app mode", which WinUI reads for the colors of
+    # the controls, and which Windows keeps as AppsUseLightTheme, a DWORD,
+    # in the person's registry.
+    def self.dark?
+      data = WinRT::Win.buffer(4)
+      size = WinRT::Win.buffer(4)
+      size[0, 4] = [4].pack("L")
+      status = WinRT::Win.function("advapi32.dll", "RegGetValueW", [WinRT::INT64, WinRT::POINTER, WinRT::POINTER, WinRT::UINT, WinRT::POINTER, WinRT::POINTER, WinRT::POINTER], WinRT::INT)
+        .call(HKEY_CURRENT_USER, WinRT::Win.wide(PERSONALIZE), WinRT::Win.wide("AppsUseLightTheme"), REG_DWORD, nil, data, size)
+      status.zero? && data[0, 4].unpack1("L").zero?
+    end
+
+    # Fits +window+ to the monitor it is on: WINDOW_SIZE at the monitor's
+    # scale, leaving where it is alone, and a title bar in the colors the
+    # controls take, since Windows draws the title bar of a window like this
+    # one in its light colors until the app asks for dark.
+    def self.fit(window)
+      handle = window.qi(IID_WINDOW_NATIVE).out(3, what: "get_WindowHandle")
+      dpi = WinRT::Win.function("user32.dll", "GetDpiForWindow", [WinRT::POINTER], WinRT::INT).call(handle)
+      width, height = window_pixels(dpi.zero? ? BASE_DPI : dpi)
+      WinRT::Win.function("user32.dll", "SetWindowPos", [WinRT::POINTER, WinRT::POINTER, WinRT::INT, WinRT::INT, WinRT::INT, WinRT::INT, WinRT::UINT], WinRT::INT)
+        .call(handle, 0, 0, 0, width, height, KEEP_PLACE)
+      mode = WinRT::Win.buffer(4)
+      mode[0, 4] = [dark? ? 1 : 0].pack("l")
+      WinRT::Win.function("dwmapi.dll", "DwmSetWindowAttribute", [WinRT::POINTER, WinRT::INT, WinRT::POINTER, WinRT::INT], WinRT::INT)
+        .call(handle, USE_IMMERSIVE_DARK_MODE, mode, 4)
+    end
+
     # Runs Basket: gives the main thread to WinUI, which then calls for the
     # window, where Screen goes.
     def self.run(list)
@@ -204,6 +262,7 @@ module Basket
         window.hr(9, [WinRT::POINTER], screen.content.ptr, what: "put_Content")
         window.hr(15, [WinRT::POINTER], WinRT::Win.hstring("Basket"), what: "put_Title")
         window.hr(26, what: "Activate")
+        fit(window)
         screen.focus
         WinRT::Implementation::KEEP << window << screen
         rows = screen.rows

@@ -17,9 +17,14 @@
 # github: the repository whose releases are listed, with tag, a pattern
 #   whose version capture is a release's version, which a tag that does
 #   not match is not. Drafts and releases GitHub marks as prereleases
-#   are left out, but a prerelease that rebuilds the pin (rebuild).
+#   are left out, but a prerelease counts when the pin is a prerelease
+#   too, and one that rebuilds the pin (rebuild) always does.
 # page: or the URL of a listing with no API, with pattern, which finds
-#   every version on it.
+#   every version on it. A page that dates no release has modified:
+#   true, and a url capture in its pattern for each release's tarball;
+#   the watch dates a release newer than the pin by one HEAD request to
+#   that tarball and its Last-Modified header, and fails when the answer
+#   has none.
 # apk: or the URL of an Alpine branch's index, with {repository} and
 #   {arch} for each of repositories and architectures; its pin is a
 #   mapping of packages, each of which is an upstream of its own, behind
@@ -116,7 +121,8 @@ watched:
   ruby:
     pins: [ruby, mobile.ruby, musl-ruby.ruby, ruby-build.ruby]
     page: https://cache.ruby-lang.org/pub/ruby/index.txt
-    pattern: '^ruby-(?<version>\d+\.\d+\.\d+(?:-(?:preview|rc)\d+)?)\t\S+\.tar\.gz\t'
+    pattern: '^ruby-(?<version>\d+\.\d+\.\d+(?:-(?:preview|rc)\d+)?)\t(?<url>\S+\.tar\.gz)\t'
+    modified: true
     line: 2
     names: [Ruby]
     hold: The step from Ruby 4.1's preview to 4.1.0 is the maintainer's to take (releases.md, "The day Ruby 4.1.0 appears"); a patch of 4.1 after it waits on the code runtimes.md, "Ruby's patches, with no person", names.

@@ -21,13 +21,24 @@ class PinWatchTest < Minitest::Test
   ANSWERS = File.join(__dir__, "fixtures/pin_watch")
 
   # Serves each URL its saved answer, or the body +bodies+ gives it, and
-  # counts the requests.
+  # counts the requests; and, for each URL of +stamps+, the Last-Modified
+  # header a HEAD request to it gets.
   class Answers
-    attr_reader :asked
+    attr_reader :asked, :stamped
 
-    def initialize(bodies = {})
+    def initialize(bodies = {}, stamps = {})
       @bodies = bodies
+      @stamps = stamps
       @asked = []
+      @stamped = []
+    end
+
+    def last_modified(url)
+      @stamped << url
+      stamp = @stamps.fetch(url)
+      raise stamp if stamp.is_a?(Exception)
+
+      stamp
     end
 
     def call(url)
@@ -99,7 +110,8 @@ class PinWatchTest < Minitest::Test
     libyaml = finding({ "mobile" => { "libyaml" => { "version" => "0.2.5" } } }, "libyaml", entry("libyaml").merge("pins" => ["mobile.libyaml"]))
     agp = finding({ "mobile" => { "agp" => "9.4.1" } }, "agp")
     preview = "ruby-4.1.0-preview2\thttps://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview2.tar.gz\tx\n"
-    ruby = -> (version, body) { finding({ "ruby" => { "version" => version } }, "ruby", entry("ruby").merge("pins" => ["ruby"]), Answers.new(entry("ruby")["page"] => body)) }
+    stamps = { "https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview2.tar.gz" => "Mon, 02 Nov 2026 10:00:00 GMT", "url.tar.gz" => "Mon, 02 Nov 2026 10:00:00 GMT" }
+    ruby = -> (version, body) { finding({ "ruby" => { "version" => version } }, "ruby", entry("ruby").merge("pins" => ["ruby"]), Answers.new({ entry("ruby")["page"] => body }, stamps)) }
 
     assert_equal "0.2.6", libyaml.newer, "GitHub marks 0.2.6-rc.1 a prerelease"
     assert_equal "9.5.2", agp.newer, "9.6.0-alpha05 is a prerelease"
@@ -209,6 +221,48 @@ class PinWatchTest < Minitest::Test
       "a pin nobody holds is the move's, however long it has been behind"
   end
 
+  RUBY_PREVIEW2 = "https://cache.ruby-lang.org/pub/ruby/4.1/ruby-4.1.0-preview2.tar.gz"
+
+  # Ruby's index dates nothing, so a release of Ruby is dated by the
+  # Last-Modified header of its tarball on cache.ruby-lang.org, as
+  # releases.md, "The day Ruby 4.1.0 appears", dates other projects.
+  def held_ruby(today, stamp = "Mon, 02 Nov 2026 10:00:00 GMT")
+    index = "ruby-4.1.0-preview2\t#{RUBY_PREVIEW2}\tsha1\nruby-4.1.0-preview1\t#{RUBY_PREVIEW2.sub('2', '1')}\tsha1\n"
+    answers = Answers.new({ entry("ruby")["page"] => index }, RUBY_PREVIEW2 => stamp)
+    [watch({ "ruby" => { "version" => "4.1.0-preview1" } }, "ruby" => entry("ruby").merge("pins" => ["ruby"])).run(answers, today:).first, answers]
+  end
+
+  def test_a_held_preview_of_ruby_is_dated_by_its_tarball_and_is_overdue_after_the_held_days
+    day = Date.new(2026, 11, 2)
+    held, answers = held_ruby(day + 10)
+    overdue, = held_ruby(day + PinWatch::HELD_DAYS + 1)
+
+    assert_equal [:held, "4.1.0-preview2", "2026-11-02"], [held.status, held.newer, held.since]
+    assert_equal [RUBY_PREVIEW2], answers.stamped, "one HEAD request, to the tarball the index gives"
+    assert_equal :held, held_ruby(day + PinWatch::HELD_DAYS).first.status
+    assert_equal [:overdue, 1], [overdue.status, PinWatch.exit_status([overdue])]
+  end
+
+  def test_a_tarball_the_watch_cannot_date_fails_the_watch
+    missing = held_ruby(Date.new(2026, 11, 3), PinWatch::Error.new("#{RUBY_PREVIEW2} sent no Last-Modified")).first
+
+    assert_equal [:error, "#{RUBY_PREVIEW2} sent no Last-Modified"], [missing.status, missing.error]
+    assert_equal 1, PinWatch.exit_status([missing])
+  end
+
+  def test_the_fetch_dates_a_file_by_a_head_request_for_its_last_modified
+    server = LoopbackServer.new("/moved" => [302, { "Location" => "/file" }, ""], "/file" => [200, { "Last-Modified" => "Mon, 02 Nov 2026 10:00:00 GMT" }, "bytes"],
+      "/bare" => [200, {}, "bytes"], "/gone" => [404, {}, "no"])
+    fetch = PinWatch::Fetch.new(timeout: 5)
+
+    assert_equal "Mon, 02 Nov 2026 10:00:00 GMT", fetch.last_modified(server.url("/moved"))
+    assert_equal ["HEAD /moved", "HEAD /file"], server.calls
+    assert_equal "#{server.url('/bare')} sent no Last-Modified", assert_raises(PinWatch::Error) { fetch.last_modified(server.url("/bare")) }.message
+    assert_equal "#{server.url('/gone')} answered 404", assert_raises(PinWatch::Error) { fetch.last_modified(server.url("/gone")) }.message
+  ensure
+    server&.stop
+  end
+
   # What the watch finds for +name+'s pin at +pin+ on +today+, from the
   # first page of its releases as GitHub listed it on 2026-11-22, with the
   # day each was published, saved as dated_OWNER_REPOSITORY_releases.
@@ -302,7 +356,21 @@ class PinWatchTest < Minitest::Test
 
     assert_equal [:newer, "4.1.0-preview1-2", nil], [both.status, both.newer, both.held], "a build of the pinned release moves with no person"
     assert_equal [:overdue, "4.1.1-1"], [release.status, release.newer], "a new release is held, and calls a person once overdue"
-    assert_equal [:current, nil], [preview.status, preview.newer], "a release GitHub marks a prerelease counts only as a build of the pin"
+    assert_equal [:overdue, "4.1.0-preview2-1"], [preview.status, preview.newer], "a prerelease GitHub marks counts for a pin that is one"
+  end
+
+  # runtimes.md, "The watch": releases GitHub marks as prereleases are
+  # left out unless the pin is a prerelease too.
+  def test_a_github_prerelease_counts_when_the_pin_is_a_prerelease_and_not_when_it_is_a_release
+    tool = HELD.except("hold").merge("tag" => '\Av(?<version>\d+\.\d+\.\d+(?:-rc\d+)?)\z')
+    url = PinWatch::Upstream.from("tool", tool).url
+    body = JSON.generate([["v1.1.0-rc1", true], ["v1.0.0-rc2", true], ["v1.0.0-rc1", true], ["v1.0.0", false]].map do |tag, pre|
+      { "tag_name" => tag, "draft" => false, "prerelease" => pre }
+    end)
+    found = -> (pin) { watch({ "tool" => { "version" => pin } }, "tool" => tool).run(Answers.new(url => body)).first }
+
+    assert_equal [:newer, "1.1.0-rc1"], [found.("1.0.0-rc1").status, found.("1.0.0-rc1").newer], "a prerelease pin takes the newest prerelease"
+    assert_equal [:current, nil], [found.("1.0.0").status, found.("1.0.0").newer], "a release pin takes no prerelease"
   end
 
   # runtime/upstreams.yml's jdx-ruby, as it is: a later build of the
@@ -402,10 +470,10 @@ class PinWatchTest < Minitest::Test
     assert_equal pinned.sort, installed.sort
   end
 
-  def test_every_held_pin_is_dated_by_a_held_upstream_whose_releases_github_dates
+  def test_every_held_pin_is_dated_by_github_by_its_tarball_or_by_a_held_upstream_that_is
     upstreams = PinWatch.load(ROOT).upstreams
-    dated = upstreams.select { |upstream| upstream.hold && upstream.github? }.flat_map(&:pins)
-    undated = upstreams.select(&:hold).reject { |upstream| upstream.github? || upstream.pins.intersect?(dated) }
+    dated = upstreams.select { |upstream| upstream.hold && (upstream.github? || upstream.modified) }.flat_map(&:pins)
+    undated = upstreams.select(&:hold).reject { |upstream| upstream.github? || upstream.modified || upstream.pins.intersect?(dated) }
 
     assert_empty undated.map(&:name), "a held pin nothing dates could stay behind for ever and never call a person"
   end

@@ -184,7 +184,7 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   end
 
   # Where one input is released, as runtime/upstreams.yml says.
-  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships, :hold, :package, :rebuild)
+  class Upstream < Data.define(:name, :pins, :field, :current, :url, :pattern, :line, :ships, :hold, :package, :rebuild, :modified)
     # How many releases GitHub lists on one page at most.
     PAGE = 100
 
@@ -207,7 +207,7 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       new(name:, pins: entry.fetch("pins"), field: entry.fetch("field", "version"), current:, url:,
         pattern: Regexp.new(pattern, Regexp::MULTILINE), line: entry["line"], ships: entry.fetch("ships", true), hold: entry["hold"],
         package: entry["package"] && AlpinePackage.new(name: entry["package"], indexes: AlpinePackage.indexes(url, entry)),
-        rebuild: entry["rebuild"] && Regexp.new(entry["rebuild"]))
+        rebuild: entry["rebuild"] && Regexp.new(entry["rebuild"]), modified: entry.fetch("modified", false))
     end
 
     # Whether the versions come from GitHub's list of releases.
@@ -254,6 +254,13 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       found.uniq
     end
 
+    # The URL of each release's tarball in the answer +body+, from the
+    # pattern's url capture, for an upstream that is dated by its files
+    # (modified).
+    def tarballs(body)
+      body.to_enum(:scan, pattern).to_h { Regexp.last_match.values_at(:version, :url) }
+    end
+
     # The day each version the answer +body+ lists came out, as GitHub
     # dates a release; a page dates none.
     def dates(body, current = nil)
@@ -267,18 +274,25 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     end
 
     # The releases of +body+ the watch takes, each with its version: no
-    # draft, and no release GitHub marks as a prerelease but another build
-    # of the pin's own release, which an upstream marks as it marked the
-    # pin's, as jdx/ruby marks every build of a preview.
+    # draft, and no release GitHub marks as a prerelease unless the pin is
+    # a prerelease too, or it is another build of the pin's own release,
+    # which an upstream marks as it marked the pin's, as jdx/ruby marks
+    # every build of a preview.
     private def releases(body, current)
       JSON.parse(body).reject { |release| release["draft"] }.filter_map do |release|
         version = release.fetch("tag_name")[pattern, "version"] or next
-        next if release["prerelease"] && !(current && rebuild?(version, current))
+        next if release["prerelease"] && !(current && (rebuild?(version, current) || prerelease?(current)))
 
         [version, release]
       end
     rescue JSON::ParserError => e
       raise Error, "#{url} answered with no JSON: #{e.message}"
+    end
+
+    private def prerelease?(version)
+      Gem::Version.new(version.tr("-", ".")).prerelease?
+    rescue ArgumentError
+      false
     end
   end
 
@@ -297,6 +311,13 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     # The body +url+ answers with.
     def call(url)
       get(url, &:body)
+    end
+
+    # The Last-Modified header of the file at +url+, from one HEAD
+    # request, which follows redirects as a GET does; an error when the
+    # answer has none, since nothing else dates the file.
+    def last_modified(url)
+      get(url, verb: Net::HTTP::Head) { |response| response["last-modified"] } or raise Error, "#{url} sent no Last-Modified"
     end
 
     # The SHA-256 of the file at +url+, read as it downloads and never
@@ -355,12 +376,12 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
       raise Error, "#{url} is no gzipped tarball: #{e.message}"
     end
 
-    private def get(url, redirects = REDIRECTS, &read)
+    private def get(url, redirects = REDIRECTS, verb: Net::HTTP::Get, &read)
       uri = URI(url)
       Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: @timeout, read_timeout: @timeout) do |http|
-        http.request(request(uri)) do |response|
+        http.request(request(uri, verb)) do |response|
           return read.call(response) if response.is_a?(Net::HTTPSuccess)
-          return get(URI.join(url, response["location"]).to_s, redirects - 1, &read) if response.is_a?(Net::HTTPRedirection) && redirects.positive?
+          return get(URI.join(url, response["location"]).to_s, redirects - 1, verb:, &read) if response.is_a?(Net::HTTPRedirection) && redirects.positive?
 
           raise Error, "#{url} answered #{response.code}#{spent(response)}"
         end
@@ -398,8 +419,8 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
         .any? { |path| File.file?(path) && File.executable?(path) }
     end
 
-    private def request(uri)
-      request = Net::HTTP::Get.new(uri)
+    private def request(uri, verb)
+      request = verb.new(uri)
       request["User-Agent"] = "Fledge pin watch (https://github.com/setdef/Fledge)"
       if uri.host == "api.github.com"
         request["Accept"] = "application/vnd.github+json"
@@ -472,7 +493,8 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   # it stands on +today+.
   def run(fetch, today: Date.today)
     answers = Hash.new { |cache, url| cache[url] = fetch.call(url) }
-    upstreams.map { |upstream| find(upstream, answers, today) }
+    days = Hash.new { |cache, url| cache[url] = day(fetch.last_modified(url), url) }
+    upstreams.map { |upstream| find(upstream, answers, days, today) }
   end
 
   # The version the pins of +upstream+ hold.
@@ -483,7 +505,7 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     values.first
   end
 
-  private def find(upstream, answers, today)
+  private def find(upstream, answers, days, today)
     current = current(upstream)
     return finding(upstream, current:, newer: upstream.package.newer(current) { |url| answers[url] }) if upstream.package
 
@@ -496,12 +518,23 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
     return finding(upstream, current:, newer: newest(rebuilds), beyond: newest(beyond), held: nil) if upstream.hold && rebuilds.any?
 
     dates = upstream.dates(body, current)
+    # An upstream that dates no release in its listing is dated by its
+    # files: each newer release in the line by its tarball's Last-Modified.
+    dates = upstream.tarballs(body).slice(*in_line).transform_values { |tarball| days[tarball] } if upstream.modified
     since = dates.values_at(*in_line).compact.min
     quiet = Quiet.from(dates) { |version| place(upstream, version, current) } if upstream.line && in_line.empty? && beyond.any?
     finding(upstream, current:, newer: newest(in_line), beyond: newest(beyond), since:, overdue: PinWatch.overdue?(since, today),
       last: quiet&.last&.iso8601, ended: quiet&.ended?(today) || false)
   rescue Error => e
     finding(upstream, current:, error: e.message)
+  end
+
+  # The day, as an ISO 8601 date, of +header+, a Last-Modified header of
+  # the file at +url+ (an HTTP date, always GMT).
+  private def day(header, url)
+    Time.httpdate(header).utc.to_date.iso8601
+  rescue ArgumentError
+    raise Error, "#{url} sent a Last-Modified that is no HTTP date: #{header}"
   end
 
   private def finding(upstream, current: nil, newer: nil, beyond: nil, error: nil, since: nil, overdue: false, held: upstream.hold,

@@ -8,6 +8,8 @@ module Fledge
     MAKENSIS: String
     BOM: String
     CONFIG: String
+    SIDEBAR_WIDTH: Integer
+    SIDEBAR_HEIGHT: Integer
     REDISTRIBUTABLES: Hash[String, String]
 
     @identity: Identity
@@ -19,7 +21,9 @@ module Fledge
 
     def initialize: (identity: Identity, folder: String, platform: Platform, to: String, ?signing: (WindowsSigning | SignCommand)?, ?license: String?, ?redistributable: String?) -> void
 
-    def script: (icon: String?, ?license: String?) -> String
+    def script: (icon: String?, ?license: String?, ?sidebar: String?) -> String
+
+    def self.sidebar_bitmap: () -> String
 
     private def visual_c_runtime: () -> Array[String]
 

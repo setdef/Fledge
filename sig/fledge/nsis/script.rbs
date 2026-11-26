@@ -24,7 +24,7 @@ module Fledge
 
       def initialize: (identity: Identity, folder: String, to: String, files: Array[String], folders: Array[String], size: Integer, ?signing: String?, ?visual_c_runtime: Array[String], ?redistributable: String) -> void
 
-      def text: (icon: String?, ?license: String?) -> String
+      def text: (icon: String?, ?license: String?, ?sidebar: String?) -> String
 
       private def visual_c_section: () -> Array[String]
 
@@ -42,7 +42,7 @@ module Fledge
 
       private def program: () -> String
 
-      private def header: (String? icon) -> Array[String]
+      private def header: (String? icon, String? sidebar) -> Array[String]
 
       private def aumid_macro: () -> Array[String]
 

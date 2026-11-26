@@ -207,6 +207,28 @@ class NsisTest < Minitest::Test
     assert_equal "#{Fledge::Nsis::BOM}MIT\r\n\r\nCopyright ©\r\n", Fledge::Nsis.license_text("MIT\n\r\nCopyright ©\n")
   end
 
+  # Modern UI's welcome and finish pages draw a bitmap down their left
+  # side, and show NSIS's bitmap unless the script sets another. The
+  # setup program sets a plain one: a 24-bit bitmap of the 164 by 314
+  # pixels Modern UI lays it out for, in the page's white.
+  def test_the_finish_page_shows_a_plain_bitmap_and_not_nsiss
+    bitmap = File.join(@dist, "sidebar.bmp")
+
+    assert_includes setup_program.script(icon: nil, sidebar: bitmap), "!define MUI_WELCOMEFINISHPAGE_BITMAP \"#{Fledge::Nsis.host_path(bitmap)}\"\n"
+    refute_match(/MUI_WELCOMEFINISHPAGE_BITMAP/, script, "a script with no bitmap shows NSIS's")
+  end
+
+  def test_the_plain_bitmap_is_a_white_bitmap_of_the_size_modern_ui_expects
+    bitmap = Fledge::Nsis.sidebar_bitmap
+    signature, size, offset = bitmap.unpack("a2Vx4V")
+    header, width, height, planes, depth, compression = bitmap.unpack("x14Vl<l<vvV")
+
+    assert_equal ["BM", bitmap.bytesize, 54], [signature, size, offset]
+    assert_equal [40, 164, 314, 1, 24, 0], [header, width, height, planes, depth, compression]
+    assert_equal 164 * 3 * 314, bitmap.bytesize - 54
+    assert_equal ["\xFF".b], bitmap.byteslice(54..).bytes.uniq.map { |byte| byte.chr.b }
+  end
+
   def test_a_new_version_runs_the_old_uninstaller_first
     assert_includes script, "  ExecWait '\"$INSTDIR\\uninstall.exe\" /S _?=$INSTDIR'\n"
   end

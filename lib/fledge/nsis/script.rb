@@ -49,10 +49,11 @@ module Fledge
       end
 
       # The installer's NSIS script, with the app's icon at +icon+, or
-      # NSIS's own for +nil+, and a license page that shows the file at
-      # +license+, or none for +nil+.
-      def text(icon:, license: nil)
-        lines = header(icon) + pages(license) + functions + visual_c_section + install_section + uninstall_section
+      # NSIS's own for +nil+, a license page that shows the file at
+      # +license+, or none for +nil+, and the bitmap at +sidebar+ down the
+      # left side of the finish page, or NSIS's own for +nil+.
+      def text(icon:, license: nil, sidebar: nil)
+        lines = header(icon, sidebar) + pages(license) + functions + visual_c_section + install_section + uninstall_section
         "#{lines.join("\n")}\n"
       end
 
@@ -229,7 +230,7 @@ module Fledge
         "#{@identity.name}.exe"
       end
 
-      private def header(icon)
+      private def header(icon, sidebar)
         numbers = WindowsResources.numbers(@identity.version)
         lines = [
           "Unicode true",
@@ -258,6 +259,7 @@ module Fledge
         lines << "VIAddVersionKey CompanyName #{quote(@identity.publisher.to_s)}" if @identity.publisher
         lines << "VIAddVersionKey LegalCopyright #{quote(@identity.copyright.to_s)}" if @identity.copyright
         lines.push("!define MUI_ICON #{quote(Nsis.host_path(icon))}", "!define MUI_UNICON #{quote(Nsis.host_path(icon))}") if icon
+        lines << "!define MUI_WELCOMEFINISHPAGE_BITMAP #{quote(Nsis.host_path(sidebar))}" if sidebar
         lines + ["", *aumid_macro, ""]
       end
 

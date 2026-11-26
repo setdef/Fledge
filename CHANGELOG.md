@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In the macOS and glibc Linux runtimes' `NOTICES.txt` and SBOM, jdx/ruby's own code is versioned by the build of its Ruby the runtime takes, `4.1.0-preview1-1`, where it was `4.1.0-preview1`, and its libyaml is `SPDXRef-Package-libyaml-jdx`, apart from the libyaml of Fledge's own build of Ruby.
 - On Windows, `fledge build` counts a DLL of the runtime's as provided only where the app's Ruby looks for it, in `ruby_builtin_dlls`, Ruby's architecture folder, and Ruby's own DLL, and refuses a gem that needs one the runtime holds only elsewhere, such as beside another gem's extension, which before built an app that stopped at `require`.
 - libyaml 0.2.6, from 0.2.5.
+- A Windows setup program's finish page shows a plain white bitmap down its left side, where it showed NSIS's own.
 
 ### Fixed
 

@@ -72,6 +72,14 @@ module Fledge
     # program, in its Bin folder, beside the zlib1.dll it loads.
     MAKENSIS = File.join("Bin", "makensis.exe")
 
+    # The width, in pixels, of the bitmap Modern UI's welcome and finish
+    # pages lay out down their left side: that of NSIS's own image, the
+    # default of +MUI_WELCOMEFINISHPAGE_BITMAP+.
+    SIDEBAR_WIDTH = 164
+
+    # The height of that bitmap, in pixels.
+    SIDEBAR_HEIGHT = 314
+
     # A byte order mark, U+FEFF, which tells a Unicode installer that a
     # text file is UTF-8, and which a license text saved by a Windows
     # editor may already begin with.
@@ -116,6 +124,31 @@ module Fledge
       @redistributable = redistributable || REDISTRIBUTABLES.fetch(platform.name) { raise Error, "an nsis installer is for Windows, and #{platform.name} is not" }
     end
 
+    # The bitmap down the left side of the setup program's finish page:
+    # plain white, the page's own color, as a 24-bit bitmap of
+    # SIDEBAR_WIDTH by SIDEBAR_HEIGHT pixels. Fledge reads no image
+    # format (doc/contributors/design/desktop-apps.md, "Icons"), so it
+    # cannot draw the app's icon there; a script that sets no bitmap
+    # gets the one NSIS ships.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   Fledge::Nsis.sidebar_bitmap.bytesize # => 154542
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def self.sidebar_bitmap
+      pixels = "\xFF".b * (3 * SIDEBAR_WIDTH * SIDEBAR_HEIGHT)
+      file = ["BM", 54 + pixels.bytesize, 0, 0, 54].pack("a2Vv2V")
+      info = [40, SIDEBAR_WIDTH, SIDEBAR_HEIGHT, 1, 24, 0, pixels.bytesize, 2835, 2835, 0, 0].pack("Vl<2v2V2l<2V2")
+      file + info + pixels
+    end
+
     # +text+ as the license page reads a text file: with a UTF-8 byte
     # order mark, which a Unicode installer needs to read it as UTF-8, as
     # Tauri's bundler writes one (<tt>nsis/mod.rs</tt>), and with DOS line
@@ -141,6 +174,9 @@ module Fledge
     #
     # [icon] The path of the app's icon as an <tt>.ico</tt>, or +nil+ for
     #        NSIS's own.
+    # [sidebar] The path of the bitmap down the left side of the finish
+    #           page, as Nsis.sidebar_bitmap makes it, or +nil+ for
+    #           NSIS's own.
     #
     # === Example
     #
@@ -153,7 +189,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def script(icon:, license: nil)
+    def script(icon:, license: nil, sidebar: nil)
       files = [] # : Array[String]
       folders = [] # : Array[String]
       size = 0
@@ -169,7 +205,7 @@ module Fledge
         end
       end
       Script.new(identity: @identity, folder: @folder, to: @to, files:, folders:, size:, signing: @signing&.command_line,
-        visual_c_runtime:, redistributable: @redistributable).text(icon:, license:)
+        visual_c_runtime:, redistributable: @redistributable).text(icon:, license:, sidebar:)
     end
 
     # The DLLs of Microsoft's Visual C++ runtime that the app's gems need
@@ -214,7 +250,9 @@ module Fledge
         script_path = File.join(work, "setup.nsi")
         license = @license && File.join(work, "license.txt")
         File.binwrite(license, Nsis.license_text(@license.to_s)) if license
-        File.binwrite(script_path, "\uFEFF#{script(icon: @identity.icon&.file('ico'), license:)}")
+        sidebar = File.join(work, "sidebar.bmp")
+        File.binwrite(sidebar, Nsis.sidebar_bitmap)
+        File.binwrite(script_path, "\uFEFF#{script(icon: @identity.icon&.file('ico'), license:, sidebar:)}")
         compile(script_path, copy)
       ensure
         # On Windows on ARM, the x86 emulator's cache service (XtaCache)

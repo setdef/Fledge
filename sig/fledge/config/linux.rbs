@@ -7,18 +7,26 @@ module Fledge
       KEYS: Array[String]
       SONAME: Regexp
       TYPELIB: Regexp
+      DEB_PACKAGE: String
+      DEB_RELATIONSHIP: String
+      DEB_DEPENDENCY: Regexp
 
       attr_reader system_libraries: Array[String]
       attr_reader system_typelibs: Array[String]
+      attr_reader deb_depends: Array[String]
       attr_reader deb_changelog: String?
 
-      def self.new: (system_libraries: Array[String], system_typelibs: Array[String], deb_changelog: String?) -> instance
+      def self.new: (system_libraries: Array[String], system_typelibs: Array[String], deb_depends: Array[String], deb_changelog: String?) -> instance
 
       def self.from: (Hash[Object, Object] data, String file) -> Linux?
 
       private def self.libraries: (Object value, String file) -> Array[String]
 
       private def self.typelibs: (Object value, String file) -> Array[String]
+
+      private def self.dependencies: (Object value, String file) -> Array[String]
+
+      private def self.wrong_dependency: (String wrong, String file) -> String
     end
   end
 end

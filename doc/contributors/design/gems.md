@@ -453,7 +453,7 @@ macos:
 
 - **Accepted:** a compiled file may need any library on the list (`Linkage`'s `system:`).
 - **Refused when unlisted:** every other library still fails, and on Linux the message ends with the key to copy: `list it in fledge.yml as linux: { system_libraries: [libxml2.so.2] }`.
-- **Refused when unused:** a listed library that no gem's compiled file needs beyond what the baseline, the runtime, and the gems provide fails the build too (`Linkage#unused`), asked after every gem is judged. So the list cannot name what a gem opens with `dlopen`, which no compiled file names.
+- **Refused when unused:** a listed library that no gem's compiled file needs beyond what the baseline, the runtime, and the gems provide fails the build too (`Linkage#unused`), asked after every gem is judged. So the list cannot name what a gem opens with `dlopen`, which no compiled file names. A `.deb`'s `linux: deb_depends` names the packages of what an app's own Ruby opens (`doc/contributors/design/desktop-apps.md`, "Depends on what the app's Ruby opens").
 
 The list goes into `fledge.cfg` as `system_libraries = …`, which the Linux launcher checks before Ruby starts, exiting 72 with the missing library's name (`doc/contributors/design/launcher.md`). A `.deb` depends on the packages dpkg-shlibdeps finds for the files that need them (`doc/contributors/design/desktop-apps.md`). An AppImage and a `.tar.gz` do not carry them.
 

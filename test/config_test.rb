@@ -132,7 +132,7 @@ class ConfigTest < Minitest::Test
       "long_description: [a]\n" => /: long_description must be text/,
       "license_file: ../LICENSE\n" => %r{: license_file, "\.\./LICENSE", must name a file in the project, with / between folders, such as license_file: LICENSE\.txt\z},
       "linux:\n  deb_changelog: /CHANGELOG\n" => %r{: linux: deb_changelog, "/CHANGELOG", must name a file in the project},
-      "linux:\n  changelog: CHANGELOG\n" => /: linux has 'changelog', which Fledge does not know\. It knows system_libraries, system_typelibs, and deb_changelog\.\z/,
+      "linux:\n  changelog: CHANGELOG\n" => /: linux has 'changelog', which Fledge does not know\. It knows system_libraries, system_typelibs, deb_depends, and deb_changelog\.\z/,
       "macos: \"42\"\n" => /: macos must be a mapping of build and carried_libraries, such as macos: \{ build: "42" \}\z/,
       "macos:\n  bulid: \"42\"\n" => /: macos has 'bulid', which Fledge does not know\. It knows build and carried_libraries\.\z/,
       "macos:\n  carried_libraries: libSDL3.0.dylib\n" => /: macos: carried_libraries must be a list of the names compiled files give libraries, such as \[libSDL3\.0\.dylib\]\z/,
@@ -322,7 +322,7 @@ class ConfigTest < Minitest::Test
   def test_reads_the_system_libraries_a_projects_gems_load_on_linux
     config = load("linux:\n  system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
 
-    assert_equal Fledge::Config::Linux.new(system_libraries: %w[libwebkit2gtk-4.1.so.0 libgtk-3.so.0], system_typelibs: [], deb_changelog: nil), config.linux
+    assert_equal Fledge::Config::Linux.new(system_libraries: %w[libwebkit2gtk-4.1.so.0 libgtk-3.so.0], system_typelibs: [], deb_depends: [], deb_changelog: nil), config.linux
     assert_equal [], load("linux:\n  system_libraries: []\n").linux&.system_libraries
     assert_equal [], load("linux: {}\n").linux&.system_libraries
     assert_nil load("linux:\n").linux
@@ -334,6 +334,20 @@ class ConfigTest < Minitest::Test
     assert_equal [], Fledge::Config.none.system_libraries("linux")
   end
 
+  # The relationships a .deb's Depends gains for what the app's Ruby
+  # opens by itself (doc/contributors/design/desktop-apps.md, "Depends
+  # on what the app's Ruby opens"), as Debian Policy 7.1 writes them,
+  # once each, on Linux only.
+  def test_reads_the_deb_dependencies_a_projects_ruby_needs_on_linux
+    config = load("linux:\n  deb_depends: [libgtk-4-1, \"libadwaita-1-0 (>= 1.4)\", \"libfoo1t64 | libfoo1\", libgtk-4-1, \"libc6:any (>> 2.30)\"]\n")
+
+    assert_equal ["libgtk-4-1", "libadwaita-1-0 (>= 1.4)", "libfoo1t64 | libfoo1", "libc6:any (>> 2.30)"], config.linux&.deb_depends
+    assert_equal [], load("linux:\n  deb_depends: []\n").linux&.deb_depends
+    assert_equal [], load("linux:\n  system_libraries: [libgtk-4.so.1]\n").linux&.deb_depends
+    assert_equal [config.linux.deb_depends, [], []], %w[linux darwin windows].map { |os| config.deb_depends(os) }
+    assert_equal [], Fledge::Config.none.deb_depends("linux")
+  end
+
   # The GObject introspection data a project's gems load from the Linux
   # distribution by name while the app runs (doc/contributors/design/gems.md,
   # "Typelibs from the Linux distribution"), each as libgirepository
@@ -341,7 +355,7 @@ class ConfigTest < Minitest::Test
   def test_reads_the_system_typelibs_a_projects_gems_load_on_linux
     config = load("linux:\n  system_typelibs: [Gtk-4.0, GdkPixbuf-2.0, cairo-1.0, HarfBuzz-0.0, Gtk-4.0]\n")
 
-    assert_equal Fledge::Config::Linux.new(system_libraries: [], system_typelibs: %w[Gtk-4.0 GdkPixbuf-2.0 cairo-1.0 HarfBuzz-0.0], deb_changelog: nil),
+    assert_equal Fledge::Config::Linux.new(system_libraries: [], system_typelibs: %w[Gtk-4.0 GdkPixbuf-2.0 cairo-1.0 HarfBuzz-0.0], deb_depends: [], deb_changelog: nil),
       config.linux
     assert_equal [], load("linux:\n  system_typelibs: []\n").linux&.system_typelibs
     assert_equal [], load("linux:\n  system_libraries: [libgtk-4.so.1]\n").linux&.system_typelibs
@@ -368,11 +382,35 @@ class ConfigTest < Minitest::Test
     end
   end
 
+  def test_refuses_a_deb_dependency_that_is_not_a_relationship
+    {
+      "linux:\n  deb_depends: libgtk-4-1\n" =>
+        /: linux: deb_depends must be a list of the packages a \.deb depends on, such as \[libgtk-4-1\]\z/,
+      "linux:\n  deb_depends: [4]\n" => /: linux: deb_depends must be a list/,
+      "linux:\n  deb_depends: [libgtk-4.so.1]\n" =>
+        /: linux: deb_depends has "libgtk-4\.so\.1", which is a library's soname and not a package: name the package that provides it, such as libgtk-4-1 for libgtk-4\.so\.1\z/,
+      "linux:\n  deb_depends: [\"libfoo1 | libfoo.so.1\"]\n" => /: linux: deb_depends has "libfoo1 \| libfoo\.so\.1", which is a library's soname/,
+      "linux:\n  deb_depends: [\"\"]\n" => /: linux: deb_depends has "", which is not a package and, if it has one, its version/,
+      "linux:\n  deb_depends: [LibGTK]\n" =>
+        /: linux: deb_depends has "LibGTK", which is not a package and, if it has one, its version: name it as Debian Policy 7\.1 does, such as "libgtk-4-1 \(>= 4\.6\)" or "libfoo1t64 \| libfoo1"\z/,
+      "linux:\n  deb_depends: [a]\n" => /: linux: deb_depends has "a"/,
+      "linux:\n  deb_depends: [\"libgtk-4-1, libadwaita-1-0\"]\n" => /: linux: deb_depends has "libgtk-4-1, libadwaita-1-0"/,
+      "linux:\n  deb_depends: [\"libgtk-4-1 (>= )\"]\n" => /: linux: deb_depends has "libgtk-4-1 \(>= \)"/,
+      "linux:\n  deb_depends: [\"libgtk-4-1 (> 4)\"]\n" => /: linux: deb_depends has "libgtk-4-1 \(> 4\)"/,
+      "linux:\n  deb_depends: [\"libgtk-4-1 |\"]\n" => /: linux: deb_depends has "libgtk-4-1 \|"/,
+      "linux:\n  deb_depends: [\"libgtk-4-1\\n\"]\n" => /: linux: deb_depends has "libgtk-4-1\\n"/,
+    }.each do |yaml, message|
+      error = assert_raises(Fledge::Error, yaml) { load(yaml) }
+      assert_match message, error.message, yaml
+      assert_includes error.message, "fledge.yml", yaml
+    end
+  end
+
   def test_refuses_a_system_library_that_is_not_a_librarys_name
     {
       "linux: [libpng16.so.16]\n" =>
-        /: linux must be a mapping of system_libraries, system_typelibs, and deb_changelog, such as linux: \{ system_libraries: \[libgtk-3\.so\.0\] \}\z/,
-      "linux:\n  libraries: [libpng16.so.16]\n" => /: linux has 'libraries', which Fledge does not know\. It knows system_libraries, system_typelibs, and deb_changelog\.\z/,
+        /: linux must be a mapping of system_libraries, system_typelibs, deb_depends, and deb_changelog, such as linux: \{ system_libraries: \[libgtk-3\.so\.0\] \}\z/,
+      "linux:\n  libraries: [libpng16.so.16]\n" => /: linux has 'libraries', which Fledge does not know\. It knows system_libraries, system_typelibs, deb_depends, and deb_changelog\.\z/,
       "linux:\n  system_libraries: libpng16.so.16\n" =>
         /: linux: system_libraries must be a list of the names compiled files give libraries, such as \[libgtk-3\.so\.0\]\z/,
       "linux:\n  system_libraries: [3]\n" => /: linux: system_libraries must be a list/,

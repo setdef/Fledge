@@ -73,6 +73,19 @@ class DebTest < Minitest::Test
     assert_equal %w[gir1.2-gtk-4.0 gir1.2-foo-bar-1.0], Fledge::Deb.typelib_packages(%w[Gtk-4.0 Foo_Bar-1.0 Gtk-4.0])
   end
 
+  # A relationship fledge.yml lists under linux: deb_depends goes into
+  # Depends as written, after what the build found, for a library that
+  # only the app's Ruby opens, which no compiled file names. One the
+  # build found already, or listed twice, is named once.
+  def test_a_listed_dependency_is_written_into_depends_after_the_others
+    need_dpkg_deb
+    Dir.mktmpdir do |dir|
+      deb = build(dir, system_typelibs: %w[Gtk-4.0], deb_depends: ["libgtk-4-1 (>= 4.6)", "libadwaita-1-0 | libadwaita-1-0t64", "gir1.2-gtk-4.0", "libgtk-4-1 (>= 4.6)"])
+
+      assert_equal "libc6 (>= 2.28), gir1.2-gtk-4.0, libgtk-4-1 (>= 4.6), libadwaita-1-0 | libadwaita-1-0t64", field(deb, "Depends")
+    end
+  end
+
   # Policy 5.6.13 and 5.6.23: the description is the synopsis, the long
   # description its extended lines, and the homepage a field of its own.
   def test_the_description_and_homepage_are_the_packages

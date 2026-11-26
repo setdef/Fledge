@@ -170,6 +170,14 @@
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*-[0-9]+\\.[0-9]+$"
           }
         },
+        "deb_depends": {
+          "description": "The packages a .deb depends on for what the app's own Ruby opens, such as a library it opens with Fiddle or ffi, which no compiled file names, each as Debian Policy 7.1 writes a relationship: a package, a version in parentheses, and alternatives after |, such as [libgtk-4-1, \"libadwaita-1-0 (>= 1.4)\"] (default: none). The .deb's Depends lists them after what the build found. An AppImage or .tar.gz ignores them.",
+          "type": ["array", "null"],
+          "items": {
+            "type": "string",
+            "pattern": "^(?![a-z0-9+.-]*\\.so(?:\\.[0-9]+)*(?![a-z0-9+.-]))[a-z0-9][a-z0-9+.-]+(?::[a-z][a-z0-9-]*)?(?: ?\\((?:<<|<=|=|>=|>>) ?[0-9][A-Za-z0-9.+:~-]*\\))?(?: ?\\| ?(?![a-z0-9+.-]*\\.so(?:\\.[0-9]+)*(?![a-z0-9+.-]))[a-z0-9][a-z0-9+.-]+(?::[a-z][a-z0-9-]*)?(?: ?\\((?:<<|<=|=|>=|>>) ?[0-9][A-Za-z0-9.+:~-]*\\))?)*$"
+          }
+        },
         "deb_changelog": {
           "description": "The app's changelog, a file in the project, such as CHANGELOG.md (default: none), which a .deb installs compressed as /usr/share/doc/PACKAGE/changelog.gz.",
           "type": ["string", "null"],

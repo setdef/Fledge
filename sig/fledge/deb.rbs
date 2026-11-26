@@ -7,7 +7,7 @@ module Fledge
     INSTALL: String
     SHLIBDEPS: String
 
-    def self.write: (identity: Identity, folder: String, platform: Platform, to: String, glibc: String, ?system_libraries: Array[String], ?system_typelibs: Array[String], ?license: String?, ?changelog: String?) -> String
+    def self.write: (identity: Identity, folder: String, platform: Platform, to: String, glibc: String, ?system_libraries: Array[String], ?system_typelibs: Array[String], ?deb_depends: Array[String], ?license: String?, ?changelog: String?) -> String
 
     def self.typelib_packages: (Array[String] typelibs) -> Array[String]
 

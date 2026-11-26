@@ -154,6 +154,15 @@ class ConfigSchemaTest < Minitest::Test
     "linux:\n  system_libraries: [.so]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0 \"]\n" => false,
     "linux:\n  system_libraries: [\"libgtk-3.so.0\\n\"]\n" => false,
+    "linux:\n  deb_depends: [libgtk-4-1, \"libadwaita-1-0 (>= 1.4)\", \"libfoo1t64 | libfoo1\"]\n" => true,
+    "linux:\n  deb_depends: []\n" => true,
+    "linux:\n  deb_depends:\n" => true,
+    "linux:\n  deb_depends: libgtk-4-1\n" => false,
+    "linux:\n  deb_depends: [libgtk-4.so.1]\n" => false,
+    "linux:\n  deb_depends: [LibGTK]\n" => false,
+    "linux:\n  deb_depends: [\"libgtk-4-1, libadwaita-1-0\"]\n" => false,
+    "linux:\n  deb_depends: [\"libgtk-4-1 (> 4)\"]\n" => false,
+    "linux:\n  deb_depends: [\"libgtk-4-1\\n\"]\n" => false,
     "linux:\n  system_typelibs: [Gtk-4.0, GdkPixbuf-2.0, cairo-1.0, HarfBuzz-0.0, freetype2-2.0]\n" => true,
     "linux:\n  system_typelibs: [Gtk-4.0, Gtk-4.0]\n" => true,
     "linux:\n  system_typelibs: []\n" => true,
@@ -352,7 +361,11 @@ class ConfigSchemaTest < Minitest::Test
     property = schema.dig("properties", "linux")
     assert_equal Fledge::Config::Linux::KEYS, property.fetch("properties").keys
     refute property.fetch("additionalProperties")
-    { "system_libraries" => Fledge::Config::Linux::SONAME, "system_typelibs" => Fledge::Config::Linux::TYPELIB }.each do |key, pattern|
+    {
+"system_libraries" => Fledge::Config::Linux::SONAME,
+"system_typelibs" => Fledge::Config::Linux::TYPELIB,
+"deb_depends" => Fledge::Config::Linux::DEB_DEPENDENCY,
+}.each do |key, pattern|
       ecma = pattern.source.sub(/\A\\A/, "^").sub(/\\z\z/, "$")
       assert_equal ecma, property.dig("properties", key, "items", "pattern"), key
     end

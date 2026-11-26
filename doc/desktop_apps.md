@@ -73,11 +73,26 @@ What each key does:
 - With **`linux: deb_changelog`**, Fledge adds your changelog to the `.deb`.
 - **`macos: build`** is the Mac app's build number, which the App Store and updaters compare. Without it, the build number is the version's first three numbers.
 
-A `.deb` depends on `libc6`, on the packages of any libraries you list under `linux: system_libraries`, and on the `gir1.2-` package of each typelib you list under `linux: system_typelibs` (see [Gems](gems.md)), so `apt` installs it on a computer without a desktop too. A library that a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there.
+A `.deb` depends on `libc6`, on the packages of any libraries you list under `linux: system_libraries`, on the `gir1.2-` package of each typelib you list under `linux: system_typelibs` (see [Gems](gems.md)), and on each relationship you list under `linux: deb_depends`, so `apt` installs it on a computer without a desktop too. A library that a gem opens while your app runs, such as the X11, Wayland, or OpenGL libraries SDL opens, comes from the desktop, and Fledge cannot check that it is there.
+
+Your own Ruby may open a library that no compiled file names, with `Fiddle.dlopen` or `ffi`, as the next section's GTK 4 does, so Fledge cannot find its package. Name each package under `linux: deb_depends`, as Debian writes a dependency: a package, a version bound in parentheses if you need one, and alternatives after `|`:
+
+<!-- SPDX-SnippetBegin -->
+<!--
+  SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+  SPDX-License-Identifier: MIT-0
+-->
+```yaml
+linux:
+  deb_depends: [libgtk-4-1, "libadwaita-1-0 (>= 1.4)"]
+```
+<!-- SPDX-SnippetEnd -->
+
+Fledge writes each entry into the `.deb`'s `Depends` as you give it, after the ones it found, and checks only its form: a package name is the distribution's, so it is the one you know. `Depends` is Debian and Ubuntu's, so use the names those two share, or give alternatives for the names that differ (`libfoo1t64 | libfoo1`). Give a package's name, not a library's file name: `libgtk-4-1`, not `libgtk-4.so.1`. An AppImage, a `.tar.gz`, and the other systems' installers ignore the key, and the app's program does not check for the library before your Ruby runs, so list under `system_libraries` any library a gem's compiled file links.
 
 ### Draw the window with GTK 4 on Linux
 
-Your Ruby can open GTK 4 and libadwaita itself with `fiddle`, which Ruby bundles, as it does under `ruby main.rb` on a Linux computer that has them, and Fledge adds nothing for it: no library, no binding, no key in `fledge.yml`. Open each library by its soname (`Fiddle.dlopen("libgtk-4.so.1")`, `Fiddle.dlopen("libadwaita-1.so.0")`), connect each signal to a `Fiddle::Closure::BlockCaller`, and keep every closure in a variable, since Ruby frees one that only GTK refers to. [`examples/basket`](../examples/basket) is a shopping list drawn this way by GNOME's Human Interface Guidelines, with a header bar, a boxed list, and a toast that offers to undo a removal: [`lib/basket/gtk.rb`](../examples/basket/lib/basket/gtk.rb) holds its calls into GTK, 125 lines, and [`lib/basket/linux.rb`](../examples/basket/lib/basket/linux.rb) its screen.
+Your Ruby can open GTK 4 and libadwaita itself with `fiddle`, which Ruby bundles, as it does under `ruby main.rb` on a Linux computer that has them, and Fledge adds nothing for it: no library, no binding. Open each library by its soname (`Fiddle.dlopen("libgtk-4.so.1")`, `Fiddle.dlopen("libadwaita-1.so.0")`), connect each signal to a `Fiddle::Closure::BlockCaller`, and keep every closure in a variable, since Ruby frees one that only GTK refers to. [`examples/basket`](../examples/basket) is a shopping list drawn this way by GNOME's Human Interface Guidelines, with a header bar, a boxed list, and a toast that offers to undo a removal: [`lib/basket/gtk.rb`](../examples/basket/lib/basket/gtk.rb) holds its calls into GTK, 125 lines, and [`lib/basket/linux.rb`](../examples/basket/lib/basket/linux.rb) its screen.
 
 Set `kind: windowed`, so that your Ruby runs on the main thread, which GTK needs. Three things differ from a program of C:
 

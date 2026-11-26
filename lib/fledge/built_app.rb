@@ -269,8 +269,9 @@ module Fledge
       end
       changelog = config.linux&.deb_changelog
       typelibs = (@system_typelibs + config.system_typelibs("linux")).uniq
-      unless @system_libraries.empty? && typelibs.empty? && changelog.nil?
-        linux = Config::Linux.new(system_libraries: @system_libraries, system_typelibs: typelibs, deb_changelog: changelog)
+      depends = config.deb_depends("linux")
+      unless @system_libraries.empty? && typelibs.empty? && depends.empty? && changelog.nil?
+        linux = Config::Linux.new(system_libraries: @system_libraries, system_typelibs: typelibs, deb_depends: depends, deb_changelog: changelog)
       end
       app.with(gemfile: @gemfile, config: config.with(linux:))
     end

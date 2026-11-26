@@ -65,7 +65,9 @@ module Fledge
     # +system_libraries+ are the libraries the
     # app's gems load from the distribution (Config::Linux), whose
     # packages the <tt>.deb</tt> depends on, and +system_typelibs+ the
-    # typelibs they load, whose packages it depends on too (#typelib_packages).
+    # typelibs they load, whose packages it depends on too (#typelib_packages),
+    # and +deb_depends+ the relationships Config::Linux lists for what
+    # the app's own Ruby opens, which it depends on as written, once each.
     # +license+ is the app's license
     # text, and +changelog+ the path of its changelog, or +nil+ for none
     # (#documents). Raises Fledge::Error when
@@ -83,7 +85,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.write(identity:, folder:, platform:, to:, glibc:, system_libraries: [], system_typelibs: [], license: nil, changelog: nil)
+    def self.write(identity:, folder:, platform:, to:, glibc:, system_libraries: [], system_typelibs: [], deb_depends: [], license: nil, changelog: nil)
       package = package_name(identity)
       Dir.mktmpdir("fledge-deb") do |work|
         root = File.join(work, "root")
@@ -92,7 +94,7 @@ module Fledge
         control = File.join(root, "DEBIAN")
         FileUtils.mkdir_p(control, mode: 0o755)
         libraries = dependencies(work, root, platform.cpu, system_libraries)
-        depends = ["libc6 (>= #{glibc})", *libraries, *typelib_packages(system_typelibs)]
+        depends = ["libc6 (>= #{glibc})", *libraries, *typelib_packages(system_typelibs), *deb_depends].uniq
         File.write(File.join(control, "control"), control_file(identity, package, ARCHITECTURES.fetch(platform.name), installed_size(root), depends))
         Command.run("dpkg-deb", "--build", "--root-owner-group", root, to, install: INSTALL)
       end

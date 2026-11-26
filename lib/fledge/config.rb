@@ -374,6 +374,30 @@ module Fledge
       linux&.system_typelibs || []
     end
 
+    # The relationships a <tt>.deb</tt> for +os+ (Fledge::Platform#os)
+    # adds to its +Depends+ for what the app's own Ruby opens: on
+    # +linux+, those its +linux+ mapping lists (Config::Linux), and none
+    # elsewhere.
+    #
+    # === Example
+    #
+    #--
+    # SPDX-SnippetBegin
+    # SPDX-SnippetCopyrightText: 2026 setdef <kerrick@setdef.com>
+    # SPDX-License-Identifier: MIT-0
+    #++
+    #   # fledge.yml: linux: { deb_depends: [libgtk-4-1, libadwaita-1-0] }
+    #   config.deb_depends("linux")  # => ["libgtk-4-1", "libadwaita-1-0"]
+    #   config.deb_depends("darwin") # => []
+    #--
+    # SPDX-SnippetEnd
+    #++
+    def deb_depends(os)
+      return [] unless os == "linux"
+
+      linux&.deb_depends || []
+    end
+
     # The libraries from this computer that the project's app carries on
     # +os+ (Fledge::Platform#os): on +darwin+, those its +macos+ mapping
     # lists (Config::Macos), and none elsewhere.

@@ -53,6 +53,8 @@ module Fledge
 
     def system_typelibs: (String os) -> Array[String]
 
+    def deb_depends: (String os) -> Array[String]
+
     def carried_libraries: (String os) -> Array[String]
 
     private def self.programs: (Hash[Object, Object] data, String path) -> Array[Config::Program]?

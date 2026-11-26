@@ -215,6 +215,11 @@ module Probe
     attempt("XamlReader.Load of a Button") { reader.out_object(6, [W::POINTER], Win.hstring("<Button #{NS} Content=\"x\"/>"), what: "XamlReader.Load") }
     attempt("XamlReader.Load of an empty ResourceDictionary") { reader.out_object(6, [W::POINTER], Win.hstring("<ResourceDictionary #{NS}/>"), what: "XamlReader.Load") }
     attempt("XamlReader.Load of a Button with a ThemeResource") { reader.out_object(6, [W::POINTER], Win.hstring("<Button #{NS} Background=\"{ThemeResource SystemAccentColor}\"/>"), what: "XamlReader.Load") }
+    # StaticResource is looked up while the markup loads, so these show
+    # which keys exist before XamlControlsResources is merged.
+    %w[AcrylicBackgroundFillColorDefaultBrush SystemAccentColor ApplicationPageBackgroundThemeBrush AccentButtonStyle].each do |key|
+      attempt("XamlReader.Load of a Border with StaticResource #{key}") { reader.out_object(6, [W::POINTER], Win.hstring("<Border #{NS} Tag=\"{StaticResource #{key}}\"/>"), what: "XamlReader.Load") }
+    end
     package_graph("after the activations")
     modules("after the activations")
   end

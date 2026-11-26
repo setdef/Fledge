@@ -50,8 +50,15 @@ elsif RUBY_PLATFORM.include?("linux")
   require_relative "lib/basket/linux"
   exit Basket::Linux.run(list)
 elsif Gem.win_platform?
-  require_relative "lib/basket/windows"
-  Basket::Windows.run(list)
+  # WinUI's screen where Windows has the Windows App Runtime, and Win32's
+  # common controls, which every Windows has, where it has not.
+  require_relative "lib/basket/winui"
+  if Basket::WinUI.available?
+    Basket::WinUI.run(list)
+  else
+    require_relative "lib/basket/windows"
+    Basket::Windows.run(list)
+  end
 else
   abort "Basket is for macOS, iOS, Android, Linux, and Windows: build it with fledge build, fledge build ios, or fledge build android."
 end

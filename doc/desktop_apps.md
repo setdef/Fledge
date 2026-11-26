@@ -113,6 +113,15 @@ Set `kind: windowed`, so that Windows gives your app no console. A program of C 
 
 A windowed app's standard output reaches no console, so a program that logs redirects it, as CI's check of Basket does with `Start-Process -RedirectStandardOutput`. A message loop runs on the main thread, where the launcher runs your Ruby.
 
+### Draw the window with WinUI 3 on Windows
+
+Where the computer has the Windows App Runtime, your Ruby can draw WinUI 3's controls, Microsoft's current ones for a Windows app, with `fiddle` alone, and Fledge adds nothing for it. WinUI is a WinRT API: your Ruby gets a class from `combase.dll`, calls an object's methods by their place in its interface's table of functions, which the `.winmd` files of Microsoft's Windows App SDK list in order, and passes WinUI events made of `Fiddle::Closure`s. [`examples/basket`](../examples/basket) does so when it can: [`lib/basket/winrt.rb`](../examples/basket/lib/basket/winrt.rb) holds its calls, and [`lib/basket/winui.rb`](../examples/basket/lib/basket/winui.rb) its screen, a text box, an Add button, a list, and a Remove button in Fluent's styles, with its controls written as the XAML markup a WinUI app has. Basket carries none of Microsoft's files, so a computer without the Windows App Runtime gets the Win32 screen above, and no message.
+
+- Ask Windows to add the framework package to your process, as the Windows App SDK's bootstrapper does for an app that is not packaged: `TryCreatePackageDependency` and `AddPackageDependency` in `kernelbase.dll`, for the package family `Microsoft.WindowsAppRuntime.2_8wekyb3d8bbwe`. They fail on a computer that has not registered that package. A packaged app has the framework in its package graph already.
+- WinUI takes the main thread: `Application.Start` runs its message loop there and calls your Ruby back on it, as the launcher runs your Ruby under `ruby main.rb`. A WinRT call that finishes on another thread would end the process.
+- Your `Application` has to answer `IXamlMetadataProvider` by handing each call to a `XamlControlsXamlMetaDataProvider`, and merge `XamlControlsResources` into its resources, as the generated code of a WinUI app does. Without the first, a `TextBox`, a `PasswordBox`, or a `RichEditBox` ends the process with a stowed exception.
+- Call `SetProcessDpiAwarenessContext(-4)` before the first window, as for Win32.
+
 ## Open files and folders with your app
 
 A windowed app can list the files and folders it opens, so that each system offers the app for them:

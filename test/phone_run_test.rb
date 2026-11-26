@@ -170,10 +170,17 @@ class PhoneRunTest < Minitest::Test
     assert_equal ["Basket exited with status 0", "1 failure"], ended.lines.map(&:text)
   end
 
+  # The stand-in adb is a .cmd file on Windows, which cmd.exe runs, and
+  # a shell script elsewhere, as test/support/stand_in_signer.rb does.
   def test_android_asks_logcat_for_the_apps_tag_and_the_hosts
     Dir.mktmpdir do |dir|
-      adb = File.join(dir, "adb")
-      File.write(adb, "#!/bin/sh\necho \"$@\" > \"#{dir}/asked\"\n")
+      asked = File.join(dir, "asked")
+      adb = File.join(dir, Gem.win_platform? ? "adb.cmd" : "adb")
+      if Gem.win_platform?
+        File.binwrite(adb, "@echo off\r\necho %*>\"#{asked}\"\r\n")
+      else
+        File.write(adb, "#!/bin/sh\necho \"$@\" > \"#{asked}\"\n")
+      end
       File.chmod(0o755, adb)
       Fledge::PhoneRun::Android.new(name: "Basket", identifier: "com.example.Basket", adb:).logged
 

@@ -209,10 +209,11 @@ class BuildCopTest < Minitest::Test
     assert_includes step.reason, "run 3"
   end
 
-  # A run that finished green has nothing to run again: GitHub refuses
-  # to run the failed jobs of a run that has none.
-  def test_a_middle_commits_green_run_without_the_job_is_left_for_a_person
-    untold = ci_run("c", 3, "success", branch: "bisect/c", jobs: [job("Gate", "success")])
+  # A run that finished successfully, with the job skipped, has nothing
+  # to run again: GitHub refuses to run the failed jobs of a run that
+  # has none.
+  def test_a_middle_commits_successful_run_that_skipped_the_job_is_left_for_a_person
+    untold = ci_run("c", 3, "success", branch: "bisect/c", jobs: [job("Gate", "success"), job(FAILED, "skipped")])
     step = cop(ci_run("a", 1, "success"), ci_run("f", 2, "failure"), untold)
 
     assert_equal :stuck, step.action
@@ -239,10 +240,31 @@ class BuildCopTest < Minitest::Test
     assert_includes step.reason, "no job that failed"
   end
 
-  def test_nothing_to_do_without_a_green_run_on_trunk
-    step = cop(ci_run("f", 2, "failure"), ci_run("a", 1, "success", branch: "bisect/a"))
+  def test_nothing_to_do_without_a_green_run
+    step = cop(ci_run("f", 2, "failure"), ci_run("a", 1, "failure", branch: "bisect/a"))
 
     assert_equal :none, step.action
+    assert_includes step.reason, "has a green run"
+  end
+
+  # A pin move that landed as proven has no run on trunk, since a push
+  # made with a workflow's token starts none, and its proof is a
+  # dispatched run on pin-move: the same commit, files, and ci.yml.
+  def test_a_commits_green_run_on_another_branch_is_the_green_one
+    step = cop(ci_run("a", 1, "success", branch: "pin-move", event: "workflow_dispatch"), ci_run("f", 2, "failure"))
+
+    assert_equal :bisect, step.action
+    assert_equal commit("c"), step.commit
+    assert_includes step.reason, "4 commits between"
+  end
+
+  # A run on another branch judged the commit, but trunk's red is the
+  # run on trunk the cop bisects.
+  def test_a_red_run_on_another_branch_does_not_make_a_commit_red
+    step = cop(ci_run("a", 1, "success"), ci_run("c", 3, "failure", branch: "bisect/c"))
+
+    assert_equal :none, step.action
+    assert_includes step.reason, "is red"
   end
 
   # Pull requests' runs check out a merge, not the commit, and count for

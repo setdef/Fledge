@@ -78,8 +78,8 @@ class BuildCop
   end
 
   private def step(commits)
-    good = commits.index { |commit| trunk_runs(commit).any? { |run| green?(run) } }
-    return Step.of(:none, "no commit of the last #{DAYS} days has a green run on #{TRUNK}") unless good
+    good = commits.index { |commit| finished_runs(commit).any? { |run| green?(run) } }
+    return Step.of(:none, "no commit of the last #{DAYS} days has a green run") unless good
 
     batch = commits.first(good).reverse
     bad = batch.find { |commit| trunk_runs(commit).any? { |run| run["conclusion"] == "failure" } }
@@ -185,8 +185,21 @@ class BuildCop
     all.any? && all.all? { |job| job["conclusion"] == "success" }
   end
 
+  # The runs of +commit+ on any branch that have finished, newest
+  # first. A run on another branch checks out the same commit, with its
+  # files and its ci.yml, so one that passed makes the commit green: a
+  # pin move that landed as proven has only the dispatched run of its
+  # proof, since a push made with a workflow's token starts no run on
+  # trunk (releases.md, "Which runs are a commit's").
+  private def finished_runs(commit)
+    @runs.fetch(commit, []).select { |run| run.fetch("status") == "completed" }.sort_by { |run| -run.fetch("id") }
+  end
+
+  # The finished runs of +commit+ on trunk. Only these make a commit red:
+  # trunk's red is what the cop bisects, and a run on another branch
+  # says nothing of the batch that run on trunk covered.
   private def trunk_runs(commit)
-    @runs.fetch(commit, []).select { |run| run.fetch("head_branch") == TRUNK && run.fetch("status") == "completed" }.sort_by { |run| -run.fetch("id") }
+    finished_runs(commit).select { |run| run.fetch("head_branch") == TRUNK }
   end
 
   private def jobs(run)

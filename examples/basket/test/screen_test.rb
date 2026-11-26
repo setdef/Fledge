@@ -31,7 +31,13 @@ module ScreenTesting
   end
 end
 
-if $LOAD_PATH.resolve_feature_path("fledge/objc")
+# Whether this Ruby runs on an iPhone or iPad, as main.rb asks.
+ON_IOS = RUBY_PLATFORM.include?("darwin") && begin
+  require_relative "../lib/basket/objc"
+  Basket::ObjC.load_framework("UIKit")
+end
+
+if ON_IOS
   require_relative "../lib/basket/ios"
 
   # The tests of Basket::IOS::Screen, with UIKit's own views.
@@ -57,7 +63,7 @@ if $LOAD_PATH.resolve_feature_path("fledge/objc")
       assert_equal "", screen.field.text.to_s
     end
   end
-elsif $LOAD_PATH.resolve_feature_path("fledge/jni")
+elsif RUBY_PLATFORM.include?("android")
   require_relative "../lib/basket/android"
 
   # The tests of Basket::Android::Screen, with Android's own views.

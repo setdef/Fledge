@@ -5,17 +5,19 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-require "fledge/objc"
+require_relative "objc"
 
 module Basket
   # Basket's screen on iOS and iPadOS, drawn by UIKit: a table under a
   # navigation bar with a large title, and a text field with an Add
   # button above it. Swiping a row left deletes it, as in Apple's own
   # lists. Each object is UIKit's own, made and sent its messages as
-  # Apple documents them, through Fledge::ObjC.
+  # Apple documents them, through Basket::ObjC, which is Fiddle, a library Ruby
+  # bundles, and nothing else.
   module IOS
-    # The runtime's bridge to the Objective-C runtime.
-    ObjC = Fledge::ObjC
+    # UIKit, loaded into the process, which an Objective-C program's
+    # code would have linked.
+    ObjC.load_framework("UIKit") || raise(LoadError, "Basket::IOS needs UIKit, which this system does not have")
 
     # UIKit's constants this screen passes, from UIKit's headers.
     # UITextBorderStyleRoundedRect
@@ -62,7 +64,9 @@ module Basket
       # The Screen whose controls these are.
       attr_accessor :screen
 
-      objc_method("add:") { |_sender| screen.add }
+      # No protocol lists +add:+, so its type encoding is given: no
+      # result, then the receiver, the selector, and the sender.
+      objc_method("add:", "v24@0:8@16") { |_sender| screen.add }
     end
 
     # The screen's views, and what adding an item does to them.
@@ -153,7 +157,7 @@ module Basket
 end
 
 # The application's delegate, which UIApplicationMain makes.
-class AppDelegate < Fledge::ObjC::UIResponder
+class AppDelegate < Basket::ObjC::UIResponder
   objc_protocols "UIApplicationDelegate"
 
   objc_method("application:didFinishLaunchingWithOptions:") { |_application, _options| true }
@@ -161,7 +165,7 @@ end
 
 # The scene's delegate, which Info.plist names, and which puts Basket's
 # screen in the scene's window.
-class SceneDelegate < Fledge::ObjC::UIResponder
+class SceneDelegate < Basket::ObjC::UIResponder
   objc_protocols "UIWindowSceneDelegate"
 
   class << self
@@ -171,7 +175,7 @@ class SceneDelegate < Fledge::ObjC::UIResponder
 
   objc_method("scene:willConnectToSession:options:") do |scene, _session, _options|
     screen = Basket::IOS::Screen.new(SceneDelegate.list)
-    @window = Fledge::ObjC::UIWindow.alloc.initWithWindowScene(scene)
+    @window = Basket::ObjC::UIWindow.alloc.initWithWindowScene(scene)
     @window.rootViewController = screen.controller
     @window.makeKeyAndVisible
     @screen = screen

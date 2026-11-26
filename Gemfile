@@ -29,12 +29,13 @@ gem "rdoc", "~> 8.1"
 # (doc/contributors/design/public-interface.md). Development only: nothing Fledge ships loads it.
 gem "json_schemer", "~> 2.5", group: :development
 
-# Lets test/basket_bridge_test.rb load Basket's bridge to the
-# Objective-C runtime, which needs fiddle, a gem Ruby bundles and Bundler
-# hides until a Gemfile names it. Development only, and only on a Mac,
-# the one system with that runtime, so that no other computer compiles
-# fiddle against a libffi of its own: Fledge itself never loads it.
-install_if -> { RUBY_PLATFORM.include?("darwin") } do
+# Lets test/basket_bridge_test.rb and test/basket_windows_test.rb load
+# Basket's bridges to the Objective-C runtime and to Win32, which need
+# fiddle, a gem Ruby bundles and Bundler hides until a Gemfile names it.
+# Development only, and only on a Mac and on Windows, the two systems
+# with those libraries, so that no other computer compiles fiddle against
+# a libffi of its own: Fledge itself never loads it.
+install_if -> { RUBY_PLATFORM.include?("darwin") || Gem.win_platform? } do
   gem "fiddle", "~> 1.1", group: :development
 end
 

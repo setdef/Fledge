@@ -5,16 +5,19 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# Basket, a shopping list for iOS, iPadOS, Android, and Linux: type an
-# item, add it, and remove it once it is in the cart. Each draws it with
-# its own widgets, UIKit's on iOS, Android's views on Android, and GTK 4
-# with libadwaita on Linux, which this Ruby makes and drives: on iOS
-# through lib/basket/objc.rb, Basket's few lines over Fiddle, which Ruby
-# bundles, on Android through lib/basket/android/, Basket's calls into
-# Java over Fiddle, zlib, and digest, which Ruby bundles too, and on
-# Linux through lib/basket/gtk.rb, Basket's calls into GTK's C API over
-# Fiddle. fledge.yml says kind: windowed, so the app's Ruby runs on the
-# thread those widgets belong to.
+# Basket, a shopping list for iOS, iPadOS, Android, Linux, and Windows:
+# type an item, add it, and remove it once it is in the cart. Each draws
+# it with that system's widgets, UIKit's on iOS, Android's views on
+# Android, GTK 4 with libadwaita on Linux, and Win32's common controls on
+# Windows, which this Ruby makes and drives: on iOS through
+# lib/basket/objc.rb, Basket's few lines over Fiddle, which Ruby bundles,
+# on Android through lib/basket/android/, Basket's calls into Java over
+# Fiddle, zlib, and digest, which Ruby bundles too, on Linux through
+# lib/basket/gtk.rb, Basket's calls into GTK's C API over Fiddle, and on
+# Windows through lib/basket/win32.rb, Basket's calls into user32 and
+# comctl32 over Fiddle. fledge.yml says kind: windowed, so the app's Ruby
+# runs on the thread those widgets belong to, and on Windows runs without
+# a console.
 
 require_relative "lib/basket/list"
 
@@ -39,6 +42,9 @@ elsif RUBY_PLATFORM.include?("android")
 elsif RUBY_PLATFORM.include?("linux")
   require_relative "lib/basket/linux"
   exit Basket::Linux.run(list)
+elsif Gem.win_platform?
+  require_relative "lib/basket/windows"
+  Basket::Windows.run(list)
 else
-  abort "Basket is for iOS, Android, and Linux: build it with fledge build ios, fledge build android, or fledge build on Linux."
+  abort "Basket is for iOS, Android, Linux, and Windows: build it with fledge build ios, fledge build android, or fledge build on Linux or Windows."
 end

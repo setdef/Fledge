@@ -463,7 +463,7 @@ class MobileParityTest < Minitest::Test
     Dir.mktmpdir do |dir|
       log = File.join(dir, "gradle.log")
       runs = 0
-      built = MobileParity::Android.gradle_with_a_second_try(log) do
+      built = MobileParity::Android.gradle_with_a_second_try(log, step: "Gradle build of Test App", out: StringIO.new) do
         runs += 1
         File.write(log, (runs == 1) ? "Resource missing. [HTTP GET: https://repo.maven.apache.org/maven2/a.pom]\nBUILD FAILED in 9s\n" : "BUILD SUCCESSFUL in 9s\n", mode: "a")
         runs == 2
@@ -475,11 +475,46 @@ class MobileParityTest < Minitest::Test
     end
   end
 
+  # A second try that passes leaves nothing else in a job's log (issue
+  # 27), so the line says which step, and why, before the try runs.
+  def test_the_second_try_is_announced_before_it_runs_with_the_step_and_what_the_first_try_failed_with
+    Dir.mktmpdir do |dir|
+      log = File.join(dir, "gradle.log")
+      out = StringIO.new
+      runs = 0
+      announced = nil
+      MobileParity::Android.gradle_with_a_second_try(log, step: "Gradle build of Test App", out:) do
+        runs += 1
+        announced = out.string.dup if runs == 2
+        File.write(log, (runs == 1) ? "info\nResource missing. [HTTP GET: https://repo.maven.apache.org/maven2/a.pom]\nBUILD FAILED\n" : "BUILD SUCCESSFUL\n", mode: "a")
+        runs == 2
+      end
+
+      assert_equal "Gradle build of Test App: the first try failed with a 404 (Resource missing. [HTTP GET: https://repo.maven.apache.org/maven2/a.pom]); running it once more\n",
+        announced
+      assert_equal announced, out.string, "one line, and no other"
+    end
+  end
+
+  def test_a_build_that_passes_the_first_time_or_is_not_run_again_prints_no_such_line
+    Dir.mktmpdir do |dir|
+      log = File.join(dir, "gradle.log")
+      out = StringIO.new
+      MobileParity::Android.gradle_with_a_second_try(log, step: "Gradle build of Test App", out:) { true }
+      MobileParity::Android.gradle_with_a_second_try(log, step: "Gradle build of Test App", out:) do
+        File.write(log, "Failed to get resource: GET. [HTTP 429: x]\n")
+        false
+      end
+
+      assert_empty out.string
+    end
+  end
+
   def test_a_gradle_build_that_failed_for_another_reason_or_twice_is_not_run_again
     Dir.mktmpdir do |dir|
       log = File.join(dir, "gradle.log")
       runs = 0
-      refute(MobileParity::Android.gradle_with_a_second_try(log) do
+      refute(MobileParity::Android.gradle_with_a_second_try(log, step: "Gradle build of Test App", out: StringIO.new) do
         runs += 1
         File.write(log, "Failed to get resource: GET. [HTTP 429: x]\nBUILD FAILED\n")
         false
@@ -488,7 +523,7 @@ class MobileParityTest < Minitest::Test
 
       File.write(log, "")
       runs = 0
-      refute(MobileParity::Android.gradle_with_a_second_try(log) do
+      refute(MobileParity::Android.gradle_with_a_second_try(log, step: "Gradle build of Test App", out: StringIO.new) do
         runs += 1
         File.write(log, "Resource missing. [HTTP GET: x]\n", mode: "a")
         false
@@ -497,7 +532,7 @@ class MobileParityTest < Minitest::Test
 
       File.write(log, "")
       runs = 0
-      assert(MobileParity::Android.gradle_with_a_second_try(log) { runs += 1 })
+      assert(MobileParity::Android.gradle_with_a_second_try(log, step: "Gradle build of Test App", out: StringIO.new) { runs += 1 })
       assert_equal 1, runs
     end
   end

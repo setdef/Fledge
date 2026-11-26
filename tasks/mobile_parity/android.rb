@@ -84,7 +84,7 @@ class MobileParity
     def self.gradle(project, *tasks, log:, out: $stdout)
       FileUtils.mkdir_p(File.dirname(log))
       gradlew = File.join(project, Gem.win_platform? ? "gradlew.bat" : "gradlew")
-      succeeded = gradle_with_a_second_try(log) do
+      succeeded = gradle_with_a_second_try(log, step: "Gradle #{tasks.join(' ')} of #{File.basename(project)}", out:) do
         system(gradlew, "--no-daemon", "--info", "--project-dir", project, *tasks, out: [log, "a"], err: %i[child out])
       end
       out.puts gradle_failure(File.read(log)) unless succeeded
@@ -100,10 +100,18 @@ class MobileParity
     # same Gradle home with what the first fetched, asks again and passes
     # (doc/contributors/design/phone-projects.md, "Gradle's downloads in
     # CI"). Any other failure is final, and so is a second 404.
-    def self.gradle_with_a_second_try(log)
+    #
+    # A second try that passes leaves nothing else in a job's log, since
+    # the --info output goes to +log+, so one line goes to +out+ before
+    # the second try runs: the +step+, the status the first try failed
+    # with, and the line of the answer.
+    def self.gradle_with_a_second_try(log, step:, out: $stdout)
       return true if yield
-      return false unless File.read(log).match?(/^Resource missing\. /)
 
+      answer = File.read(log).lines(chomp: true).find { |line| line.start_with?("Resource missing. ") }
+      return false unless answer
+
+      out.puts "#{step}: the first try failed with a 404 (#{answer}); running it once more"
       yield
     end
 

@@ -400,7 +400,7 @@ class RuntimeBuilder
       log = File.join(out, "gradle.log")
       FileUtils.mkdir_p(out)
       File.write(log, "")
-      packed = MobileParity::Android.gradle_with_a_second_try(log) do
+      packed = MobileParity::Android.gradle_with_a_second_try(log, step: "Gradle assembleRelease of the AAR project") do
         @builder.run(gradle, "--no-daemon", "--info", "--project-dir", File.join(MOBILE, "android"), "--project-cache-dir",
           File.join(out, "cache"), "assembleRelease", "-Pfledge.jniLibs=#{jni}", "-Pfledge.buildDir=#{File.join(out, 'build')}",
           "-Pfledge.agp=#{pin('agp')}", out: [log, "a"], err: %i[child out])

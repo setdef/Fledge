@@ -45,20 +45,29 @@ module ReleaseExamples
   # The folders under examples/ built for each desktop platform, then
   # delivered, by ci.yml's Build and Delivery jobs, each in the folder
   # +dist+ of its job.
-  DESKTOP = %w[hello file_drop markdown_to_html lectern basket].freeze
+  DESKTOP = %w[hello file_drop markdown_to_html lectern basket libui_app lota_pop].freeze
 
-  # The desktop examples a platform does not build: Basket's Ruby
-  # draws its window with GTK 4 and libadwaita on Linux, which musl
-  # Linux's job does not build it for (ci.yml's Build (musl) job).
-  NOT_ON_MUSL = %w[basket].freeze
+  # The platforms no Build job builds an example for, by folder.
+  # Basket's Ruby draws its window with GTK 4 and libadwaita on Linux,
+  # which musl Linux's job does not build it for (ci.yml's Build (musl)
+  # job). Lota publishes no gem for musl Linux, and LibUI none for musl
+  # Linux or Windows on ARM64, so neither app runs there, under
+  # <tt>bundle exec</tt> or built.
+  NOT_BUILT_ON = {
+    "basket" => %w[x86_64-linux-musl aarch64-linux-musl],
+    "libui_app" => %w[x86_64-linux-musl aarch64-linux-musl aarch64-mingw-ucrt],
+    "lota_pop" => %w[x86_64-linux-musl aarch64-linux-musl],
+  }.freeze
 
-  # The folders under examples/ that no release carries, each with why.
-  # An example is added to DESKTOP, or here with its reason, before a
-  # test lets it be added to examples/ (test/release_examples_test.rb).
+  # The platforms an example is built for and no release carries, by
+  # folder, each with why. An example is added to DESKTOP, or here with
+  # every platform it is built for, before a test lets it be added to
+  # examples/ (test/release_examples_test.rb).
   LEFT_OUT = {
-    "libui_app" => "ci.yml builds Focus Timer but uploads and delivers only the LibUI probe, whose app is the same gem; " \
-      "on x64 Windows its app carries Microsoft's Visual C++ runtime, which setdef may not publish",
-    "lota_pop" => "ci.yml builds Pop on each desktop but uploads nothing of it, no job runs it, and no phone job builds it",
+    "libui_app" => {
+      "x64-mingw-ucrt" => "Focus Timer's app there carries Microsoft's Visual C++ runtime (fledge.yml's windows: visual_c_runtime: local), " \
+        "which nothing setdef publishes may carry (decisions, 2026-11-21), so ci.yml builds it outside dist and uploads none of it",
+    },
   }.freeze
 
   # The files of the desktop examples on +platform+, each as the pair of
@@ -67,7 +76,8 @@ module ReleaseExamples
   # <tt>fledge.yml</tt> lists for the platform (Fledge::Installers).
   def self.desktop(platform, version: Fledge::VERSION, root: ROOT)
     platform = Fledge::Platform.find(platform)
-    DESKTOP.reject { |folder| platform.musl? && NOT_ON_MUSL.include?(folder) }.flat_map do |folder|
+    carried = DESKTOP.reject { |folder| NOT_BUILT_ON.fetch(folder, []).include?(platform.name) || LEFT_OUT.fetch(folder, {}).key?(platform.name) }
+    carried.flat_map do |folder|
       app = Fledge::App.at(File.join(root, "examples", folder))
       base = "#{app.name}-#{platform.name}"
       [base + platform.archive_extension, *Fledge::Installers.formats(app, platform).map { |format| Fledge::Installers.file_name(format, base) }].map do |file|

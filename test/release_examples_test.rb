@@ -15,15 +15,36 @@ require "tmpdir"
 class ReleaseExamplesTest < Minitest::Test
   VERSION = "1.2.3"
 
-  # Every folder under examples/ is carried, or is left out with a reason,
-  # so that an example added later is not missing from a release unnoticed.
-  def test_every_example_is_carried_or_left_out_with_a_reason
+  # Every folder under examples/ is carried, so that an example added
+  # later is not missing from a release unnoticed; a platform it is built
+  # for and not carried is left out with a reason.
+  def test_every_example_is_carried_and_a_platform_left_out_has_a_reason
     folders = Dir.children(File.join(ReleaseExamples::ROOT, "examples")).select { |name| File.directory?(File.join(ReleaseExamples::ROOT, "examples", name)) }
 
-    assert_empty folders - ReleaseExamples::DESKTOP - ReleaseExamples::LEFT_OUT.keys, "examples/ folders no release carries, and no LEFT_OUT entry says why"
-    assert_empty ReleaseExamples::DESKTOP & ReleaseExamples::LEFT_OUT.keys
-    assert_empty (ReleaseExamples::DESKTOP + ReleaseExamples::LEFT_OUT.keys) - folders, "listed, but not under examples/"
-    assert(ReleaseExamples::LEFT_OUT.values.all? { |reason| reason.length > 20 })
+    assert_empty folders - ReleaseExamples::DESKTOP, "examples/ folders no release carries"
+    assert_empty ReleaseExamples::DESKTOP - folders, "listed, but not under examples/"
+    assert_empty ReleaseExamples::LEFT_OUT.keys - ReleaseExamples::DESKTOP
+    ReleaseExamples::LEFT_OUT.each_value do |platforms|
+      assert_empty platforms.keys - Fledge::Platform.names, "left out of a platform that does not exist"
+      assert(platforms.values.all? { |reason| reason.length > 20 })
+    end
+    assert_empty ReleaseExamples::NOT_BUILT_ON.keys - ReleaseExamples::DESKTOP
+    ReleaseExamples::NOT_BUILT_ON.each do |folder, platforms|
+      assert_empty platforms - Fledge::Platform.names, "#{folder} is not built on a platform that does not exist"
+      assert_empty platforms & ReleaseExamples::LEFT_OUT.fetch(folder, {}).keys, "#{folder} is left out of a platform it is not built for"
+    end
+  end
+
+  def test_focus_timer_and_pop_are_carried_where_ci_builds_them_and_focus_timer_not_on_x64_windows
+    names = -> (platform, app) { ReleaseExamples.desktop(platform, version: VERSION).map(&:first).grep(/\A#{app}-/) }
+
+    assert_equal ["Focus Timer-arm64-darwin.tar.gz", "Focus Timer-arm64-darwin.dmg"], names.("arm64-darwin", "Focus Timer")
+    assert_equal ["Focus Timer-x86_64-linux.tar.gz", "Focus Timer-x86_64-linux.AppImage"], names.("x86_64-linux", "Focus Timer")
+    assert_equal %w[Pop-arm64-darwin.tar.gz Pop-arm64-darwin.dmg], names.("arm64-darwin", "Pop")
+    assert_equal %w[Pop-x64-mingw-ucrt.zip Pop-x64-mingw-ucrt-setup.exe], names.("x64-mingw-ucrt", "Pop")
+    assert_equal %w[Pop-aarch64-mingw-ucrt.zip Pop-aarch64-mingw-ucrt-setup.exe], names.("aarch64-mingw-ucrt", "Pop")
+    %w[x64-mingw-ucrt aarch64-mingw-ucrt x86_64-linux-musl aarch64-linux-musl].each { |platform| assert_empty names.(platform, "Focus Timer"), platform }
+    %w[x86_64-linux-musl aarch64-linux-musl].each { |platform| assert_empty names.(platform, "Pop"), platform }
   end
 
   def test_a_desktop_example_is_its_archive_and_each_installer_its_fledge_yml_lists

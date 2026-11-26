@@ -198,7 +198,7 @@ To make an app look and behave as other apps for its system do, draw its windows
 | iOS and iPadOS | UIKit |
 | Android | Android's views |
 
-[`basket`](examples/basket) is a shopping list that does this on all five (its [README](examples/basket/README.md) says how to build it and, on Windows, which screen you see), with each system's screen in a separate file: a window with a table and a menu bar on a Mac, a header bar and a boxed list with an Undo toast on Linux, a text box and a list in Fluent's styles on Windows, a table under a large title on iPhone and iPad, and a list under the app bar on Android. The Ruby that calls each system's libraries is Basket's, in files you can copy and change. [Desktop apps](doc/desktop_apps.md#draw-the-window-with-each-systems-widgets) and [iPhone, iPad, and Android](doc/phones.md#your-apps-screen) say how each one works.
+[`basket`](examples/basket) is a shopping list that does this on all five, with each system's screen in a separate file: a window with a table and a menu bar on a Mac, a header bar and a boxed list with an Undo toast on Linux, a text box and a list in Fluent's styles on Windows, a table under a large title on iPhone and iPad, and a list under the app bar on Android. The Ruby that calls each system's libraries is Basket's, in files you can copy and change. [Desktop apps](doc/desktop_apps.md#draw-the-window-with-each-systems-widgets) and [iPhone, iPad, and Android](doc/phones.md#your-apps-screen) say how each one works.
 
 ### Sign
 

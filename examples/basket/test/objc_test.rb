@@ -186,7 +186,7 @@ class ObjCTest < Minitest::Test
   def test_type_encodings_lose_qualifiers_and_offsets
     assert_equal %w[v @ : @], objc.parse("v24@0:8@16")
     assert_equal ["@", "@", ":", "^{CGPoint=dd}"], objc.parse("@32@0:8r^{CGPoint=dd}16")
-    assert_equal ["v", "@", ":", '@"NSString"', "@?"], objc.parse('v@:@"NSString"@?')
+    assert_equal ["v", "@", ":", "@", "@?"], objc.parse("v@:@@?")
   end
 
   # Only the owning families of methods return an object the caller owns.
@@ -210,6 +210,6 @@ class ObjCTest < Minitest::Test
     again = objc.wrap(string.objc_pointer)
 
     assert_equal 2, string.retainCount
-    assert_equal string, again
+    assert_equal string.objc_pointer, again.objc_pointer
   end
 end

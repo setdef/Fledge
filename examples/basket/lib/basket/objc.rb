@@ -72,8 +72,6 @@ module Basket
       GET_PROTOCOL = function("objc_getProtocol", [P], P)
       # The selector of a name.
       REGISTER_NAME = function("sel_registerName", [P], P)
-      # A selector's name.
-      SELECTOR_NAME = function("sel_getName", [P], P)
       # An object's class.
       OBJECT_CLASS = function("object_getClass", [P], P)
       # A class's name.
@@ -411,14 +409,12 @@ module Basket
         when "^" then skip(encoding, index + 1)
         when "@" then skip_object(encoding, index)
         when "{", "(", "[" then balanced(encoding, index)
-        when "b" then (index + 1).step.find { |at| !encoding[at]&.match?(/\d/) }
         else index + 1
         end
       end
 
       private def skip_object(encoding, index)
         case encoding[index + 1]
-        when '"' then encoding.index('"', index + 2) + 1
         when "?" then (encoding[index + 2] == "<") ? balanced(encoding, index + 2) : index + 2
         else index + 1
         end
@@ -437,8 +433,7 @@ module Basket
     end
 
     # An Objective-C object, or class, as Ruby sees it: each message is a
-    # method call (see ObjC). Two stand for the same object when they
-    # hold the same pointer.
+    # method call (see ObjC).
     class Object
       # Gives an object's reference back on the main queue.
       class Release
@@ -611,11 +606,6 @@ module Basket
       # The pointer to the Objective-C object.
       attr_reader :objc_pointer
 
-      # The integer value of the pointer, so Fiddle passes the object.
-      def to_i
-        objc_pointer
-      end
-
       # Sends a message: see ObjC.
       def method_missing(name, *arguments, **keywords, &)
         objc_send(Object.selector_for(name, arguments, keywords), *arguments, *keywords.values)
@@ -633,23 +623,6 @@ module Basket
         string = ObjC.class_named("NSString")
         text = isKindOfClass(string) ? self : description
         text.objc_send("UTF8String").to_s.force_encoding(Encoding::UTF_8)
-      end
-
-      # The object's class and address.
-      def inspect
-        "#<#{self.class.objc_name || self.class.name} 0x#{objc_pointer.to_s(16)}>"
-      end
-
-      # Whether +other+ is the same Objective-C object.
-      def ==(other)
-        other.respond_to?(:objc_pointer) && other.objc_pointer == objc_pointer
-      end
-      # Equal objects are +eql?+ too, as Hash keys.
-      alias eql? ==
-
-      # Objects that are equal hash alike.
-      def hash
-        objc_pointer.hash
       end
 
       private def objc_hold(address, held: true)

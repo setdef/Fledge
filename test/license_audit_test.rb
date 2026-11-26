@@ -482,6 +482,32 @@ class LicenseAuditTest < Minitest::Test
     assert_match(/^This app was built with Fledge 0\.0\.0 /, text, "Delivery's scripts find the notices by this line")
   end
 
+  # Ruby's LEGAL and the license texts hold non-ASCII bytes, and a build
+  # in a container has no locale, so Ruby's default external encoding is
+  # US-ASCII there: the texts are read as UTF-8 whatever it is, as they
+  # are written.
+  def test_notices_read_license_texts_as_utf8_whatever_the_default_encoding
+    write_gem("ghost", "1.0.0", ["MIT"])
+    File.delete(File.join(@tree, "lib/ruby/gems/4.1.0+5/gems/ghost-1.0.0/LICENSE.txt"))
+    audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
+    report = audit_run.call
+    default = Encoding.default_external
+    verbose = $VERBOSE
+    $VERBOSE = nil
+    Encoding.default_external = Encoding::US_ASCII
+    begin
+      notices = LicenseAudit::Notices.new(report, version: "0.0.0", map: audit_run.map)
+      text = notices.text
+
+      assert_equal ["gem-ghost-1.0.0"], notices.missing
+      assert_equal Encoding::UTF_8, text.encoding
+      assert text.valid_encoding?
+    ensure
+      Encoding.default_external = default
+      $VERBOSE = verbose
+    end
+  end
+
   def test_notices_tell_the_recipient_how_to_replace_the_lgpl_library_and_where_its_source_is
     audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
     notices = LicenseAudit::Notices.new(audit_run.call, version: "0.0.0", map: audit_run.map)

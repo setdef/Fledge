@@ -35,7 +35,7 @@ class LicenseAudit
       @report = report
       @version = version
       @map = map
-      @legal = File.read(File.join(NOTICES, "ruby", "LEGAL"))
+      @legal = File.read(File.join(NOTICES, "ruby", "LEGAL"), encoding: "UTF-8")
     end
 
     # The ids of the components present whose license text is nowhere.
@@ -252,7 +252,7 @@ class LicenseAudit
       folders = present.filter_map(&:notice).uniq.sort
       gem_folders = present.filter_map { |component| component.gem_dir && @map.fetch("gems", {}).dig(component.name[/\A\S+/], "notice") }
       (folders + gem_folders).uniq.flat_map do |folder|
-        notice_files(folder).map { |path| "=== #{folder}/#{File.basename(path)}\n\n#{File.read(path).strip}\n" }
+        notice_files(folder).map { |path| "=== #{folder}/#{File.basename(path)}\n\n#{File.read(path, encoding: "UTF-8").strip}\n" }
       end
     end
 

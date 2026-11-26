@@ -1694,6 +1694,17 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: ruby -I lib exe/fledge build -o dist examples/basket
 
+      # examples/basket, Basket, a shopping list whose Ruby draws its window
+      # with AppKit through Basket's bridge to Objective-C
+      # (doc/contributors/design/phone-widgets.md, "Basket on a Mac"), built
+      # on the Mac alone: Delivery adds an item and removes it.
+      - name: Build Basket for ${{ matrix.platform }}
+        if: runner.os == 'macOS'
+        env:
+          FLEDGE_RUNTIME_DIR: ${{ runner.temp }}/runtimes
+          FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
+        run: ruby -I lib exe/fledge build -o dist examples/basket
+
       # test/fixtures/rust_lengths, a Rust gem on rb-sys alone, which says
       # how its bindings declare rb_len_t and calls two functions whose
       # results differ when that is not the runtime's Ruby's
@@ -2514,6 +2525,38 @@ jobs:
       - name: Run Hello Window as an AppImage, with FUSE
         if: runner.os == 'Linux'
         run: .github/scripts/deliver-appimage.sh "$RUNNER_TEMP/delivered/Hello Window-${{ matrix.platform }}.AppImage" fuse
+
+  # Delivery of Basket on a Mac: its program started with no Ruby on its
+  # PATH must draw its window, and, started with a driver in place of
+  # main.rb, must add Milk and remove it, logging "Basket added Milk" and
+  # "Basket removed Milk" (.github/scripts/deliver-basket-mac.sh says why
+  # the screen is driven from inside and not from outside).
+  delivery-basket-arm64-darwin:
+    name: Delivery of Basket (${{ matrix.platform }})
+    needs: build-arm64-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-26, the macOS floor (the header).
+          - os: macos-26
+            platform: arm64-darwin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apps-${{ matrix.platform }}
+          path: ${{ runner.temp }}/delivered
+
+      - name: Add an item to Basket and remove it
+        run: .github/scripts/deliver-basket-mac.sh "$RUNNER_TEMP/delivered/Basket-${{ matrix.platform }}.tar.gz"
 
   delivery-windowed-x86_64-linux:
     name: Delivery of a windowed app (${{ matrix.platform }})

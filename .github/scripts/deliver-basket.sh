@@ -140,15 +140,25 @@ shot 3-removed
 [ "$(cat "$list")" = "[]" ] || fail "the list is $(cat "$list"), not []"
 echo "ok: the list is empty again"
 
-# The toast's Undo button, at the bottom of the window, puts Milk back. A
-# person looks at the toast before they reach for its button, and the
-# script waits for it likewise: a pointer that moves onto the button while
-# the toast is still appearing is a click that does nothing, every time on
-# a fresh start, where the same move and click two seconds after the toast
-# appears restores Milk. The toast stays five seconds.
-sleep 2
-xdotool mousemove $((X + 300)) $((Y + 467)) click 1
-wait_for "Basket restored Milk"
+# The toast's Undo button, at the bottom of the window, puts Milk back.
+# GTK sends a click to the widget that the pointer's last motion found
+# (gtk/gtkmain.c, handle_pointing_event: a button press goes to the widget
+# that motion found), and the toast slides up for 300 milliseconds
+# (libadwaita's adw-toast-overlay.c, SHOW_DURATION), so a pointer that
+# arrives while it slides finds the list behind it, and a click that
+# follows with no motion between, at once or a second later, reaches the
+# list. The script moves the pointer onto Undo and clicks, and moves and
+# clicks again until Basket logs that it restored Milk, as a person does
+# whose first click did nothing; the toast stays five seconds.
+tries=0
+until grep -qx "Basket restored Milk" "$log" 2>/dev/null; do
+  tries=$((tries + 1))
+  [ "$tries" -le 16 ] || fail "Basket did not log \"Basket restored Milk\" after $((tries - 1)) clicks on Undo"
+  kill -0 "$app" 2>/dev/null || fail "Basket ended before it logged \"Basket restored Milk\""
+  xdotool mousemove $((X + 280)) $((Y + 467)) mousemove $((X + 300)) $((Y + 467)) click 1
+  sleep 0.25
+done
+echo "ok: Basket logged \"Basket restored Milk\" after $tries click(s) on Undo"
 shot 4-restored
 [ "$(cat "$list")" = '["Milk"]' ] || fail "the list is $(cat "$list"), not [\"Milk\"]"
 echo "ok: the list holds Milk again"

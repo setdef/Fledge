@@ -65,8 +65,17 @@ module Fledge
 
     # mksquashfs's options, appimagetool's: zstd, which AppImage's
     # runtime reads, in blocks of 128 KiB, every item owned by root,
-    # replacing anything there, and dated 0.
-    OPTIONS = %w[-comp zstd -b 128K -root-owned -noappend -mkfs-time 0 -quiet].freeze
+    # replacing anything there, and dated 0 (see MKFS_TIME).
+    OPTIONS = %w[-comp zstd -b 128K -root-owned -noappend -quiet].freeze
+
+    # The option that dates the file system 0, as appimagetool gives it
+    # unless +SOURCE_DATE_EPOCH+ is in the environment
+    # (<tt>src/appimagetool.c</tt> at 1.9.1, lines 192 to 196), since
+    # mksquashfs refuses both (+check_env_var+ in its +mksquashfs.c+).
+    # With the variable present, with any value, mksquashfs takes the
+    # file system's time from it, clamps every file's time to it, and
+    # judges its value itself.
+    MKFS_TIME = %w[-mkfs-time 0].freeze
 
     # Writes the AppImage of the app whose Fledge::Identity is +identity+
     # and whose built folder is +folder+ to +to+, with the runtime in
@@ -93,7 +102,7 @@ module Fledge
         appdir = File.join(work, "AppDir")
         FileUtils.cp_r(folder, appdir, preserve: true)
         add_appdir(appdir, identity)
-        Command.run("mksquashfs", appdir, to, "-offset", File.size(runtime).to_s, *OPTIONS, install: INSTALL)
+        Command.run("mksquashfs", appdir, to, "-offset", File.size(runtime).to_s, *OPTIONS, *(ENV.key?("SOURCE_DATE_EPOCH") ? [] : MKFS_TIME), install: INSTALL)
       end
       File.open(to, "r+b") { |image| image.write(File.binread(runtime)) }
       File.chmod(0o755, to)

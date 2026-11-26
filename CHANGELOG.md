@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - An ARM64 Windows app whose gem needs OpenGL (`opengl32.dll`, `glu32.dll`) is no longer refused: Windows 11 for ARM64 has both.
+- `fledge build` writes an AppImage when `SOURCE_DATE_EPOCH` is set, as `mksquashfs` refused it beside the file system time Fledge set; `mksquashfs` then takes the image's times from the variable.
 - On iOS and Android, the last lines a program writes before it ends reach the log, and `fledge test ios` and `fledge test android` print them: a windowed app, or any host that ends the process as the program returns, could lose them, so a run's output could end before its test summary.
 - An iPhone app launched with `xcrun devicectl device process launch --console` shows the lines its Ruby prints on that console, as it did only when the launch also set `OS_ACTIVITY_DT_MODE`: the forwarding to the log keeps a copy of each stream a tool holds and writes each line to it too.
 - On Android and iOS, a NUL byte in an app's output no longer cuts the log entry short: the whole line reaches the log, the NUL as the two bytes `0xC0 0x80` on Android, as CPython's Android streams write it, and as U+2400 on iOS, whose log drops an entry of bytes that are no UTF-8.

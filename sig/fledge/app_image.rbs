@@ -8,6 +8,8 @@ module Fledge
     INSTALL: String
     OPTIONS: Array[String]
 
+    MKFS_TIME: Array[String]
+
     def self.write: (identity: Identity, folder: String, tools: String?, to: String) -> String
 
     private def self.add_appdir: (String appdir, Identity identity) -> void

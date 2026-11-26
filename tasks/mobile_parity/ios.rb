@@ -80,7 +80,8 @@ class MobileParity
       File.join(Etc.getpwuid.dir, "Library", "Logs", "DiagnosticReports")
     end
 
-    # The messages of the process +pid+ in +ndjson+, what log show
+    # The messages of the process +pid+ in +ndjson+, or of every process
+    # when +pid+ is nil, as for an app a UI test launched, what log show
     # --style ndjson prints, in order, without those of standard error
     # unless +standard_error+. The embedding API logs what Ruby writes to
     # standard error as errors, and standard output and the host's own
@@ -92,7 +93,8 @@ class MobileParity
     def self.messages(ndjson, pid, standard_error: true)
       ndjson.each_line.filter_map do |line|
         entry = JSON.parse(line)
-        next unless entry.is_a?(Hash) && entry["processID"] == pid
+        next unless entry.is_a?(Hash)
+        next if pid && entry["processID"] != pid
         next if !standard_error && entry["messageType"] == "Error"
 
         (message = entry["eventMessage"]) && MobileParity.printed(message, MobileParity::IOS_NUL)
@@ -105,6 +107,7 @@ class MobileParity
       @runtimes = File.expand_path(runtimes)
       @work = File.expand_path(work)
       @out = out
+      @projects = {}
     end
 
     # Builds each app, runs each on each device, and returns whether every
@@ -133,9 +136,11 @@ class MobileParity
     def build_app(app, project)
       derived = File.join(@work, "derived-#{app.identifier}")
       log = File.join(@work, "xcodebuild-#{app.identifier}-iphonesimulator.log")
+      @projects[app] = project
+      # An app with a UI test of its own is built with it, for #tap_launch.
       built = system("xcodebuild", "-project", File.join(project, "#{app.name}.xcodeproj"), "-scheme", app.name,
-        "-configuration", "Debug", "-sdk", "iphonesimulator", "-derivedDataPath", derived, "build", "CODE_SIGNING_ALLOWED=NO",
-        out: log, err: [:child, :out])
+        "-configuration", "Debug", "-sdk", "iphonesimulator", "-derivedDataPath", derived, app.touches ? "build-for-testing" : "build",
+        "CODE_SIGNING_ALLOWED=NO", out: log, err: [:child, :out])
       raise "xcodebuild failed for #{app.name}:\n#{File.readlines(log).last(60).join}" unless built
 
       warnings = File.readlines(log).grep(/\bwarning:/).uniq
@@ -217,11 +222,16 @@ class MobileParity
     # finished in +timeout+ seconds, and reports both streams.
     private def launch(udid, app, timeout)
       since = (Time.now - 2).strftime("%Y-%m-%d %H:%M:%S")
-      # simctl gives an app the variables of its own environment that
-      # begin SIMCTL_CHILD_, without the prefix.
-      env = app.https ? { "SIMCTL_CHILD_#{HTTPS::VARIABLE}" => @https_url } : {}
-      launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier, env:)
-      pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
+      if app.touches
+        pid = nil
+        tap_launch(udid, app)
+      else
+        # simctl gives an app the variables of its own environment that
+        # begin SIMCTL_CHILD_, without the prefix.
+        env = app.https ? { "SIMCTL_CHILD_#{HTTPS::VARIABLE}" => @https_url } : {}
+        launched = capture("xcrun", "simctl", "launch", "--terminate-running-process", udid, app.identifier, env:)
+        pid = Integer(launched[/: (\d+)\s*\z/, 1] || raise("simctl launch printed no process ID: #{launched}"))
+      end
       deadline = Time.now + timeout
       until app.finished?(messages(udid, since, pid, app).entries)
         if Time.now > deadline
@@ -234,6 +244,22 @@ class MobileParity
       add_and_delete(udid, app) if app.adds
       MobileParity.settled(interval: 5) { messages(udid, since, pid, app) }
         .tap { system("xcrun", "simctl", "terminate", udid, app.identifier, err: File::NULL) }
+    end
+
+    # Runs the UI test of +app+'s own project (the scheme's test target,
+    # built with the app), which launches the app on the simulator
+    # +udid+, waits while it draws, and touches the screen. The app's log
+    # is read by its subsystem afterward, since the process is the test's.
+    # Fails with the test's own words when it fails.
+    private def tap_launch(udid, app)
+      log = File.join(@work, "ui-test-#{udid}-#{app.identifier}.log")
+      project = File.join(@projects.fetch(app), "#{app.name}.xcodeproj")
+      passed = system("xcodebuild", "-project", project, "-scheme", app.name, "-destination", "id=#{udid}", "-derivedDataPath",
+        File.join(@work, "derived-#{app.identifier}"), "test-without-building", out: log, err: [:child, :out])
+      lines = File.readlines(log)
+      raise "#{app.name}'s UI test failed:\n#{lines.grep(/error|fail/i).last(20).join}\n#{lines.last(40).join}" unless passed
+
+      @out.puts "#{app.name}: its UI test touched the screen"
     end
 
     # The UI test (UI_TESTS), its Xcode project written by XcodeGen and

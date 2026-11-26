@@ -100,6 +100,57 @@ class MobileParityTest < Minitest::Test
     end
   end
 
+  # sdl_phone's line matches what it printed on an arm64-v8a phone, which
+  # runs Ruby on a thread of its own with a 64 MB stack, and on an iPhone,
+  # which runs it on the main thread with one, and not a shallower stack
+  # (doc/contributors/design/phone-projects.md, "A host that owns the main
+  # loop"); the others it must print are those of a game that took a touch.
+  def test_sdl_phones_lines_match_what_it_printed_and_a_shallow_stack_does_not
+    app = MobileParity::APPS.find { |candidate| candidate.name == "SdlPhone" }
+    phone = "SdlDemo runs Ruby on a thread of its own with a stack of 66583 KB, on aarch64-linux-android with SDL 3.4.18"
+    iphone = "SdlDemo runs Ruby on the main thread with a stack of 65536 KB, on arm64-darwin with SDL 3.4.18"
+
+    assert_match app.prints, phone
+    assert_match app.prints, phone.sub("aarch64", "x86_64")
+    assert_match app.prints, iphone
+    refute_match app.prints, phone.sub("66583", "1008")
+    refute_match app.prints, iphone.sub("65536", "512")
+    assert_match app.touches, "SdlDemo drew 60 frames"
+    assert_match app.touched, "SdlDemo touch down at 360, 800 in 1080x2400, frame 75"
+    assert(app.sdl3)
+    touched = ["SdlDemo touch down at 360, 800 in 1080x2400, frame 75", "SdlDemo drew 150 frames in all, after a touch"]
+    touched.each { |line| assert(Array(app.also).any? { |pattern| line.match?(pattern) }, line) }
+  end
+
+  # SDL3's build takes minutes on a Mac, so CI keeps its result between
+  # runs, and the check builds it again only when the app's script, which
+  # holds SDL's version and SHA-256, is not the one that made what is
+  # there.
+  def test_sdl3_is_built_again_only_when_the_apps_script_changed
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, "app", "sdl3"))
+      script = File.join(dir, "app", "sdl3", "build.sh")
+      File.write(script, "mkdir -p \"$2\" && echo built >> \"$2/runs\"\n")
+      app = MobileParity::App.new(path: File.join(dir, "app"), name: "Sdl", identifier: "com.example.Sdl", prints: nil, sdl3: true)
+      into = File.join(dir, "kept", "ios")
+      runs = -> { File.read(File.join(into, "runs")).lines.size }
+
+      assert_equal into, MobileParity.build_sdl3(app, "ios", into)
+      assert_equal 1, runs.call
+      MobileParity.build_sdl3(app, "ios", into)
+      assert_equal 1, runs.call, "what a run built is kept"
+
+      File.write(script, "mkdir -p \"$2\" && echo built again >> \"$2/runs\"\n")
+      MobileParity.build_sdl3(app, "ios", into)
+      assert_equal 2, runs.call, "a script that changed builds again"
+
+      File.write(script, "echo no >&2; exit 3\n")
+      error = assert_raises(RuntimeError) { MobileParity.build_sdl3(app, "ios", into) }
+      assert_match(/failed:\nno/, error.message)
+      assert_raises(RuntimeError) { MobileParity.build_sdl3(app, "ios", into) }
+    end
+  end
+
   # CmakePhone's line matches what it printed on an iPhone as well as in
   # CI's Simulator: CMake's toolchain names the SDK it builds for, and
   # this is the line an iPhone 12 mini with iOS 27.0 printed on
@@ -494,10 +545,12 @@ class MobileParityTest < Minitest::Test
   class Emulator < MobileParity::Android
     PID = "4242"
 
-    # How many times the app was launched.
-    attr_reader :launches
+    # How many times the app was launched, and the touches it was given
+    # (each the x and y of an adb input tap, with the lines the app had
+    # logged when it came).
+    attr_reader :launches, :taps, :settings
 
-    def initialize(app, work:, started: 0, ends: nil, finishes: nil, said: [], dropped: nil, launched: [said], out: StringIO.new)
+    def initialize(app, work:, started: 0, ends: nil, finishes: nil, said: [], dropped: nil, launched: [said], registers: nil, out: StringIO.new)
       super(work:, out:)
       @app = app
       @started = started
@@ -508,10 +561,16 @@ class MobileParityTest < Minitest::Test
       @dropped = dropped
       @step = 0
       @launches = 0
+      @registers = registers
+      @taps = []
+      @settings = []
     end
 
     private def adb(*arguments)
       case arguments
+      in ["shell", "wm", "size"] then "Physical size: 1080x2400\n"
+      in ["shell", "input", "tap", x, y] then tapped(x, y)
+      in ["shell", "settings", "put", *setting] then (@settings << setting).then { "" }
       in ["logcat", "-c"] then launched
       in ["logcat", "-d", "-v", "threadtime"] then whole_log
       in ["logcat", "-d", "-v", "tag", "-s", _, _] then tagged.tap { @step += 1 }
@@ -525,6 +584,14 @@ class MobileParityTest < Minitest::Test
       @said = @launched.fetch(@launches, @launched.last)
       @launches += 1
       @step = 0
+      ""
+    end
+
+    # Records a tap with the lines the app had logged, and has the game
+    # log a touch from the +registers+th tap on, as one that reaches it.
+    private def tapped(x, y)
+      @taps << [x, y, @said.dup]
+      @said += ["SdlDemo touch down at #{x}, #{y} in 1080x2400, frame 75"] if @registers && @taps.size >= @registers
       ""
     end
 
@@ -550,6 +617,46 @@ class MobileParityTest < Minitest::Test
     private def running?(pid) = pid == PID && started? && !(@ends && @step >= @ends)
 
     private def started? = !@started.nil? && @step >= @started
+  end
+
+  # SdlPhone is a game that waits for a touch: the check taps the screen a
+  # third of the way across and down, as the iOS check's UI test does,
+  # once the game has drawn (its line), and not before; and again while
+  # the game logs no touch, since a tap that comes as its window opens may
+  # reach nothing, and no more once it does.
+  def test_a_game_is_touched_once_it_has_drawn_and_again_until_it_logs_a_touch
+    app = MobileParity::APPS.find { |each| each.name == "SdlPhone" }
+    Dir.mktmpdir do |work|
+      before = Emulator.new(app, work:, finishes: 3, said: ["SdlDemo recurses 3970 levels deep"])
+      before.launch(app, timeout: 60, interval: 0)
+      assert_empty before.taps
+
+      emulator = Emulator.new(app, work:, finishes: 8, said: ["SdlDemo drew 60 frames"], registers: 2)
+      logged = emulator.launch(app, timeout: 60, interval: 0)
+
+      assert_equal [["360", "800"], ["360", "800"]], emulator.taps.map { |tap| tap.first(2) }
+      assert_equal ["SdlDemo drew 60 frames"], emulator.taps.first.last
+      assert_equal [%w[secure immersive_mode_confirmations confirmed]], emulator.settings
+      assert_includes logged.entries, "SdlDemo touch down at 360, 800 in 1080x2400, frame 75"
+      assert_includes logged.entries, "SdlPhone exited with status 0"
+    end
+  end
+
+  def test_an_app_that_asks_for_no_touch_is_given_none
+    app = MobileParity::APPS.fetch(0)
+    Dir.mktmpdir do |work|
+      emulator = Emulator.new(app, work:, finishes: 2, said: ["Hello from Ruby 4.1.0 on aarch64-linux-android"])
+      emulator.launch(app, timeout: 60, interval: 0)
+
+      assert_empty emulator.taps
+      assert_empty emulator.settings, "an app that takes no touch has the system left as it is"
+    end
+  end
+
+  def test_the_touch_is_a_third_of_the_way_across_the_screen_wm_size_prints
+    assert_equal [360, 800], MobileParity::Android.touch_point("Physical size: 1080x2400\n")
+    assert_equal [360, 800], MobileParity::Android.touch_point("Physical size: 1080x2400\nOverride size: 1080x2400\n")
+    assert_raises(RuntimeError) { MobileParity::Android.touch_point("") }
   end
 
   # Logcat holds a line a moment after it is logged, and am start -W can
@@ -732,6 +839,19 @@ class MobileParityTest < Minitest::Test
 ], MobileParity::IOS.messages(ndjson, 7)
     assert_equal ["1)", "core: Class#initialize is not defined FAILED", "RubySpec exited with status 1"],
       MobileParity::IOS.messages(ndjson, 7, standard_error: false)
+  end
+
+  # An app that a UI test launches has a process ID the check was never
+  # told, so it reads every line the app's subsystem logged since the test
+  # began.
+  def test_ios_messages_of_no_process_are_every_process_of_the_subsystem
+    ndjson = [
+      { "processID" => 7, "messageType" => "Default", "eventMessage" => "SdlDemo drew 60 frames" },
+      { "processID" => 9, "messageType" => "Default", "eventMessage" => "SdlPhone exited with status 0" },
+    ].map { |entry| JSON.generate(entry) }.join("\n")
+
+    assert_equal ["SdlDemo drew 60 frames", "SdlPhone exited with status 0"], MobileParity::IOS.messages(ndjson, nil)
+    assert_equal ["SdlDemo drew 60 frames"], MobileParity::IOS.messages(ndjson, 7)
   end
 
   # On Android the embedding API logs standard error as warnings and

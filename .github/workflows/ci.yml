@@ -634,7 +634,12 @@ jobs:
   # libraries for ffi, each embedded as a framework of its own
   # (doc/contributors/design/phone-projects.md, "Libraries for ffi on
   # iOS"); a script that requires json and csv,
-  # a bundled gem, and reaches rubygems.org over HTTPS; and the parity
+  # a bundled gem, and reaches rubygems.org over HTTPS;
+  # test/fixtures/sdl_phone, whose host is SDL3's, as a Lota game's is: the
+  # check builds SDL3 for iOS with the app's own script, and the app's UI
+  # test touches the screen, so a change that breaks an SDL host's app
+  # fails here (doc/contributors/design/phone-projects.md, "A host that
+  # owns the main loop"); and the parity
   # probe, against ruby main.rb on this Mac's desktop Ruby, with every
   # difference justified for a phone (tasks/mobile_parity.rb).
   mobile-apps-ios:
@@ -648,7 +653,9 @@ jobs:
     # apps, and 38 on a slow runner (CONTRIBUTING.md, "When CI fails"),
     # before each of Ruby's extensions on iOS was a framework; archiving
     # the ten apps' 99 frameworks each adds about 4 minutes to that.
-    timeout-minutes: 60
+    # test/fixtures/sdl_phone adds about 4.5 minutes on a build node, and
+    # the first build of SDL3, which the cache below keeps, 2 to 3.5 more.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -696,9 +703,36 @@ jobs:
           name: runtime-arm64-darwin
           path: ${{ runner.temp }}/runtimes
 
+      # SDL3 for iOS, which test/fixtures/sdl_phone links, builds in
+      # minutes from a release tarball and a script that pin it, so the
+      # result is kept under the script's hash and the pinned Xcode, and
+      # the check builds it only when the cache has none
+      # (MobileParity.build_sdl3).
+      - name: Key SDL3's build
+        id: sdl3-key
+        run: echo "xcode=$(ruby -ryaml -e 'print YAML.safe_load_file("runtime/sources.yml").dig("mobile", "xcode")')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: sdl3
+        with:
+          path: |
+            tmp/sdl3/ios/ios-arm64
+            tmp/sdl3/ios/ios-arm64-simulator
+            tmp/sdl3/ios/build.sh.sha256
+          key: sdl3-ios-xcode-${{ steps.sdl3-key.outputs.xcode }}-${{ hashFiles('test/fixtures/sdl_phone/sdl3/build.sh') }}
+
       - name: Build the apps with fledge build ios, and run them in the iOS Simulator
-        timeout-minutes: 50
+        timeout-minutes: 65
         run: ruby tasks/mobile_parity.rb ios "$RUNNER_TEMP/runtimes"
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: github.ref == 'refs/heads/trunk' && steps.sdl3.outputs.cache-hit != 'true'
+        with:
+          path: |
+            tmp/sdl3/ios/ios-arm64
+            tmp/sdl3/ios/ios-arm64-simulator
+            tmp/sdl3/ios/build.sh.sha256
+          key: ${{ steps.sdl3.outputs.cache-primary-key }}
 
       # The Xcode projects fledge build ios wrote for the examples, which
       # the step above built, archived, and ran in the Simulator, archived
@@ -884,7 +918,10 @@ jobs:
   # with the runner's libclang. test/fixtures/ffi_library_phone's gems'
   # Rakefiles build libraries for ffi, which the app carries as native
   # libraries of its own, with ffi-compiler's ffi compiled by the
-  # runner's C compiler. The Android
+  # runner's C compiler. test/fixtures/sdl_phone's SDL3 is built with
+  # the NDK above and its script, and the check taps the game's screen
+  # on each emulator (doc/contributors/design/phone-projects.md, "A
+  # host that owns the main loop"). The Android
   # integration tests run here too, the one job with the Android runtime,
   # the NDK, CMake, Rust's Android targets, and an emulator: those that
   # need no device once, before the emulator starts, and

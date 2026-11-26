@@ -26,7 +26,10 @@
 # The app's OTHER_LDFLAGS inherits the project's. SdlPhoneUITests taps
 # the screen once the game draws, from the app's scheme, as Fledge's CI
 # checks the game (host/ios/UITests/TapTest.m); it is a bundle, not a
-# main executable, so it takes none of the project's linker flags.
+# main executable, so it takes none of the project's linker flags, and
+# its deployment target is iOS 17, which XCTest's frameworks are built
+# for: at the app's 15 the linker warns, and the Mobile apps job builds
+# with no warning.
 name: @@NAME@@
 options:
   deploymentTarget:
@@ -50,6 +53,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.setdef.fledge.SdlPhoneUITests
         CLANG_ENABLE_MODULES: YES
         OTHER_LDFLAGS: ""
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
   @@NAME@@:
     type: application
     platform: iOS

@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
+require "digest"
 require "fileutils"
 require "json"
 require "open3"
@@ -48,7 +49,9 @@ require_relative "parity"
 # reaches a server of the check's own over HTTPS
 # (test/fixtures/mobile_hello); on Android, an app that runs the command
 # of a gem its lockfile locks, and no runtime has, by its name
-# (test/fixtures/mobile_commands); and the parity probe (test/fixtures/parity), whose report is compared
+# (test/fixtures/mobile_commands); test/fixtures/sdl_phone, a game whose
+# host is SDL3's, as a Lota game's is (doc/contributors/design/phone-projects.md, "A host
+# that owns the main loop"), which the check builds SDL3 for and touches; and the parity probe (test/fixtures/parity), whose report is compared
 # with the same main.rb under the desktop Ruby of the computer that runs
 # the simulator (rv-ruby's, as the desktop parity check runs it). The
 # report is one long line, which the log holds as several entries in a
@@ -76,9 +79,20 @@ class MobileParity
   # (default: no), and an item a person adds once it shows its list, and
   # then removes (+adds+): the Android check types it into the app's
   # field, presses Enter, and long-presses its row, and the iOS check's
-  # UI test types it, presses Return, and swipes its row away.
-  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open, :adds)
-    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil, stays_open: false, adds: nil)
+  # UI test types it, presses Return, and swipes its row away; whether
+  # SDL3 is built for the phone first, for an app whose gem links it
+  # (+sdl3+, test/fixtures/sdl_phone/sdl3/build.sh); and the line of an
+  # app that waits for a touch (+touches+, +touched+): the Android check
+  # taps the screen once the app has logged the line +touches+ matches,
+  # and again every few seconds until it has logged the one +touched+
+  # matches, which says the app took a touch (the first tap may come
+  # before the app's window takes input); on iOS the app's own UI test,
+  # host/ios/UITests/TapTest.m, launches the app and taps it, so there
+  # the lines only say the app takes a touch.
+  class App < Data.define(:path, :name, :identifier, :prints, :phones, :https, :also, :stays_open, :adds, :sdl3, :touches, :touched)
+    def initialize(path:, name:, identifier:, prints:, phones: %w[ios android], https: false, also: nil, stays_open: false, adds: nil,
+      sdl3: false, touches: nil, touched: nil
+    )
       super
     end
 
@@ -109,6 +123,9 @@ class MobileParity
   HELLO_LIBRARIES = '\["csv","\d+\.\d+\.\d+"\], prism \d+\.\d+\.\d+ parses 1 \+ 2 as \+, over HTTPS: certificate verify failed with an empty trust store, 200 with the runtime\'s CA certificates'
   HELLO = /\AHello from Ruby 4\.1\.0 on (?:arm64-darwin: #{HELLO_LIBRARIES}, no YJIT|(?:aarch64|x86_64)-linux-android: #{HELLO_LIBRARIES}, YJIT on: fib\(20\) is 6765 in [1-9]\d* bytes of machine code)\z/o
 
+  # The line test/fixtures/sdl_phone prints for each touch that reaches it.
+  SDL_TOUCH = /\ASdlDemo touch down at \d+, \d+ in \d+x\d+, frame \d+\z/
+
   # The apps, each built with fledge build for each phone.
   APPS = [
     App.new(path: "examples/hello", name: "Hello", identifier: "com.setdef.fledge.Hello",
@@ -136,6 +153,10 @@ class MobileParity
     App.new(path: "examples/basket", name: "Basket", identifier: "com.setdef.fledge.Basket",
       prints: /\ABasket shows \d+ items?\z/, stays_open: true, adds: "Milk",
       also: [/\ABasket added Milk\z/, /\ABasket removed Milk\z/]),
+    App.new(path: "test/fixtures/sdl_phone", name: "SdlPhone", identifier: "com.setdef.fledge.SdlPhone", sdl3: true,
+      prints: /\ASdlDemo runs Ruby on (?:the main thread with a stack of 65536|a thread of its own with a stack of 6[5-9]\d{3}) KB, on (?:arm64-darwin|aarch64-linux-android|x86_64-linux-android) with SDL 3\.\d+\.\d+\z/,
+      touches: /\ASdlDemo drew 60 frames\z/, touched: SDL_TOUCH,
+      also: [/\ASdlDemo recurses [1-9]\d{3} levels deep\z/, SDL_TOUCH, /\ASdlDemo drew \d+ frames in all, after a touch\z/]),
   ].freeze
 
   # The line the host app of every project fledge build writes logs when
@@ -168,8 +189,10 @@ class MobileParity
   def self.projects(phone, runtimes:, out:, apps: self.apps(phone), env: {})
     HTTPS.prepare if apps.any?(&:https)
     fledge = [RbConfig.ruby, "-I", File.join(ROOT, "lib"), File.join(ROOT, "exe", "fledge")]
+    sdl3 = nil
     apps.to_h do |app|
       own = { "FLEDGE_RUNTIME_DIR" => File.expand_path(runtimes), "FLEDGE_RUNTIME_DIR_UNCHECKED" => "1" }
+      own["BUNDLE_BUILD__SDL_DEMO"] = "--with-sdl3-builds=#{sdl3 ||= build_sdl3(app, phone, File.join(ROOT, 'tmp', 'sdl3', phone))}" if app.sdl3
       printed, logged, status = Open3.capture3(env.merge(own), *fledge, "build", phone,
         "-o", out, File.expand_path(app.path, ROOT), chdir: ROOT)
       raise "fledge build #{phone} #{app.path} failed:\n#{printed}#{logged}" unless status.success?
@@ -179,6 +202,32 @@ class MobileParity
       Environment.record(phone, project) unless app.prints
       [app, project]
     end
+  end
+
+  # The file in SDL3's build folder that holds the SHA-256 of the script
+  # that made it.
+  SDL3_STAMP = "build.sh.sha256"
+
+  # Builds SDL3 for +phone+ into +into+ with the app's own script, as a
+  # developer does (doc/contributors/design/phone-projects.md, "A host
+  # that owns the main loop"), and returns +into+, which the app's gem
+  # finds through Bundler's build options. On Android the script needs
+  # ANDROID_NDK_ROOT, which the jobs that build for Android set.
+  #
+  # SDL3's build takes minutes on a Mac, so CI keeps +into+ between
+  # runs, and the script is not run again while +into+ holds the stamp
+  # (SDL3_STAMP) of this very script, which has SDL's version and SHA-256.
+  def self.build_sdl3(app, phone, into)
+    script = File.expand_path(File.join(app.path, "sdl3", "build.sh"), ROOT)
+    stamp = File.join(into, SDL3_STAMP)
+    digest = Digest::SHA256.file(script).hexdigest
+    return into if File.exist?(stamp) && File.read(stamp) == digest
+
+    printed, status = Open3.capture2e("bash", script, phone, into)
+    raise "#{script} #{phone} failed:\n#{printed.lines.last(40).join}" unless status.success?
+
+    File.write(stamp, digest)
+    into
   end
 
   # The environment the phone's system gave the parity probe's app,

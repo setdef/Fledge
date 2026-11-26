@@ -431,11 +431,13 @@ class MobileParity
     # before ActivityManager has started the process, so the first look
     # can find neither the line nor a process pidof knows by name.
     def launch(app, timeout: TIMEOUT, interval: 2)
+      confirm_immersive_mode if app.touches
       adb("logcat", "-c")
       adb("shell", "am", "start", "-W", "-n", "#{app.identifier}/#{ACTIVITY}")
       pid = nil
       deadline = Time.now + timeout
-      until app.finished?(logged(app).entries)
+      until app.finished?(entries = logged(app).entries)
+        touch(app) if app.touches && entries.any? { |entry| entry.match?(app.touches) } && entries.none? { |entry| entry.match?(app.touched) }
         pid ||= process(app)
         ended = pid && !running?(pid) && !MobileParity.status(logged(app).entries)
         if ended || Time.now > deadline
@@ -447,6 +449,35 @@ class MobileParity
       end
       add_item(app, timeout:, interval:) if app.adds
       MobileParity.settled(interval:) { logged(app) }.tap { adb("shell", "am", "force-stop", app.identifier) }
+    end
+
+    # Tells Android that its person has confirmed full-screen mode, as a
+    # person does with "Got it" the first time an app hides the system
+    # bars. A game that does so (SDL's does) is otherwise covered by that
+    # confirmation, a window of the system's that takes the focus and the
+    # taps: the window manager's focused window was
+    # ImmersiveModeConfirmation, and no tap reached the game.
+    private def confirm_immersive_mode
+      adb("shell", "settings", "put", "secure", "immersive_mode_confirmations", "confirmed")
+    end
+
+    # The point a game is touched at, a third of the way across and down
+    # the screen, as the iOS check's UI test touches it, from what wm
+    # size prints.
+    def self.touch_point(size)
+      last = size.scan(/(?:Physical|Override) size: (\d+)x(\d+)/).last or raise "wm size printed no size: #{size.inspect}"
+      last.map { |pixels| Integer(pixels) / 3 }
+    end
+
+    # Touches the screen of the app, which has drawn, as a finger does,
+    # with adb's input tap. The launch looks again after each tap, and
+    # taps again until the app logs that it took one: a tap that comes as
+    # the window opens may reach nothing, as one did on the second launch
+    # of sdl_phone, from its bundle.
+    private def touch(app)
+      x, y = Android.touch_point(adb("shell", "wm", "size"))
+      adb("shell", "input", "tap", x.to_s, y.to_s)
+      @out.puts "#{app.name} on #{device}: touched the screen at #{x},#{y}"
     end
 
     # The nodes of a UI Automator dump, +xml+ (uiautomator dump), each as

@@ -29,7 +29,7 @@ The repository keeps no running account of the project's state (decisions, 2026-
 When two parts of the design pull apart, these decide, in this order. `doc/contributors/design/architecture.md`, "What the design answers to", says each in full, with the prior art it names.
 
 1. **A person who double-clicks or runs the app never meets Ruby,** and no Ruby the person happens to have influences the app. This wins over everything below.
-2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`** (decisions 9, 10, and 20; ADR 081). Fledge must never surprise an app developer with how Ruby, its globals, built-ins, and standard library behave compared with not using Fledge (decisions, 2026-11-02), so a difference is a bug unless `Parity::JUSTIFIED` says why it is right.
+2. **The app's Ruby code runs as it does under `ruby main.rb`, or `bundle exec`** (decisions 9, 10, and 20; `doc/contributors/design/launcher.md`, "The program runs as ruby runs it"). Fledge must never surprise an app developer with how Ruby, its globals, built-ins, and standard library behave compared with not using Fledge (decisions, 2026-11-02), so a difference is a bug unless `Parity::JUSTIFIED` says why it is right.
 3. **Ruby the language and its conventions,** read in Ruby's source at the pinned version, never guessed.
 4. **Prior art and standards,** matched, and cited in the design document that specifies the behavior.
 5. **Ruby culture,** whose idioms yield to 1 through 4.

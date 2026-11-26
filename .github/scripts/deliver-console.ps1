@@ -1,8 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of the console on Windows (ADR 081;
-# doc/contributors/design/parity.md, "Console checks"): runs the console probe
+# Delivery of the console on Windows (doc/contributors/design/parity.md, "Console checks"): runs the console probe
 # (test/fixtures/console) in a console of its own, as a person runs an
 # app in a console window, and ends it as they would:
 #

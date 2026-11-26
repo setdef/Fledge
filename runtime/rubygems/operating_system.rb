@@ -97,7 +97,7 @@ end
 # is not frozen; the temporary bundle is still never locked.
 #
 # The modules are anonymous, so an app sees no constant of Fledge's
-# (ADR 081).
+# (decisions 9 and 10).
 unfrozen = Module.new do
   def frozen_bundle?
     Thread.current[:__fledge_force_activate] ? false : super

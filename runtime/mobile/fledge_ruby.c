@@ -12,8 +12,10 @@
  *
  *   ruby --disable=rubyopt -- SCRIPT ARGS
  *
- * which is what ruby SCRIPT ARGS does with no RUBYOPT (ADR 081): no -I,
- * so the app loads its own files with require_relative, and no --yjit.
+ * which is what ruby SCRIPT ARGS does with no RUBYOPT
+ * (doc/contributors/design/launcher.md, "The program runs as ruby runs
+ * it"): no -I, so the app loads its own files with require_relative,
+ * and no --yjit.
  *
  * What differs from the desktop launcher is what a phone needs:
  *

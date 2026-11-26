@@ -47,6 +47,11 @@ module Fledge
   # "Application User Model IDs" says of an app a deployment framework
   # manages.
   #
+  # The manifest declares a <tt>PackageDependency</tt> on each framework
+  # package that +windows+ lists as +msix_dependencies+, such as
+  # Microsoft's Windows App Runtime, which the Store or App Installer
+  # installs with the package: the package carries none of its files.
+  #
   # MakeAppx is the Windows SDK's (Fledge::WindowsSdk).
   #
   # Use it through Fledge::Installers.
@@ -182,7 +187,7 @@ module Fledge
         "  </Resources>",
         "  <Dependencies>",
         %(    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="#{MIN_VERSION}" MaxVersionTested="#{MAX_VERSION_TESTED}" />),
-        *(["    <PackageDependency #{attributes(VISUAL_C_RUNTIME)} />"] if assumes_visual_c_runtime?),
+        *dependencies.map { |dependency| "    <PackageDependency #{attributes(dependency)} />" },
         "  </Dependencies>",
         "  <Capabilities>",
         %(    <rescap:Capability Name="runFullTrust" />),
@@ -254,6 +259,20 @@ module Fledge
     # (Assembly.launch_config).
     private def assumes_visual_c_runtime?
       File.binread(File.join(@folder, CONFIG)).match?(/^visual_c_runtime = /)
+    end
+
+    # The attributes of each <tt>PackageDependency</tt>, as Microsoft's
+    # schema names them (Microsoft Learn, "PackageDependency"): the Visual
+    # C++ runtime's when the app assumes it, then each framework package
+    # <tt>windows: msix_dependencies</tt> lists. A manifest names a
+    # package once, so a listed one that has the Visual C++ runtime
+    # package's name takes its place.
+    private def dependencies
+      listed = (@windows&.msix_dependencies || []).map do |dependency|
+        { "Name" => dependency.name, "MinVersion" => dependency.min_version, "Publisher" => dependency.publisher }
+      end
+      assumed = assumes_visual_c_runtime? ? [VISUAL_C_RUNTIME] : [] # : Array[Hash[String, String]]
+      assumed.reject { |own| listed.any? { |dependency| dependency["Name"] == own["Name"] } } + listed
     end
 
     # The package's name: +msix_name+, or else the identifier. Raises

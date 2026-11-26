@@ -221,6 +221,33 @@
           "maxLength": 8192,
           "pattern": "^[A-Za-z][A-Za-z0-9.]*=\\S"
         },
+        "msix_dependencies": {
+          "description": "The framework packages the MSIX package depends on, such as Microsoft's Windows App Runtime for an app that draws with WinUI 3 (default: none). The Microsoft Store or App Installer installs each with the package, which carries none of their files. Only an msix installer reads it. Each entry is the dependency's PackageDependency in the package manifest: the name and publisher its package's Identity has, and the oldest version that serves.",
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "publisher", "min_version"],
+            "properties": {
+              "name": {
+                "description": "The dependency package's name, such as Microsoft.WindowsAppRuntime.2: 3 to 50 letters, digits, periods, and hyphens.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9.-]{3,50}$"
+              },
+              "publisher": {
+                "description": "The dependency package's publisher, a distinguished name, such as CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US.",
+                "type": "string",
+                "maxLength": 8192,
+                "pattern": "^[A-Za-z][A-Za-z0-9.]*=\\S"
+              },
+              "min_version": {
+                "description": "The oldest version of the dependency package that serves: four whole numbers between periods, each at most 65535, such as 2.7.0.0.",
+                "type": "string",
+                "pattern": "^(?:0|[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])(?:\\.(?:0|[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])){3}$"
+              }
+            }
+          }
+        },
         "visual_c_runtime": {
           "description": "How the app comes by Microsoft's Visual C++ runtime (vcruntime140.dll, msvcp140.dll) when a gem's DLL needs it, which Windows does not include: local copies it from this computer's System32 into the app, which Microsoft limits to licensed Visual Studio users; central ships none, for computers that have the Visual C++ Redistributable (default: neither, and fledge build refuses such a gem).",
           "type": ["string", "null"],

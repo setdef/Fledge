@@ -32,6 +32,8 @@ module Fledge
 
     private def assumes_visual_c_runtime?: () -> bool
 
+    private def dependencies: () -> Array[Hash[String, String]]
+
     private def package_name: () -> String
 
     private def publisher: () -> String

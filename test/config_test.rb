@@ -96,11 +96,36 @@ class ConfigTest < Minitest::Test
 
     assert_equal %w[nsis msix], config.installers
     assert_equal Fledge::Config::Windows.new(msix_name: "12345Example.Hello", msix_publisher: "CN=1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D",
-      visual_c_runtime: nil), config.windows
+      msix_dependencies: [], visual_c_runtime: nil), config.windows
     assert_nil load("windows:\n  msix_publisher: \"CN=Example, O=Example, C=US\"\n").windows.msix_name
     assert_equal "local", load("windows:\n  visual_c_runtime: local\n").windows.visual_c_runtime
     assert_equal "central", load("windows:\n  visual_c_runtime: central\n").windows.visual_c_runtime
     assert_nil load("kind: windowed\n").windows
+  end
+
+  # A package that needs a framework package, such as Microsoft's Windows
+  # App Runtime, names it as a PackageDependency does: its name, its
+  # publisher, and the oldest version that serves.
+  def test_reads_the_framework_packages_an_msix_depends_on
+    config = load(<<~YAML)
+      windows:
+        msix_publisher: CN=Example
+        msix_dependencies:
+          - name: Microsoft.WindowsAppRuntime.2
+            publisher: CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US
+            min_version: 2.7.0.0
+          - name: Example.Framework
+            publisher: CN=Example
+            min_version: "1.0.0.0"
+    YAML
+
+    assert_equal [
+      Fledge::Config::Windows::Dependency.new(name: "Microsoft.WindowsAppRuntime.2",
+        publisher: "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US", min_version: "2.7.0.0"),
+      Fledge::Config::Windows::Dependency.new(name: "Example.Framework", publisher: "CN=Example", min_version: "1.0.0.0"),
+    ], config.windows.msix_dependencies
+    assert_equal [], load("windows:\n  msix_publisher: CN=Example\n").windows.msix_dependencies
+    assert_equal [], load("windows:\n  msix_dependencies:\n").windows.msix_dependencies
   end
 
   # Fledge takes no position on an app's gems' licenses (2026-10-28;
@@ -149,8 +174,8 @@ class ConfigTest < Minitest::Test
       "installers: [dmg]\n" => /: only a windowed app has installers; a console app ships as its archive/,
       "kind: windowed\ninstallers: [msix]\n" => /: an msix installer needs windows: msix_publisher, the package's publisher: Partner Center's .* such as CN=Example\z/,
       "kind: windowed\ninstallers: [msix]\nwindows: {}\n" => /: an msix installer needs windows: msix_publisher/,
-      "windows: CN=Example\n" => /: windows must be a mapping of msix_name, msix_publisher, and visual_c_runtime, such as windows: \{ msix_publisher: CN=Example \}\z/,
-      "windows:\n  publisher: CN=Example\n" => /: windows has 'publisher', which Fledge does not know\. It knows msix_name, msix_publisher, and visual_c_runtime\.\z/,
+      "windows: CN=Example\n" => /: windows must be a mapping of msix_name, msix_publisher, msix_dependencies, and visual_c_runtime, such as windows: \{ msix_publisher: CN=Example \}\z/,
+      "windows:\n  publisher: CN=Example\n" => /: windows has 'publisher', which Fledge does not know\. It knows msix_name, msix_publisher, msix_dependencies, and visual_c_runtime\.\z/,
       "windows:\n  visual_c_runtime: true\n" => /: windows: visual_c_runtime must be local, to copy Microsoft's Visual C\+\+ runtime from this computer into the app, or central, for computers that have the Visual C\+\+ Redistributable, not true\z/,
       "windows:\n  visual_c_runtime: app\n" => /: windows: visual_c_runtime must be local, .* not "app"\z/,
       "windows:\n  msix_name: ab\n" => /: windows: msix_name must be 3 to 50 letters, digits, periods, and hyphens, .* not "ab"\z/,
@@ -158,6 +183,17 @@ class ConfigTest < Minitest::Test
       "windows:\n  msix_name: #{'a' * 51}\n" => /: windows: msix_name must be 3 to 50/,
       "windows:\n  msix_publisher: Example\n" => /: windows: msix_publisher must be a distinguished name, such as CN=Example: .* not "Example"\z/,
       "windows:\n  msix_publisher: 3\n" => /: windows: msix_publisher must be a distinguished name/,
+      "windows:\n  msix_dependencies: Microsoft.WindowsAppRuntime.2\n" => /: windows: msix_dependencies must be a list of mappings, each with a name, a publisher, and a min_version, not "Microsoft.WindowsAppRuntime.2"\z/,
+      "windows:\n  msix_dependencies: [a]\n" => /: windows: msix_dependencies must be a list of mappings, each with a name, a publisher, and a min_version, not "a"\z/,
+      "windows:\n  msix_dependencies:\n    - name: Example.Framework\n      publisher: CN=Example\n" => /: windows: msix_dependencies has an entry with no min_version, such as min_version: 1\.0\.0\.0\z/,
+      "windows:\n  msix_dependencies:\n    - name: Example.Framework\n      min_version: 1.0.0.0\n" => /: windows: msix_dependencies has an entry with no publisher/,
+      "windows:\n  msix_dependencies:\n    - publisher: CN=Example\n      min_version: 1.0.0.0\n" => /: windows: msix_dependencies has an entry with no name/,
+      "windows:\n  msix_dependencies:\n    - {name: ab, publisher: CN=Example, min_version: 1.0.0.0}\n" => /: windows: msix_dependencies name must be 3 to 50 letters, digits, periods, and hyphens, .* not "ab"\z/,
+      "windows:\n  msix_dependencies:\n    - {name: Example.Framework, publisher: Example, min_version: 1.0.0.0}\n" => /: windows: msix_dependencies publisher must be a distinguished name, such as CN=Example, .* not "Example"\z/,
+      "windows:\n  msix_dependencies:\n    - {name: Example.Framework, publisher: CN=Example, min_version: 1.0}\n" => /: windows: msix_dependencies min_version must be four whole numbers between periods, each at most 65535, such as 2\.7\.0\.0, not 1\.0\z/,
+      "windows:\n  msix_dependencies:\n    - {name: Example.Framework, publisher: CN=Example, min_version: 1.0.0.65536}\n" => /: windows: msix_dependencies min_version must be four whole numbers/,
+      "windows:\n  msix_dependencies:\n    - {name: Example.Framework, publisher: CN=Example, min_version: 1.0.0.0, optional: true}\n" => /: windows: msix_dependencies has 'optional', which Fledge does not know\. It knows name, publisher, and min_version\.\z/,
+      "windows:\n  msix_dependencies:\n    - {name: Example.Framework, publisher: CN=Example, min_version: 1.0.0.0}\n    - {name: Example.Framework, publisher: CN=Example, min_version: 2.0.0.0}\n" => /: windows: msix_dependencies lists Example\.Framework twice, which a package manifest does not allow\z/,
     }.each do |yaml, message|
       error = assert_raises(Fledge::Error, yaml) { load(yaml) }
       assert_match message, error.message, yaml

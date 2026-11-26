@@ -37,9 +37,23 @@ module Fledge
     # building computer into the app, and +central+, the Visual C++
     # Redistributable installed on each computer the app goes to.
     #
+    # An app whose Ruby draws with a framework Microsoft ships as a
+    # framework package, such as the Windows App Runtime that WinUI 3
+    # needs, has its package depend on that package, which the Microsoft
+    # Store or App Installer then installs with it, so that the app
+    # carries none of Microsoft's files. +msix_dependencies+ lists each
+    # as Microsoft's <tt>PackageDependency</tt> element does (Microsoft
+    # Learn, "PackageDependency"): its package's name and publisher, and
+    # the oldest version of it that serves. Fledge writes the list into an
+    # MSIX package only; the setup program, the <tt>.zip</tt>, and the
+    # other installers ignore it. An app that runs from one of those finds
+    # the framework only if the computer already has it, and its Ruby
+    # decides what to do without it.
+    #
     # This class reads the mapping: its +msix_name+, three to fifty
-    # letters, digits, periods, and hyphens, its +msix_publisher+, and its
-    # +visual_c_runtime+, one of VISUAL_C_RUNTIME.
+    # letters, digits, periods, and hyphens, its +msix_publisher+, its
+    # +msix_dependencies+, each a Dependency, and its +visual_c_runtime+,
+    # one of VISUAL_C_RUNTIME.
     #
     # Use it through Fledge::Config#windows.
     #
@@ -54,13 +68,18 @@ module Fledge
     #   #   windows:
     #   #     msix_name: 12345Example.CoolApp
     #   #     msix_publisher: CN=1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D
+    #   #     msix_dependencies:
+    #   #       - name: Microsoft.WindowsAppRuntime.2
+    #   #         publisher: CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US
+    #   #         min_version: 2.7.0.0
     #   #     visual_c_runtime: local
     #   Fledge::Config.load("path/to/project").windows.msix_name # => "12345Example.CoolApp"
+    #   Fledge::Config.load("path/to/project").windows.msix_dependencies.first.min_version # => "2.7.0.0"
     #   Fledge::Config.load("path/to/project").windows.visual_c_runtime # => "local"
     #--
     # SPDX-SnippetEnd
     #++
-    class Windows < Data.define(:msix_name, :msix_publisher, :visual_c_runtime)
+    class Windows < Data.define(:msix_name, :msix_publisher, :msix_dependencies, :visual_c_runtime)
       ##
       # :attr_reader: msix_name
       # The MSIX package's name, or +nil+ for the app's identifier.
@@ -71,13 +90,48 @@ module Fledge
       # none.
 
       ##
+      # :attr_reader: msix_dependencies
+      # The framework packages the MSIX package depends on, each a
+      # Dependency, in the order <tt>fledge.yml</tt> lists them; empty for
+      # none.
+
+      ##
       # :attr_reader: visual_c_runtime
       # How the app comes by Microsoft's Visual C++ runtime when a gem's
       # DLL needs it, one of VISUAL_C_RUNTIME, or +nil+ for not at all, so
       # that fledge build refuses such a gem.
 
       # The keys the mapping may hold.
-      KEYS = %w[msix_name msix_publisher visual_c_runtime].freeze
+      KEYS = %w[msix_name msix_publisher msix_dependencies visual_c_runtime].freeze
+
+      # A framework package an MSIX package depends on, by the three
+      # attributes of the manifest's <tt>PackageDependency</tt> that name
+      # one (Microsoft Learn, "PackageDependency"): +name+ and
+      # +publisher+ as they stand in the <tt>Identity</tt> of the
+      # dependency's package, and +min_version+, the oldest version that
+      # serves, four numbers between periods.
+      class Dependency < Data.define(:name, :publisher, :min_version)
+        ##
+        # :attr_reader: name
+        # The dependency package's name.
+
+        ##
+        # :attr_reader: publisher
+        # The dependency package's publisher, a distinguished name.
+
+        ##
+        # :attr_reader: min_version
+        # The oldest version of the package that serves, such as
+        # <tt>2.7.0.0</tt>.
+
+        # The keys an entry may hold.
+        KEYS = %w[name publisher min_version].freeze
+
+        # A version as the manifest's schema wants one (ST_Version): four
+        # whole numbers between periods, each from 0 to 65535, with no
+        # leading zero.
+        VERSION = /\A(?<part>0|[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])(?:\.\g<part>){3}\z/
+      end
 
       # The ways an app may come by the Visual C++ runtime, as Microsoft's
       # "Deployment in Visual C++" names them: +local+, "library files
@@ -118,17 +172,18 @@ module Fledge
         item = data["windows"]
         return nil if item.nil?
         unless item.is_a?(Hash)
-          raise Error, "#{file}: windows must be a mapping of msix_name, msix_publisher, and visual_c_runtime, such as windows: { msix_publisher: CN=Example }"
+          raise Error, "#{file}: windows must be a mapping of msix_name, msix_publisher, msix_dependencies, and visual_c_runtime, " \
+            "such as windows: { msix_publisher: CN=Example }"
         end
 
         unknown = item.keys - KEYS
         unless unknown.empty?
           raise Error, "#{file}: windows has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. " \
-            "It knows msix_name, msix_publisher, and visual_c_runtime."
+            "It knows msix_name, msix_publisher, msix_dependencies, and visual_c_runtime."
         end
 
         new(msix_name: package_name(item["msix_name"], file), msix_publisher: package_publisher(item["msix_publisher"], file),
-          visual_c_runtime: runtime(item["visual_c_runtime"], file))
+          msix_dependencies: dependencies(item["msix_dependencies"], file), visual_c_runtime: runtime(item["visual_c_runtime"], file))
       end
 
       # The name at +value+: text of NAME's form, or +nil+.
@@ -148,6 +203,57 @@ module Fledge
 
         raise Error, "#{file}: windows: msix_publisher must be a distinguished name, such as CN=Example: Partner Center's " \
           "Package/Identity/Publisher, or the subject of the certificate you sign with, not #{value.inspect}"
+      end
+
+      # The dependencies at +value+: a list of mappings of Dependency's
+      # KEYS, each with all three and none named twice, or +nil+ for none.
+      private_class_method def self.dependencies(value, file) # :nodoc:
+        return [] if value.nil?
+
+        entries = (value.is_a?(Array) ? value : [value]).map { |entry| dependency(entry, file, value) }
+        names = entries.map(&:name)
+        twice = names.find { |name| names.count(name) > 1 }
+        raise Error, "#{file}: windows: msix_dependencies lists #{twice} twice, which a package manifest does not allow" if twice
+
+        entries
+      end
+
+      # The Dependency at +entry+, one of the list +value+.
+      private_class_method def self.dependency(entry, file, value) # :nodoc:
+        unless value.is_a?(Array) && entry.is_a?(Hash)
+          raise Error, "#{file}: windows: msix_dependencies must be a list of mappings, each with a name, a publisher, and a min_version, " \
+            "not #{entry.inspect}"
+        end
+
+        unknown = entry.keys - Dependency::KEYS
+        unless unknown.empty?
+          raise Error, "#{file}: windows: msix_dependencies has #{unknown.map { |key| "'#{key}'" }.join(', ')}, which Fledge does not know. " \
+            "It knows name, publisher, and min_version."
+        end
+
+        hints = { "name" => "Microsoft.WindowsAppRuntime.2", "publisher" => "CN=Microsoft Corporation, ...", "min_version" => "1.0.0.0" }
+        missing = Dependency::KEYS.find { |key| entry[key].nil? }
+        raise Error, "#{file}: windows: msix_dependencies has an entry with no #{missing}, such as #{missing}: #{hints.fetch(missing)}" if missing
+
+        name, publisher = entry.values_at("name", "publisher")
+        unless name.is_a?(String) && name.match?(NAME)
+          raise Error, "#{file}: windows: msix_dependencies name must be 3 to 50 letters, digits, periods, and hyphens, as the Name of the " \
+            "dependency package's Identity is, such as Microsoft.WindowsAppRuntime.2, not #{name.inspect}"
+        end
+        unless publisher.is_a?(String) && publisher.length <= PUBLISHER_MAX && publisher.match?(/\A[A-Za-z][A-Za-z0-9.]*=\S/)
+          raise Error, "#{file}: windows: msix_dependencies publisher must be a distinguished name, such as CN=Example, as the Publisher of " \
+            "the dependency package's Identity is, not #{publisher.inspect}"
+        end
+
+        Dependency.new(name:, publisher:, min_version: version(entry["min_version"], file))
+      end
+
+      # The version at +value+: four numbers between periods.
+      private_class_method def self.version(value, file) # :nodoc:
+        return value if value.is_a?(String) && value.match?(Dependency::VERSION)
+
+        raise Error, "#{file}: windows: msix_dependencies min_version must be four whole numbers between periods, each at most " \
+          "65535, such as 2.7.0.0, not #{value.inspect}"
       end
 
       # The way at +value+: one of VISUAL_C_RUNTIME, or +nil+.

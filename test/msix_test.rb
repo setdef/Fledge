@@ -43,8 +43,8 @@ class MsixTest < Minitest::Test
       long_description: nil, homepage: nil, file_associations:)
   end
 
-  def windows(msix_name: nil, msix_publisher: PUBLISHER)
-    Fledge::Config::Windows.new(msix_name:, msix_publisher:, visual_c_runtime: nil)
+  def windows(msix_name: nil, msix_publisher: PUBLISHER, msix_dependencies: [])
+    Fledge::Config::Windows.new(msix_name:, msix_publisher:, msix_dependencies:, visual_c_runtime: nil)
   end
 
   def msix(identity: self.identity, windows: self.windows, platform: X64, env: {})
@@ -145,6 +145,37 @@ class MsixTest < Minitest::Test
     assert_equal ["Microsoft.VCLibs.140.00.UWPDesktop", "14.0.24217.0", "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"],
       %w[Name MinVersion Publisher].map { |key| dependencies.last.attributes[key] }
     assert_equal "entry = main.rb\n", Fledge::Msix.packaged_config(File.binread(File.join(@folder, "fledge.cfg")))
+  end
+
+  APP_RUNTIME = Fledge::Config::Windows::Dependency.new(name: "Microsoft.WindowsAppRuntime.2", min_version: "2.7.0.0",
+    publisher: "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US")
+
+  # A framework package the developer names, such as the Windows App
+  # Runtime, is a PackageDependency as Microsoft's schema writes one,
+  # after the Visual C++ runtime's when the app needs it too.
+  def test_the_framework_packages_the_developer_names_are_dependencies
+    extra = Fledge::Config::Windows::Dependency.new(name: "Example.Framework", publisher: "CN=Example & Co", min_version: "1.0.0.0")
+    File.binwrite(File.join(@folder, "fledge.cfg"), "entry = main.rb\nvisual_c_runtime = msvcp140.dll\n")
+    dependencies = first(manifest(windows: windows(msix_dependencies: [APP_RUNTIME, extra])), "/m:Package/m:Dependencies").elements.to_a
+
+    assert_equal %w[TargetDeviceFamily PackageDependency PackageDependency PackageDependency], dependencies.map(&:name)
+    assert_equal [
+      ["Microsoft.VCLibs.140.00.UWPDesktop", "14.0.24217.0"], ["Microsoft.WindowsAppRuntime.2", "2.7.0.0"], ["Example.Framework", "1.0.0.0"]
+    ], dependencies.drop(1).map { |element| %w[Name MinVersion].map { |key| element.attributes[key] } }
+    assert_equal ["CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US", "CN=Example & Co"],
+      dependencies.drop(2).map { |element| element.attributes["Publisher"] }
+  end
+
+  # A manifest may name a dependency once, so one the developer lists
+  # by the name of the Visual C++ runtime's takes its place.
+  def test_a_framework_package_the_developer_names_replaces_the_one_fledge_would_write
+    File.binwrite(File.join(@folder, "fledge.cfg"), "entry = main.rb\nvisual_c_runtime = msvcp140.dll\n")
+    newer = Fledge::Config::Windows::Dependency.new(name: Fledge::Msix::VISUAL_C_RUNTIME.fetch("Name"), min_version: "14.40.0.0",
+      publisher: Fledge::Msix::VISUAL_C_RUNTIME.fetch("Publisher"))
+    dependencies = first(manifest(windows: windows(msix_dependencies: [newer])), "/m:Package/m:Dependencies").elements.to_a
+
+    assert_equal [["Microsoft.VCLibs.140.00.UWPDesktop", "14.40.0.0"]],
+      dependencies.drop(1).map { |element| %w[Name MinVersion].map { |key| element.attributes[key] } }
   end
 
   def test_it_says_what_a_package_needs

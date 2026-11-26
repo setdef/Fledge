@@ -11,15 +11,33 @@ module Fledge
 
       attr_reader msix_name: String?
       attr_reader msix_publisher: String?
+      attr_reader msix_dependencies: Array[Dependency]
       attr_reader visual_c_runtime: String?
 
-      def self.new: (msix_name: String?, msix_publisher: String?, visual_c_runtime: String?) -> instance
+      class Dependency < Data
+        KEYS: Array[String]
+        VERSION: Regexp
+
+        attr_reader name: String
+        attr_reader publisher: String
+        attr_reader min_version: String
+
+        def self.new: (name: String, publisher: String, min_version: String) -> instance
+      end
+
+      def self.new: (msix_name: String?, msix_publisher: String?, msix_dependencies: Array[Dependency], visual_c_runtime: String?) -> instance
 
       def self.from: (Hash[Object, Object] data, String file) -> Windows?
 
       private def self.package_name: (Object value, String file) -> String?
 
       private def self.package_publisher: (Object value, String file) -> String?
+
+      private def self.dependencies: (Object value, String file) -> Array[Dependency]
+
+      private def self.dependency: (Object entry, String file, Object value) -> Dependency
+
+      private def self.version: (Object value, String file) -> String
 
       private def self.runtime: (Object value, String file) -> String?
     end

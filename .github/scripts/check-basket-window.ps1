@@ -89,7 +89,9 @@ $app = Join-Path (Join-Path $place $name) 'Basket.exe'
 if (-not (Test-Path -LiteralPath $app -PathType Leaf)) { Fail "$app is missing after unpacking $Archive" }
 
 # The runner has Rubies; the app's PATH keeps only the system's folders.
-# Its list is a file in the home folder, which starts empty.
+# Its list is basket.json in setdef\Basket\data under the Roaming AppData
+# folder, which Basket takes from %APPDATA% when that is set, and which
+# starts empty.
 $system = $env:SystemRoot
 $env:PATH = "$system\System32;$system;$system\System32\Wbem;$system\System32\WindowsPowerShell\v1.0"
 if (Get-Command ruby -ErrorAction SilentlyContinue) { Fail "Get-Command still finds a Ruby on $env:PATH" }
@@ -97,6 +99,9 @@ $home_folder = Join-Path $Work 'Basket home'
 New-Item -ItemType Directory -Force $home_folder | Out-Null
 $env:HOME = $home_folder
 $env:USERPROFILE = $home_folder
+$env:APPDATA = Join-Path $Work 'Basket app data'
+$list = Join-Path $env:APPDATA 'setdef\Basket\data\basket.json'
+Remove-Item -LiteralPath $env:APPDATA -Recurse -ErrorAction SilentlyContinue
 $out = Join-Path $Work 'basket.out'
 $err = Join-Path $Work 'basket.err'
 Remove-Item -LiteralPath $out, $err -ErrorAction SilentlyContinue
@@ -155,7 +160,11 @@ Post $window $WM_CLOSE
 if (-not $process.WaitForExit(30000)) { Fail "Basket did not exit when its window was closed`n$(Show-Log)" }
 Expect 'the exit status' $process.ExitCode 0
 $lines = @(Get-Content -LiteralPath $out)
-Expect 'what Basket logged' ($lines -join '|') 'Basket shows 0 items|Basket added Milk|Basket removed Milk'
+# Basket logs its list's path with the slashes Ruby's Pathname joins it
+# with, which Windows reads as the same path.
+Expect 'where Basket said it keeps its list' ($lines[0] -replace '/', '\') "Basket keeps its list in $list"
+Expect 'what Basket logged after that' ($lines[1..($lines.Count - 1)] -join '|') 'Basket shows 0 items|Basket added Milk|Basket removed Milk'
+Expect 'what Basket saved in its list' ((Get-Content -LiteralPath $list -Raw) -replace '\s+$', '') '[]'
 Expect 'what Basket wrote to standard error' ((Get-Content -LiteralPath $err -Raw) -replace '\s+$', '') ''
 
 Write-Host 'Delivered: Basket, on Windows'

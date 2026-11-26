@@ -67,6 +67,11 @@
 #   there, beside file_sha256, its SHA-256. The move rewrites the
 #   version in the path, downloads the new archive, and hashes the file
 #   it unpacks from it (with zstd, or 7-Zip's 7zz, and tar).
+# fixtures: the files of the checkout that hold the bytes of the pin's
+#   file, which tests write where a runtime holds it and the license
+#   audit holds to the SHA-256 its entry pins. The move replaces each
+#   with the file the pin's new URL serves, once its SHA-256 is the one
+#   the pin records.
 # linked: for an input whose build links libraries whose versions only
 #   its upstream's own build script names, that script's url, with
 #   {version} for the new version, and the ids of runtime/licenses.yml's
@@ -379,6 +384,7 @@ watched:
     pattern: 'cacert-(?<version>\d{4}-\d{2}-\d{2})\.pem'
     names: [Mozilla's CA certificates, cacert, ca-certificates]
     checksum: beside
+    fixtures: [test/fixtures/cacert-curl.pem]
     licenses: [ca-certificates]
   # Google's repository of Android's SDK packages, the one Android
   # Studio's SDK manager reads; channel-0 is its stable channel, which

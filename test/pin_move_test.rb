@@ -218,16 +218,67 @@ class PinMoveTest < Minitest::Test
   end
 
   def test_a_pin_named_in_a_pattern_and_a_sha256_beside_its_file
-    checkout("runtime/licenses.yml" => "components:\n  - id: ca-certificates\n    version: cacert-2026-03-19\n") do |root|
+    checkout("runtime/licenses.yml" => "components:\n  - id: ca-certificates\n    version: cacert-2026-03-19\n", CA_FIXTURE => "old\n") do |root|
       new_url = "https://curl.se/ca/cacert-2026-11-05.pem"
-      move = mover(root, Answers.new("#{new_url}.sha256" => "#{'cd' * 32}  cacert-2026-11-05.pem\n"))
+      sha256 = Digest::SHA256.hexdigest("new\n")
+      move = mover(root, Answers.new(new_url => "new\n", "#{new_url}.sha256" => "#{sha256}  cacert-2026-11-05.pem\n"))
       move.call(finding("ca-certificates", "2026-03-19", "2026-11-05"))
       sources = move.read("runtime/sources.yml")
 
-      assert_includes sources, "    version: cacert-2026-11-05\n    url: #{new_url}\n    sha256: #{'cd' * 32}\n"
+      assert_includes sources, "    version: cacert-2026-11-05\n    url: #{new_url}\n    sha256: #{sha256}\n"
       assert_includes move.read("runtime/licenses.yml"), "version: cacert-2026-11-05"
       assert_includes move.read("CHANGELOG.md"), "- Mozilla's CA certificates 2026-11-05, from 2026-03-19.\n"
     end
+  end
+
+  CA_FIXTURE = "test/fixtures/cacert-curl.pem"
+  CA_LICENSES = <<~YAML
+    components:
+      - id: ca-certificates
+        version: cacert-2026-03-19
+        download: https://curl.se/ca/cacert-2026-03-19.pem
+        files: ["{prefix}libexec/cert.pem"]
+        sha256:
+          "{prefix}libexec/cert.pem": b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171
+  YAML
+
+  # The audit tests write a CA bundle where a runtime holds
+  # libexec/cert.pem, and the audit holds each to the SHA-256 its entry
+  # pins, so the bundle they write moves with the pin.
+  def test_a_move_of_the_ca_certificates_leaves_every_sha256_that_names_the_file_the_new_files
+    bundle = "-----BEGIN CERTIFICATE-----\nnew\n-----END CERTIFICATE-----\n".b
+    sha256 = Digest::SHA256.hexdigest(bundle)
+    new_url = "https://curl.se/ca/cacert-2026-11-05.pem"
+    checkout("runtime/licenses.yml" => CA_LICENSES, CA_FIXTURE => "old bundle\n") do |root|
+      answers = Answers.new(new_url => bundle, "#{new_url}.sha256" => "#{sha256}  cacert-2026-11-05.pem\n")
+      move = mover(root, answers, "ca-certificates" => { "pins" => ["musl-ruby.ca-certificates"], "fixtures" => [CA_FIXTURE] })
+      changed = move.call(finding("ca-certificates", "2026-03-19", "2026-11-05"))
+      move.save
+      pinned = YAML.safe_load_file(File.join(root, "runtime/sources.yml")).dig("musl-ruby", "ca-certificates", "sha256")
+      entry = YAML.safe_load_file(File.join(root, "runtime/licenses.yml")).fetch("components").first
+
+      assert_includes changed.keys, CA_FIXTURE
+      assert_equal [sha256], [pinned, *entry.fetch("sha256").values, Digest::SHA256.file(File.join(root, CA_FIXTURE)).hexdigest].uniq
+    end
+  end
+
+  def test_a_move_refuses_a_ca_bundle_whose_bytes_are_not_the_sha256_upstream_records_for_it
+    new_url = "https://curl.se/ca/cacert-2026-11-05.pem"
+    checkout("runtime/licenses.yml" => CA_LICENSES, CA_FIXTURE => "old bundle\n") do |root|
+      answers = Answers.new(new_url => "other bytes\n", "#{new_url}.sha256" => "#{'cd' * 32}  cacert-2026-11-05.pem\n")
+      move = mover(root, answers, "ca-certificates" => { "pins" => ["musl-ruby.ca-certificates"], "fixtures" => [CA_FIXTURE] })
+
+      assert_raises(PinMove::Error) { move.call(finding("ca-certificates", "2026-03-19", "2026-11-05")) }
+      assert_empty move.texts
+    end
+  end
+
+  def test_the_ca_certificates_upstream_names_the_bundle_the_audit_tests_write_and_it_is_the_pins_file
+    fixtures = entries.fetch("ca-certificates").fetch("fixtures")
+    pinned = YAML.safe_load_file(File.join(ROOT, "runtime/sources.yml")).dig("musl-ruby", "ca-certificates", "sha256")
+
+    assert_equal [CA_FIXTURE], fixtures
+    assert_equal pinned, Digest::SHA256.file(File.join(ROOT, CA_FIXTURE)).hexdigest
   end
 
   def test_gradle_moves_its_wrappers_properties_and_keeps_the_wrapper

@@ -83,6 +83,7 @@ class PinMove
     changed = {}
     parts(entry, upstream, from, to).each do |part, named, old, new|
       swaps = move_sources(named, part, old, new, changed)
+      fixtures(part, changed)
       part.fetch("licenses", []).each { |id| write("runtime/licenses.yml", license(read("runtime/licenses.yml"), id, old, new, swaps), changed) }
       part.fetch("also", {}).each { |path, patterns| write(path, also(read(path), path, patterns, swaps, old, new), changed) }
       from, to = old, new
@@ -153,7 +154,7 @@ class PinMove
   def save(root = @root)
     @texts.each do |path, text|
       FileUtils.mkdir_p(File.dirname(File.join(root, path)))
-      File.write(File.join(root, path), text)
+      (text.encoding == Encoding::BINARY) ? File.binwrite(File.join(root, path), text) : File.write(File.join(root, path), text)
     end
   end
 
@@ -195,6 +196,22 @@ class PinMove
     check(text, upstream, to)
     write("runtime/sources.yml", text, changed)
     swaps
+  end
+
+  # Replaces each file of the entry's fixtures with the file its pin now
+  # names, which a test writes where a runtime holds that file, and the
+  # license audit holds to the SHA-256 the pin records. The bytes must be
+  # those the pin's SHA-256 records, which the move has just taken from
+  # upstream.
+  private def fixtures(entry, changed)
+    paths = entry.fetch("fixtures", [])
+    return if paths.empty?
+
+    pin = YAML.safe_load(read("runtime/sources.yml")).dig(*entry.fetch("pins").first.split("."))
+    bytes = @fetch.call(pin.fetch("url")).b
+    raise Error, "#{pin.fetch('url')} is not the file whose SHA-256 upstream records as #{pin.fetch('sha256')}" unless Digest::SHA256.hexdigest(bytes) == pin.fetch("sha256")
+
+    paths.each { |path| changed[path] = @texts[path] = bytes }
   end
 
   # Every mapping under +node+ with a URL.

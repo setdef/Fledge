@@ -49,34 +49,50 @@ class WindowsScreenTest < Minitest::Test
   # The id of the command each test posts last, which ends the message loop.
   DONE = 9999
 
-  # A list in a new folder.
+  # The screen every test but one uses, made when a test first asks.
+  # On Windows 11 (build 10.0.26300), a process's third window and each
+  # one after it take two seconds to be shown, or to be given the
+  # keyboard, which Add does; the first two do not. A window for each
+  # test would make most of them wait, so one window serves them all,
+  # and the test that needs another makes the second, and never gives it
+  # the keyboard. The window and its folder go when the last test has run.
+  def self.shared
+    @shared ||= begin
+      dir = Dir.mktmpdir
+      list = Basket::List.new(File.join(dir, "basket.json"))
+      screen = Basket::Windows::Screen.new(list)
+      screen.window.on_command(DONE) { Basket::Win32::Functions::POST_QUIT.call(0) }
+      Minitest.after_run do
+        close(screen)
+        FileUtils.rm_rf(dir)
+      end
+      [list, screen]
+    end
+  end
+
+  # Closes the window of +screen+, which ends its message loop.
+  def self.close(screen)
+    screen.window.close
+    Basket::Win32.run(screen.window)
+  end
+
+  # The shared screen, with no items and nothing typed.
   def setup
     skip WINDOWS_UNAVAILABLE if WINDOWS_UNAVAILABLE
 
-    @dir = Dir.mktmpdir
-    @list = Basket::List.new(File.join(@dir, "basket.json"))
+    @list, @screen = self.class.shared
+    @list.remove(0) until @list.items.empty?
+    @screen.table.remove(0) until @screen.rows.zero?
+    @screen.field.text = ""
   end
 
-  # Closes the window, if the test did not, and deletes the folder.
-  def teardown
-    return unless @dir
-
-    if @screen && Basket::Win32::Window::WINDOWS.key?(@screen.window.handle)
-      @screen.window.close
-      Basket::Win32.run(@screen.window)
-    end
-    FileUtils.rm_rf(@dir)
-  end
-
-  # The screen of the list after it takes +items+, asked to end the
-  # message loop once the messages posted before it are handled. It is
-  # never shown: showing a window takes two seconds on some systems
-  # after another has closed, and the messages reach hidden controls
-  # all the same.
+  # The shared screen after it takes +items+, as they would be had the
+  # person added them.
   def open_screen(*items)
-    items.each { |item| @list.add(item) }
-    @screen = Basket::Windows::Screen.new(@list)
-    @screen.window.on_command(DONE) { Basket::Win32::Functions::POST_QUIT.call(0) }
+    items.each do |item|
+      @list.add(item)
+      @screen.table.add(item)
+    end
     @screen
   end
 
@@ -98,7 +114,16 @@ class WindowsScreenTest < Minitest::Test
 
   # The list shows a row for each of its items.
   def test_it_shows_a_row_for_each_item
-    assert_equal 2, open_screen("Milk", "Eggs").rows
+    dir = Dir.mktmpdir
+    list = Basket::List.new(File.join(dir, "basket.json"))
+    list.add("Milk")
+    list.add("Eggs")
+    screen = Basket::Windows::Screen.new(list)
+
+    assert_equal 2, screen.rows
+  ensure
+    self.class.close(screen) if screen
+    FileUtils.rm_rf(dir)
   end
 
   # A click on Add takes what the field holds into the list and a row,

@@ -12,7 +12,7 @@
 # ARCHIVE is NAME-PLATFORM.tar.gz as fledge build wrote it, and
 # PROBE_ARCHIVE the parity probe (test/fixtures/parity) built the same
 # way, which reports what a child Ruby sees and what a restart through
-# RbConfig.ruby changes: parity-PLATFORM.tar.gz, a
+# RbConfig.ruby changes: Parity-PLATFORM.tar.gz, a
 # lone script, for hello, and ParityBundle-PLATFORM.tar.gz, the probe as
 # a gem-shaped app's program (Parity.gem_probe), for my_cool_app. EXPECTED
 # is the one line the app must print: for hello, "Hello from Ruby

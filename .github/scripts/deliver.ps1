@@ -11,7 +11,7 @@
 #
 # ARCHIVE is NAME-PLATFORM.zip as fledge build wrote it, and PROBE_ARCHIVE
 # the parity probe (test/fixtures/parity) built the same way, which
-# reports what a child Ruby sees: parity-PLATFORM.zip, a lone script, for
+# reports what a child Ruby sees: Parity-PLATFORM.zip, a lone script, for
 # hello, and ParityBundle-PLATFORM.zip, the probe as a gem-shaped app's
 # program (Parity.gem_probe), for my_cool_app. PLATFORM is x64-mingw-ucrt,
 # and LINE the one line the app must print. WORK is the one folder the

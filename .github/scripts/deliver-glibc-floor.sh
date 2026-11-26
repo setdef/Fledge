@@ -20,8 +20,8 @@
 # Amazon Linux 2023's image has no tar, which a person needs there to
 # unpack any .tar.gz, and installs it so.
 #
-# DELIVERED holds the Build job's apps for PLATFORM (hello, parity,
-# ParityBundle, https, and my_cool_app.expected), and FLOOR the
+# DELIVERED holds the Build job's apps for PLATFORM (Hello, Parity,
+# ParityBundle, Https, and my_cool_app.expected), and FLOOR the
 # my_cool_app .github/scripts/glibc-app.sh built. The image runs from a
 # step, not as the job's container, since GitHub's actions run inside a
 # job's container and need what an image may lack.
@@ -42,6 +42,6 @@ docker run --rm --network host -v "$scripts:/s:ro" -v "$delivered:/d:ro" -v "$fl
   set -eu
   [ -z "$PACKAGES" ] || dnf install -y -q $PACKAGES
   echo "glibc: $(ldd --version 2>&1 | sed -n 1p)"
-  sh /s/deliver.sh "/d/hello-$PLATFORM.tar.gz" "/d/parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed
-  sh /s/deliver.sh "/f/my_cool_app-$PLATFORM.tar.gz" "/d/ParityBundle-$PLATFORM.tar.gz" "$EXPECTED" --no-ruby-installed
-  sh /s/deliver-https.sh "/d/https-$PLATFORM.tar.gz" /https --store-may-change'
+  sh /s/deliver.sh "/d/Hello-$PLATFORM.tar.gz" "/d/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed
+  sh /s/deliver.sh "/f/MyCoolApp-$PLATFORM.tar.gz" "/d/ParityBundle-$PLATFORM.tar.gz" "$EXPECTED" --no-ruby-installed
+  sh /s/deliver-https.sh "/d/Https-$PLATFORM.tar.gz" /https --store-may-change'

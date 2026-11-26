@@ -129,7 +129,7 @@ module Fledge
       # sense of.
       def call(argv)
         options = Options.parse(argv)
-        app = App.at(options.program, phone: true)
+        app = App.at(options.program)
         printed = StringIO.new
         built = @build.call([options.phone, "--out", options.out, "--", options.program], printed)
         return built unless built.zero?

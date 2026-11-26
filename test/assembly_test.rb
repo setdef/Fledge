@@ -47,19 +47,19 @@ class AssemblyTest < Minitest::Test
 
       archive = assemble(dir, app)
 
-      assert_equal File.join(dir, "dist", "hello-x86_64-linux.tar.gz"), archive
-      folder = File.join(dir, "dist", "hello-x86_64-linux")
-      assert_equal %w[app fledge.cfg hello lib], Dir.children(folder).sort
-      assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "hello"))
+      assert_equal File.join(dir, "dist", "Hello-x86_64-linux.tar.gz"), archive
+      folder = File.join(dir, "dist", "Hello-x86_64-linux")
+      assert_equal %w[Hello app fledge.cfg lib], Dir.children(folder).sort
+      assert_equal FakeRuntime::LAUNCHER, File.read(File.join(folder, "Hello"))
       assert_equal "puts 'hi'\n", File.read(File.join(folder, "app/main.rb"))
       assert_equal "ruby", File.readlink(File.join(folder, "lib/current"))
-      assert_equal ["hello-x86_64-linux"], left_in(dir) - [File.basename(archive)], "no work folder is left"
+      assert_equal ["Hello-x86_64-linux"], left_in(dir) - [File.basename(archive)], "no work folder is left"
       assert Fledge::CacheTag.tagged?(File.join(dir, "dist")), "the folder the build made is tagged"
 
       place = unpacked(dir, archive)
-      top = File.join(place, "hello-x86_64-linux")
-      assert_equal ["hello", "app", "app/helper.rb", "app/main.rb", "fledge.cfg", *RUNTIME_FILES].sort, tree(top)
-      assert_equal 0o755, File.stat(File.join(top, "hello")).mode & 0o777
+      top = File.join(place, "Hello-x86_64-linux")
+      assert_equal ["Hello", "app", "app/helper.rb", "app/main.rb", "fledge.cfg", *RUNTIME_FILES].sort, tree(top)
+      assert_equal 0o755, File.stat(File.join(top, "Hello")).mode & 0o777
       assert File.symlink?(File.join(top, "lib/current"))
     end
   end
@@ -73,8 +73,8 @@ class AssemblyTest < Minitest::Test
 
       archive = assemble(dir, FakeApp.write(dir), runtime: FakeRuntime.write(dir, LINUX, extra: [description]))
 
-      assert_equal %w[app fledge.cfg hello lib], Dir.children(File.join(dir, "dist", "hello-x86_64-linux")).sort
-      refute_includes tree(unpacked(dir, archive)), "hello-x86_64-linux/RUBY_DESCRIPTION"
+      assert_equal %w[Hello app fledge.cfg lib], Dir.children(File.join(dir, "dist", "Hello-x86_64-linux")).sort
+      refute_includes tree(unpacked(dir, archive)), "Hello-x86_64-linux/RUBY_DESCRIPTION"
     end
   end
 
@@ -99,7 +99,7 @@ class AssemblyTest < Minitest::Test
 
       archive = assemble(dir, FakeApp.write(dir), runtime: FakeRuntime.write(dir, LINUX, extra:))
 
-      held = tree(File.join(unpacked(dir, archive), "hello-x86_64-linux"))
+      held = tree(File.join(unpacked(dir, archive), "Hello-x86_64-linux"))
       assert_includes held, "include/ruby-4.1.0+5/ruby.h"
       assert_includes held, "lib/libruby.4.1-static.a"
       assert_empty held.grep(%r{\Ainclude/(?:openssl|yaml)|\Alib/(?:libssl|libcrypto|libyaml|pkgconfig)})
@@ -115,12 +115,12 @@ class AssemblyTest < Minitest::Test
       hello = FakeApp.write(dir)
       assemble(dir, hello)
       assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\nentry = main.rb\n",
-        File.read(File.join(dir, "dist/hello-x86_64-linux/fledge.cfg"))
+        File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
 
       project = FakeProject.write(dir, name: "my_cool_app")
       assemble(dir, File.join(project, "exe/my_cool_app"))
       assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\n" \
-        "entry = exe/my_cool_app\ngemfile = Gemfile\n", File.read(File.join(dir, "dist/my_cool_app-x86_64-linux/fledge.cfg"))
+        "entry = exe/my_cool_app\ngemfile = Gemfile\n", File.read(File.join(dir, "dist/MyCoolApp-x86_64-linux/fledge.cfg"))
     end
   end
 
@@ -135,11 +135,11 @@ class AssemblyTest < Minitest::Test
       archive = assemble(dir, app, app_files: { "hello.gemspec.txt" => "evaluated\n", ".bundle/config" => "---\n" },
         files: [gem, Fledge::Entry.directory("lib/ruby/gems/4.1.0+5"), info])
 
-      folder = File.join(dir, "dist", "hello-x86_64-linux")
+      folder = File.join(dir, "dist", "Hello-x86_64-linux")
       assert_equal "evaluated\n", File.read(File.join(folder, "app/hello.gemspec.txt"))
       assert_equal "---\n", File.read(File.join(folder, "app/.bundle/config"))
       assert_equal "# foo\n", File.read(File.join(folder, gem.path))
-      top = File.join(unpacked(dir, archive), "hello-x86_64-linux")
+      top = File.join(unpacked(dir, archive), "Hello-x86_64-linux")
       assert_equal "# foo\n", File.read(File.join(top, gem.path))
       assert_equal "--with-foo\n", File.read(File.join(top, info.path))
     end
@@ -234,7 +234,7 @@ class AssemblyTest < Minitest::Test
       File.write(File.join(hello, "fledge.yml"), "linux:\n  system_libraries: [libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
       assemble(dir, hello)
       assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\nentry = main.rb\n" \
-        "system_libraries = libgtk-3.so.0 libwebkit2gtk-4.1.so.0\n", File.read(File.join(dir, "dist/hello-x86_64-linux/fledge.cfg"))
+        "system_libraries = libgtk-3.so.0 libwebkit2gtk-4.1.so.0\n", File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
       assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\n",
         Fledge::Assembly.launch_config(Fledge::App.at(hello))
 
@@ -258,7 +258,7 @@ class AssemblyTest < Minitest::Test
       File.write(File.join(hello, "fledge.yml"), "linux:\n  system_libraries: [libgirepository-1.0.so.1]\n  system_typelibs: [Gtk-4.0, GdkPixbuf-2.0]\n")
       assemble(dir, hello)
       assert_equal "# Written by fledge build #{Fledge::VERSION} for x86_64-linux: what this app's program runs.\n# Needs glibc 2.28 or newer, the newest any of its compiled files needs.\nentry = main.rb\n" \
-        "system_libraries = libgirepository-1.0.so.1\nsystem_typelibs = Gtk-4.0 GdkPixbuf-2.0\n", File.read(File.join(dir, "dist/hello-x86_64-linux/fledge.cfg"))
+        "system_libraries = libgirepository-1.0.so.1\nsystem_typelibs = Gtk-4.0 GdkPixbuf-2.0\n", File.read(File.join(dir, "dist/Hello-x86_64-linux/fledge.cfg"))
       assert_equal "# Written by fledge build: what this app's program runs.\nentry = main.rb\n",
         Fledge::Assembly.launch_config(Fledge::App.at(hello))
 
@@ -391,7 +391,7 @@ class AssemblyTest < Minitest::Test
     Dir.mktmpdir do |dir|
       assemble(dir, FakeApp.write(dir), platform: MACOS)
 
-      assert_equal FakeRuntime::LAUNCHER, File.read(File.join(dir, "dist", "hello-arm64-darwin", "hello"))
+      assert_equal FakeRuntime::LAUNCHER, File.read(File.join(dir, "dist", "Hello-arm64-darwin", "Hello"))
     end
   end
 
@@ -405,7 +405,7 @@ class AssemblyTest < Minitest::Test
 
       error = assert_raises(Fledge::Error) { assemble(dir, app, platform: WINDOWS) }
 
-      assert_equal "hello-x64-mingw-ucrt/app/link.rb is a symbolic link, which a .zip for Windows cannot hold. " \
+      assert_equal "Hello-x64-mingw-ucrt/app/link.rb is a symbolic link, which a .zip for Windows cannot hold. " \
         "Replace it with what it points to.", error.message
       assert_empty left_in(dir)
     end
@@ -416,7 +416,7 @@ class AssemblyTest < Minitest::Test
     Dir.mktmpdir do |dir|
       app = FakeApp.write(dir)
       assemble(dir, app)
-      stale = File.join(dir, "dist/hello-x86_64-linux/stale.txt")
+      stale = File.join(dir, "dist/Hello-x86_64-linux/stale.txt")
       File.write(stale, "old")
 
       assemble(dir, app)
@@ -433,7 +433,7 @@ class AssemblyTest < Minitest::Test
       out = File.join(app, "dist")
       2.times { Fledge::Assembly.new(app: Fledge::App.at(app), platform: LINUX, runtime:, out:).call }
 
-      assert_equal ["main.rb"], Dir.children(File.join(out, "hello-x86_64-linux/app"))
+      assert_equal ["main.rb"], Dir.children(File.join(out, "Hello-x86_64-linux/app"))
     end
   end
 
@@ -457,8 +457,8 @@ class AssemblyTest < Minitest::Test
 
       second = Fledge::Assembly.new(app: Fledge::App.at(app), platform: LINUX, runtime:, out: File.join(app, "out")).call
 
-      assert_equal ["main.rb"], Dir.children(File.join(app, "out/hello-x86_64-linux/app"))
-      assert_equal %w[hello-x86_64-linux/app hello-x86_64-linux/app/main.rb], archived(second).grep(%r{\Ahello-x86_64-linux/app(/|\z)})
+      assert_equal ["main.rb"], Dir.children(File.join(app, "out/Hello-x86_64-linux/app"))
+      assert_equal %w[Hello-x86_64-linux/app Hello-x86_64-linux/app/main.rb], archived(second).grep(%r{\AHello-x86_64-linux/app(/|\z)})
       assert_equal archived(first).sort, archived(second).sort
       assert_in_delta File.size(first), File.size(second), File.size(first) * 0.05
     end
@@ -474,8 +474,8 @@ class AssemblyTest < Minitest::Test
       end
 
       %w[dist-deb dist-appimage].each do |out|
-        assert_equal ["main.rb"], Dir.children(File.join(app, out, "hello-x86_64-linux/app")), out
-        assert_equal %w[CACHEDIR.TAG hello-x86_64-linux hello-x86_64-linux.tar.gz], Dir.children(File.join(app, out)).sort, out
+        assert_equal ["main.rb"], Dir.children(File.join(app, out, "Hello-x86_64-linux/app")), out
+        assert_equal %w[CACHEDIR.TAG Hello-x86_64-linux Hello-x86_64-linux.tar.gz], Dir.children(File.join(app, out)).sort, out
       end
     end
   end
@@ -492,7 +492,7 @@ class AssemblyTest < Minitest::Test
 
       Fledge::Assembly.new(app: Fledge::App.at(app), platform: LINUX, runtime:, out: File.join(dir, "builds")).call
 
-      assert_equal "the app's own", File.read(File.join(dir, "builds/hello-x86_64-linux/app/dist/index.html"))
+      assert_equal "the app's own", File.read(File.join(dir, "builds/Hello-x86_64-linux/app/dist/index.html"))
       refute_path_exists File.join(app, "dist/CACHEDIR.TAG")
     end
   end
@@ -575,7 +575,7 @@ class AssemblyTest < Minitest::Test
     Dir.mktmpdir do |dir|
       assembly = Fledge::Assembly.new(app: Fledge::App.at(FakeApp.write(dir)), platform: LINUX, runtime: "r", out: "/o")
 
-      assert_equal "hello-x86_64-linux", assembly.base_name
+      assert_equal "Hello-x86_64-linux", assembly.base_name
     end
   end
 end

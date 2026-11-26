@@ -29,20 +29,20 @@ class AppTest < Minitest::Test
     full
   end
 
-  def test_a_lone_script_is_a_project_of_its_own_folder_named_for_it
+  def test_a_lone_script_is_a_project_of_its_own_folder_named_for_it_camelized
     script = write("my_game/main.rb", "puts 1\n")
 
     app = at(script)
 
     assert_equal File.join(@dir, "my_game"), app.root
-    assert_equal ["main.rb", "my_game", nil], [app.entry, app.name, app.gemfile]
+    assert_equal ["main.rb", "MyGame", nil], [app.entry, app.name, app.gemfile]
   end
 
   def test_a_folder_means_its_main_rb
     write("hello/main.rb")
     app = at(File.join(@dir, "hello"))
 
-    assert_equal ["main.rb", "hello"], [app.entry, app.name]
+    assert_equal ["main.rb", "Hello"], [app.entry, app.name]
   end
 
   def test_a_relative_path_becomes_absolute
@@ -56,7 +56,7 @@ class AppTest < Minitest::Test
 
     app = at(File.join(root, "exe", "my_cool_app"))
 
-    assert_equal [root, "exe/my_cool_app", "my_cool_app", "Gemfile"], [app.root, app.entry, app.name, app.gemfile]
+    assert_equal [root, "exe/my_cool_app", "MyCoolApp", "Gemfile"], [app.root, app.entry, app.name, app.gemfile]
   end
 
   def test_a_gem_shaped_projects_folder_means_its_only_executable
@@ -65,13 +65,13 @@ class AppTest < Minitest::Test
     assert_equal "exe/my_cool_app", at(root).entry
   end
 
-  def test_a_script_in_an_app_with_a_gemfile_belongs_to_the_app_named_for_the_script
+  def test_a_script_in_an_app_with_a_gemfile_belongs_to_the_app_named_for_its_folder
     write("server_app/Gemfile", "source \"https://rubygems.org\"\n")
     server = write("server_app/bin/server", "puts 1\n")
 
     app = at(server)
 
-    assert_equal [File.join(@dir, "server_app"), "bin/server", "server", "Gemfile"], [app.root, app.entry, app.name, app.gemfile]
+    assert_equal [File.join(@dir, "server_app"), "bin/server", "ServerApp", "Gemfile"], [app.root, app.entry, app.name, app.gemfile]
   end
 
   def test_gems_rb_is_a_gemfile_too
@@ -165,74 +165,6 @@ class AppTest < Minitest::Test
       "source \"https://rubygems.org\" and gemspec, run bundle lock, and build again.", error.message
   end
 
-  # A console app is a command someone types, so with no name in
-  # fledge.yml it takes its entry point's file name less the extension,
-  # as a console program under programs does (bin/cli is cli).
-  def test_a_console_app_is_named_for_its_entry_points_file
-    write("greet_app/Gemfile", "source \"https://rubygems.org\"\n")
-
-    app = at(write("greet_app/exe/greet"))
-    assert_equal ["exe/greet", "greet", "greet", "greet"], [app.entry, app.name, app.main.name, app.identity.name]
-
-    app = at(write("greet_app/bin/greet.rb"))
-    assert_equal ["bin/greet.rb", "greet"], [app.entry, app.name]
-
-    assert_equal "My-Tool", at(write("greet_app/bin/My-Tool")).name, "as written, never camelized"
-  end
-
-  # An entry point named main.rb says nothing of the command, so the
-  # name is the one the project gives: the gemspec's, or else the root
-  # folder's, as written and lowercased.
-  def test_a_console_app_whose_entry_is_main_rb_is_named_for_its_project_lowercased
-    write("my_cool_app/main.rb")
-    assert_equal "my_cool_app", at(File.join(@dir, "my_cool_app")).name
-    assert_equal "my_cool_app", at(File.join(@dir, "my_cool_app/main.rb")).name
-    write("Rack-Test/main.rb")
-    assert_equal "rack-test", at(File.join(@dir, "Rack-Test")).name
-  end
-
-  def test_a_console_app_whose_entry_is_main_rb_and_has_a_gemspec_is_named_for_the_gemspec_lowercased
-    write("Other-Folder/main.rb", "puts 1\n")
-    write("Other-Folder/Gemfile", "source \"https://rubygems.org\"\n\ngemspec\n")
-    write("Other-Folder/gem_name.gemspec",
-      "Gem::Specification.new { |spec| spec.name = \"Gem-Name\"; spec.version = \"0.1.0\"; spec.authors = [\"Fledge\"]; spec.summary = \"x\" }\n")
-
-    app = at(File.join(@dir, "Other-Folder", "main.rb"))
-
-    assert_equal ["main.rb", "gem-name"], [app.entry, app.name]
-    assert_equal "gem-name", at(File.join(@dir, "Other-Folder")).name
-  end
-
-  def test_a_name_in_fledge_yml_is_used_as_written
-    write("tool/fledge.yml", "name: Tool Box\n")
-
-    assert_equal "Tool Box", at(write("tool/exe/greet")).name
-    assert_equal "Tool Box", at(write("tool/main.rb")).name
-  end
-
-  def test_a_windowed_app_keeps_the_project_name_camelized
-    write("my_game/fledge.yml", "kind: windowed\nidentifier: com.example.MyGame\n")
-
-    assert_equal "MyGame", at(write("my_game/main.rb")).name
-    app = at(write("my_game/exe/play"))
-    assert_equal ["MyGame", "MyGame"], [app.name, app.identity.name]
-  end
-
-  def test_a_phones_app_keeps_the_project_name_camelized
-    write("greet_app/Gemfile", "source \"https://rubygems.org\"\n")
-
-    app = Fledge::App.at(write("greet_app/exe/greet"), home: File.join(@dir, "home"), phone: true)
-
-    assert_equal ["GreetApp", "GreetApp"], [app.name, app.main.name]
-  end
-
-  def test_a_console_name_no_system_can_hold_is_refused
-    write("odd/Gemfile")
-
-    error = assert_raises(Fledge::Error) { at(write("odd/exe/con")) }
-    assert_match(%r{\AThe app's name, "con", made from "exe/con", is a name Windows keeps for itself\.}, error.message)
-  end
-
   def test_camelize_makes_a_name_as_bundler_names_a_gems_module
     {
       "my_cool_app" => "MyCoolApp",
@@ -245,7 +177,6 @@ class AppTest < Minitest::Test
   end
 
   def test_names_no_system_can_hold_are_refused
-    write("___/fledge.yml", "kind: windowed\nidentifier: com.example.X\n")
     write("___/main.rb")
     error = assert_raises(Fledge::Error) { at(File.join(@dir, "___/main.rb")) }
     assert_equal "The app's name, \"\", made from \"___\", is empty. Give the app a name in fledge.yml, such as name: MyCoolApp.",
@@ -253,7 +184,7 @@ class AppTest < Minitest::Test
 
     write("con/main.rb")
     error = assert_raises(Fledge::Error) { at(File.join(@dir, "con/main.rb")) }
-    assert_match(/\AThe app's name, "con", made from "con", is a name Windows keeps for itself\./, error.message)
+    assert_match(/\AThe app's name, "Con", made from "con", is a name Windows keeps for itself\./, error.message)
 
     write("named/fledge.yml", "name: \"a:b\"\n")
     error = assert_raises(Fledge::Error) { at(write("named/main.rb")) }

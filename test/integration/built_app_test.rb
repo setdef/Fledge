@@ -759,7 +759,7 @@ class BuiltAppTest < Minitest::Test
     out, err, status = run_app({}, app)
 
     assert_equal ["", 66], [out, status.exitstatus]
-    assert_equal "#{@platform.executable('hello')}: this app is incomplete: #{main.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
+    assert_equal "#{@platform.executable('Hello')}: this app is incomplete: #{main.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
       err.gsub("\r\n", "\n")
   ensure
     File.rename("#{main}.away", main) if main && File.exist?("#{main}.away")
@@ -773,7 +773,7 @@ class BuiltAppTest < Minitest::Test
     out, err, status = run_app({}, app)
 
     assert_equal ["", 66], [out, status.exitstatus]
-    assert_equal "#{@platform.executable('hello')}: this app is incomplete: #{config.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
+    assert_equal "#{@platform.executable('Hello')}: this app is incomplete: #{config.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
       err.gsub("\r\n", "\n")
   ensure
     File.rename("#{config}.away", config) if config && File.exist?("#{config}.away")
@@ -787,7 +787,7 @@ class BuiltAppTest < Minitest::Test
   # this file holds, and CreateProcessW fails.
   def test_bin_ruby_exits_with_ex_software_when_it_cannot_run_the_launcher
     folder = File.realpath(File.dirname(app))
-    launcher = File.join(folder, @platform.executable("hello"))
+    launcher = File.join(folder, @platform.executable("Hello"))
     # Kept out of the folder, where any executable file is a launcher.
     kept = "#{folder}.launcher"
     File.rename(launcher, kept)
@@ -811,7 +811,7 @@ class BuiltAppTest < Minitest::Test
   def test_ruby_exe_runs_no_other_program_beside_the_launcher_in_its_place
     skip "only Windows finds a launcher by its mark" unless @platform.windows?
     folder = File.realpath(File.dirname(app))
-    launcher = File.join(folder, @platform.executable("hello"))
+    launcher = File.join(folder, @platform.executable("Hello"))
     impostor = File.join(folder, "uninstall.exe")
     kept = "#{folder}.launcher"
     File.rename(launcher, kept)
@@ -851,7 +851,7 @@ class BuiltAppTest < Minitest::Test
     File.write(config, "#{original}system_libraries = #{present} libfledge-absent.so.1\n")
     out, err, status = run_app({}, app)
     assert_equal ["", 72], [out, status.exitstatus]
-    assert_match(/\Ahello: this app needs libfledge-absent\.so\.1, which this computer does not have \(.*libfledge-absent\.so\.1.*\)\. /, err)
+    assert_match(/\AHello: this app needs libfledge-absent\.so\.1, which this computer does not have \(.*libfledge-absent\.so\.1.*\)\. /, err)
     assert err.end_with?("Install it from your Linux distribution's packages, then run the app again\n"), err
   ensure
     File.write(config, original) if config && original
@@ -873,10 +873,10 @@ class BuiltAppTest < Minitest::Test
 
     assert_equal ["", 72], [out, status.exitstatus]
     if IO.popen(["/sbin/ldconfig", "-p"], &:read).include?("libgirepository-1.0.so.1 (")
-      assert_equal "hello: this app needs FledgeAbsent-1.0.typelib, which this computer does not have (Typelib file for namespace " \
+      assert_equal "Hello: this app needs FledgeAbsent-1.0.typelib, which this computer does not have (Typelib file for namespace " \
         "'FledgeAbsent', version '1.0' not found). Install it from your Linux distribution's packages, then run the app again\n", err
     else
-      assert_match(/\Ahello: this app needs libgirepository-1\.0\.so\.1, which this computer does not have \(.*libgirepository-1\.0\.so\.1.*\)\. /, err)
+      assert_match(/\AHello: this app needs libgirepository-1\.0\.so\.1, which this computer does not have \(.*libgirepository-1\.0\.so\.1.*\)\. /, err)
     end
   ensure
     File.write(config, original) if config && original
@@ -940,7 +940,7 @@ class BuiltAppTest < Minitest::Test
     redistributable = @platform.name.start_with?("aarch64") ? "vc_redist.arm64.exe" : "vc_redist.x64.exe"
     folder = err[/ \((.+) has no fledge-absent140\.dll\)/, 1].to_s
     assert folder.casecmp?(File.join(ENV.fetch("SystemRoot"), "System32").tr("/", "\\")), err
-    assert_equal "#{@platform.executable('hello')}: this app needs Microsoft's Visual C++ Redistributable, which this computer does not have " \
+    assert_equal "#{@platform.executable('Hello')}: this app needs Microsoft's Visual C++ Redistributable, which this computer does not have " \
       "(#{folder} has no fledge-absent140.dll). Install it from https://aka.ms/vc14/#{redistributable}, then run the app again\n", err
   ensure
     File.binwrite(config, original) if config && original
@@ -1036,7 +1036,7 @@ class BuiltAppTest < Minitest::Test
     out, err, status = run_app({}, my_cool_app)
 
     assert_equal ["", 66], [out, status.exitstatus]
-    assert_equal "#{@platform.executable('my_cool_app')}: this app is incomplete: #{program.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
+    assert_equal "#{@platform.executable('MyCoolApp')}: this app is incomplete: #{program.tr('/', File::ALT_SEPARATOR || '/')} is missing\n",
       err.gsub("\r\n", "\n")
   ensure
     File.rename("#{program}.away", program) if program && File.exist?("#{program}.away")
@@ -1187,10 +1187,10 @@ class BuiltAppTest < Minitest::Test
     hardened = timestamped ? /flags=0x10000\(runtime\).*^Timestamp=/m : /flags=0x10002\(adhoc,runtime\)/
     folder = hello.first.delete_suffix(".tar.gz")
     code = Fledge::Signing.code_files(folder, :macho).reject { |file| Fledge::MacSigning.object_file?(file) }
-    assert_includes code, File.join(folder, "hello")
+    assert_includes code, File.join(folder, "Hello")
     code.each { |file| assert_match(hardened, signature(file), file) }
-    assert_includes signature(File.join(folder, "hello")), "com.apple.security.cs.allow-unsigned-executable-memory"
-    out, err, status = run_app({ "HOME" => dir }, File.join(folder, "hello"))
+    assert_includes signature(File.join(folder, "Hello")), "com.apple.security.cs.allow-unsigned-executable-memory"
+    out, err, status = run_app({ "HOME" => dir }, File.join(folder, "Hello"))
     assert_equal [expected, "", 0], [out, err, status.exitstatus]
 
     bundle = File.join(windowed.first.delete_suffix(".tar.gz"), "Hello Window.app")
@@ -1263,7 +1263,7 @@ class BuiltAppTest < Minitest::Test
         before = calls.call.size
         archive, = notarized_build(dir, HELLO, identity)
         assert_equal [%w[notarytool submit]], calls.call.drop(before).map { |call| call.first(2) }
-        assert_path_exists File.join(submitted, "hello-#{@platform}.zip")
+        assert_path_exists File.join(submitted, "Hello-#{@platform}.zip")
         assert_path_exists archive
       end
     end

@@ -92,7 +92,7 @@ module ReleaseExamples
   # (MobileParity::App#phones), +phone+ if it is given.
   def self.phones(phone = nil, root: ROOT)
     MobileParity::APPS.select { |app| app.path.start_with?("examples/") && (phone.nil? || app.phones.include?(phone)) }.map do |app|
-      [app, Fledge::App.at(File.join(root, app.path), phone: true).name]
+      [app, Fledge::App.at(File.join(root, app.path)).name]
     end
   end
 

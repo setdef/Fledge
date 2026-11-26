@@ -6,7 +6,7 @@
 # certificate (make-test-identity.ps1), checked on a fresh Windows with
 # Microsoft's own signtool.
 #
-#   pwsh -NoProfile -File deliver-signed.ps1 -Hello hello-x64-mingw-ucrt.zip
+#   pwsh -NoProfile -File deliver-signed.ps1 -Hello Hello-x64-mingw-ucrt.zip
 #     -Windowed "Hello Window-x64-mingw-ucrt.zip" -Installer "Hello Window-x64-mingw-ucrt-setup.exe"
 #     -Certificate certificate.cer
 #
@@ -43,8 +43,8 @@ function Fail([string] $message) {
   exit 1
 }
 
-# hello-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (doc/contributors/design/runtimes.md, "Windows on ARM64").
-$platform = [IO.Path]::GetFileNameWithoutExtension($Hello) -replace '^hello-', ''
+# Hello-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (doc/contributors/design/runtimes.md, "Windows on ARM64").
+$platform = [IO.Path]::GetFileNameWithoutExtension($Hello) -replace '^Hello-', ''
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
 $kits = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
 $signtool = Get-ChildItem -LiteralPath $kits -Recurse -Filter signtool.exe | Where-Object { $_.Directory.Name -eq $arch } |
@@ -67,7 +67,7 @@ function IsPE([string] $path) {
 $work = Join-Path $env:RUNNER_TEMP "signed-$PID"
 New-Item -ItemType Directory -Force $work | Out-Null
 foreach ($archive in @($Hello, $Windowed)) { Expand-Archive -LiteralPath $archive -DestinationPath $work }
-$program = Join-Path $work "hello-$platform\hello.exe"
+$program = Join-Path $work "Hello-$platform\Hello.exe"
 
 if (-not $Trusted) {
   $before = Verify @($program)
@@ -77,7 +77,7 @@ if (-not $Trusted) {
 
 Import-Certificate -FilePath $Certificate -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
 
-foreach ($name in @("hello-$platform", "Hello Window-$platform")) {
+foreach ($name in @("Hello-$platform", "Hello Window-$platform")) {
   $folder = Join-Path $work $name
   $code = @(Get-ChildItem -LiteralPath $folder -Recurse -File | Where-Object { $_.Extension -in '.exe', '.dll', '.so' } |
     Where-Object { IsPE $_.FullName } | Select-Object -ExpandProperty FullName)
@@ -97,8 +97,8 @@ Write-Host 'ok: signtool verifies the setup program'
 $system = $env:SystemRoot
 $env:PATH = "$system\System32;$system;$system\System32\Wbem;$system\System32\WindowsPowerShell\v1.0"
 $out = & $program
-if ($LASTEXITCODE -ne 0 -or $out -notlike "Hello from Ruby 4.1.0 on $platform") { Fail "the signed hello.exe printed '$out', exit $LASTEXITCODE" }
-Write-Host "ok: the signed hello.exe ran: $out"
+if ($LASTEXITCODE -ne 0 -or $out -notlike "Hello from Ruby 4.1.0 on $platform") { Fail "the signed Hello.exe printed '$out', exit $LASTEXITCODE" }
+Write-Host "ok: the signed Hello.exe ran: $out"
 
 $installed = Join-Path $env:LOCALAPPDATA 'Programs\Hello Window'
 $process = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru

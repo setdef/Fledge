@@ -52,12 +52,12 @@ class GitGemBuildTest < Minitest::Test
     if FakeRuntime.windows
       _, err, status = build(root, host: "x64-mingw-ucrt")
       assert_equal 0, status, err
-      assert_equal "# alpha\n", File.read(File.join(@dir, "dist/my_app-x64-mingw-ucrt/ruby/lib/ruby/gems/4.1.0+5/bundler/gems", scope,
+      assert_equal "# alpha\n", File.read(File.join(@dir, "dist/MyApp-x64-mingw-ucrt/ruby/lib/ruby/gems/4.1.0+5/bundler/gems", scope,
         "gems/alpha/lib/alpha.rb"))
     end
-    gemspec = File.read(File.join(@dir, "dist/my_app-aarch64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", scope, "gems/alpha/alpha.gemspec"))
+    gemspec = File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", scope, "gems/alpha/alpha.gemspec"))
     refute_includes gemspec, "git ls-files"
-    assert_equal "MIT\n", File.read(File.join(@dir, "dist/my_app-aarch64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", scope, "gems/alpha/LICENSE"))
+    assert_equal "MIT\n", File.read(File.join(@dir, "dist/MyApp-aarch64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", scope, "gems/alpha/LICENSE"))
   end
 
   # The linkage check reads what a git gem holds as a gem: the files its
@@ -75,7 +75,7 @@ class GitGemBuildTest < Minitest::Test
     _, err, status = build(root)
 
     assert_equal 0, status, err
-    shipped = File.join(@dir, "dist/my_app-x86_64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", "Monorepo-#{revision[0, 12]}",
+    shipped = File.join(@dir, "dist/MyApp-x86_64-linux/lib/ruby/gems/4.1.0+5/bundler/gems", "Monorepo-#{revision[0, 12]}",
       "gems/alpha/test/fixtures/broken.so")
     assert_equal fixture, File.binread(shipped)
 

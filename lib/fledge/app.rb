@@ -30,17 +30,12 @@ module Fledge
   # nearest folder, from the entry point's up, with a Gemfile, a
   # <tt>gems.rb</tt>, a gemspec, or a <tt>fledge.yml</tt>, as Bundler
   # looks for a Gemfile, stopping at a git repository's top; a script
-  # with none of them is a project of its own folder. Unless
-  # <tt>fledge.yml</tt> gives it a name, a console app is named for its
-  # entry point's file, less the extension, the command someone types
-  # (<tt>exe/my_cool_app</tt> is +my_cool_app+); an entry point named
-  # <tt>main.rb</tt> is not a command, so the app takes the gemspec's
-  # name, or else the root's folder, as written and lowercased. A
-  # windowed app, and a phone's app, are named for the gemspec, or else
-  # the root's folder, camelized as Bundler names a gem's module
-  # (<tt>my_cool_app</tt> is +MyCoolApp+), as the Dock, the Start menu,
-  # and the window list show it (decision 5). Everything in the root
-  # ships but NEVER_SHIPPED and the build's own output.
+  # with none of them is a project of its own folder. The app's name
+  # comes from the gemspec's name, or else the root's folder, camelized
+  # as Bundler names a gem's module (<tt>my_cool_app</tt> is
+  # +MyCoolApp+), unless <tt>fledge.yml</tt> names it (decision 5).
+  # Everything in the root ships but NEVER_SHIPPED and the build's own
+  # output.
   #
   # Use it to name what <tt>fledge build</tt> copies into a runtime.
   #
@@ -52,12 +47,12 @@ module Fledge
   # SPDX-License-Identifier: MIT-0
   #++
   #   app = Fledge::App.at("my_cool_app/exe/my_cool_app")
-  #   app.name    # => "my_cool_app"
+  #   app.name    # => "MyCoolApp"
   #   app.entry   # => "exe/my_cool_app"
   #   app.gemfile # => "Gemfile"
   #
   #   Fledge::App.at("examples/hello").entry # => "main.rb"
-  #   Fledge::App.at("examples/hello").name  # => "hello"
+  #   Fledge::App.at("examples/hello").name  # => "Hello"
   #--
   # SPDX-SnippetEnd
   #++
@@ -104,8 +99,7 @@ module Fledge
     # no such file or folder, the folder names no one program, the
     # project's root would be +home+, its <tt>fledge.yml</tt> is wrong or
     # leaves out what a windowed app needs, its icon cannot be used, or it
-    # has a gemspec but no Gemfile. A +phone+ app is named as a windowed
-    # one is, since a phone shows its name, not a command.
+    # has a gemspec but no Gemfile.
     #
     # === Example
     #
@@ -118,7 +112,7 @@ module Fledge
     #--
     # SPDX-SnippetEnd
     #++
-    def self.at(path, home: Dir.home, phone: false)
+    def self.at(path, home: Dir.home)
       full = File.expand_path(path)
       raise Error, "#{path} does not exist. Build the program you run, such as exe/my_app or main.rb." unless File.exist?(full)
 
@@ -135,7 +129,7 @@ module Fledge
       return listed(path, full, root, config, gemspec, gemfile) if config.programs
 
       entry = File.directory?(full) ? default_entry(path, full, root, gemspec) : relative(full, root)
-      name = name_of_one(config, gemspec, root, entry, phone:)
+      name = name_for(config, gemspec, root)
       program = Program.new(name:, entry:, identity: Identity.from(config:, gemspec:, name:, root:))
       new(root:, name:, gemfile:, config:, programs: [program])
     end
@@ -271,26 +265,6 @@ module Fledge
       end
 
       gemfile
-    end
-
-    # The name of an app of one program, entered at +entry+: +fledge.yml+'s
-    # as written, or for a console app, +entry+'s file name less its
-    # extension, as a console program under +programs+ is named, or, when
-    # that file is <tt>main.rb</tt>, the project's name as written and
-    # lowercased. A windowed app, and a +phone+'s, take the project's
-    # name, camelized.
-    private_class_method def self.name_of_one(config, gemspec, root, entry, phone:) # :nodoc:
-      return name_for(config, gemspec, root) if config.name || phone || config.kind == "windowed"
-
-      file = File.basename(entry)
-      if file == "main.rb"
-        source = gemspec&.name || File.basename(root)
-        name = source.downcase
-        return valid_name(name, "The app's name, #{name.inspect}, made from #{source.inspect},")
-      end
-
-      name = File.basename(file, ".*")
-      valid_name(name, "The app's name, #{name.inspect}, made from #{entry.inspect},")
     end
 
     private_class_method def self.name_for(config, gemspec, root) # :nodoc:

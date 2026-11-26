@@ -274,7 +274,7 @@ class Parity
   # exe/PROGRAM, with the bundle installed into the person's GEM_HOME by
   # bundle install, which installs the Bundler the lockfile names, as it
   # does for a developer.
-  private def check_bundle(source = GEM_APP, program = "my_cool_app", name = "my_cool_app", label = " of a gem-shaped app with bundle exec")
+  private def check_bundle(source = GEM_APP, program = "my_cool_app", name = "MyCoolApp", label = " of a gem-shaped app with bundle exec")
     env = environment
     project = Parity.gem_probe(File.join(@work, "#{program}-app"), source:, program:)
     reference = Parity.gem_probe(File.join(@work, "reference-#{program}-app"), source:, program:)
@@ -433,7 +433,7 @@ class Parity
   # The runtime is one this checkout built, which its pins do not name,
   # so the build is told so (FLEDGE_RUNTIME_DIR_UNCHECKED) and says it
   # is unchecked.
-  def build_app(path = PROBE, name = "parity")
+  def build_app(path = PROBE, name = "Parity")
     out = StringIO.new
     err = StringIO.new
     env = ENV.to_h.merge("FLEDGE_RUNTIME_DIR" => @runtimes, "FLEDGE_RUNTIME_DIR_UNCHECKED" => "1")

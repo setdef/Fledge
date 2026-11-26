@@ -138,9 +138,9 @@ class NativeBuildTest < Minitest::Test
   # bundle exec sets for the Ruby that runs the tests, which a Ruby the app
   # starts would otherwise load beside its own Bundler.
   def run_app
-    folder = File.join(@dir, "dist", "my_app-#{@platform}")
+    folder = File.join(@dir, "dist", "MyApp-#{@platform}")
     scrubbed = ENV.keys.grep(Fledge::NativeBuild::SCRUBBED).to_h { |name| [name, nil] }
-    out, status = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }.merge(scrubbed), File.join(folder, @platform.executable("my_app")),
+    out, status = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }.merge(scrubbed), File.join(folder, @platform.executable("MyApp")),
       unsetenv_others: !Gem.win_platform?)
     [out, status, folder]
   end

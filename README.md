@@ -41,11 +41,11 @@ Beside it is a `Gemfile` with the line from [Installation](#installation). In th
 ```console
 $ bundle exec fledge build
 Downloading fledge-runtime-0.17.0-arm64-darwin.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.17.0
-dist/greet-arm64-darwin.tar.gz
+dist/Greet-arm64-darwin.tar.gz
 ```
 <!-- SPDX-SnippetEnd -->
 
-The first time you build on a computer, Fledge downloads the Ruby it puts in your apps, and keeps it for later builds. Because `main.rb` is not a command, Fledge names the app after the folder, `greet`, and prints the path of the archive it wrote. Unpack the archive and run the app:
+The first time you build on a computer, Fledge downloads the Ruby it puts in your apps, and keeps it for later builds. It names the app after the folder, so `greet` becomes `Greet`, and prints the path of the archive it wrote. Unpack the archive and run the app:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -53,13 +53,13 @@ The first time you build on a computer, Fledge downloads the Ruby it puts in you
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ tar -xzf dist/greet-arm64-darwin.tar.gz -C /tmp
-$ /tmp/greet-arm64-darwin/greet Ruby
+$ tar -xzf dist/Greet-arm64-darwin.tar.gz -C /tmp
+$ /tmp/Greet-arm64-darwin/Greet Ruby
 {"greeting":"Hello, Ruby!"}
 ```
 <!-- SPDX-SnippetEnd -->
 
-The app carries a whole Ruby runtime, so the archive and the unpacked folder are tens of megabytes: `du -sh dist/greet-arm64-darwin` shows the size of the folder you built. Anyone with an Apple silicon Mac on macOS 26 or newer can run `greet`, whether or not they have Ruby. On Windows, the same command writes `dist/greet-x64-mingw-ucrt.zip`, which holds `greet.exe`, and on Linux, a `.tar.gz` for your processor, such as `dist/greet-x86_64-linux.tar.gz`.
+The app carries a whole Ruby runtime, so the archive and the unpacked folder are tens of megabytes: `du -sh dist/Greet-arm64-darwin` shows the size of the folder you built. Anyone with an Apple silicon Mac on macOS 26 or newer can run `Greet`, whether or not they have Ruby. On Windows, the same command writes `dist/Greet-x64-mingw-ucrt.zip`, which holds `Greet.exe`, and on Linux, a `.tar.gz` for your processor, such as `dist/Greet-x86_64-linux.tar.gz`.
 
 ### What Fledge builds
 
@@ -143,7 +143,7 @@ Fledge writes the app to `dist` in the folder you run it from, here `~/fledge/di
 
 In your project's folder, run `bundle exec fledge build`. Fledge builds the executable you list in your [gemspec](https://guides.rubygems.org/specification-reference/), or else `main.rb`. To build another program, name it, as in `bundle exec fledge build bin/server`. To write the app somewhere other than `dist`, pass `--out DIR`.
 
-Fledge names a console app after the program it builds, as you type it: `exe/my_cool_app` gives `my_cool_app`, and `bin/greet.rb` gives `greet`. A `main.rb` is not a command, so Fledge uses your gemspec's name, or else your project's folder's, in lower case. A windowed app takes that name camelized, `MyCoolApp`, since a Dock and a Start menu show it. Your project is the program's folder, or the nearest folder above it, that holds a `Gemfile`, `gems.rb`, a gemspec, or `fledge.yml`, as long as it is inside the same git repository. Fledge puts all of it in the app, in `app/`, except `.git`, `.bundle`, `vendor/bundle`, `vendor/cache`, and the folders Fledge writes to.
+Fledge names the app after your gemspec, or else your project's folder, so `my_cool_app` becomes `MyCoolApp`. Your project is the program's folder, or the nearest folder above it, that holds a `Gemfile`, `gems.rb`, a gemspec, or `fledge.yml`, as long as it is inside the same git repository. Fledge puts all of it in the app, in `app/`, except `.git`, `.bundle`, `vendor/bundle`, `vendor/cache`, and the folders Fledge writes to.
 
 Beside the archive, Fledge leaves the app unpacked, in `dist/NAME-PLATFORM/`. There, `NAME`, or `NAME.exe` on Windows, starts your program, and `notices/` holds the licenses of everything Fledge put in. People can start the program from any folder, or through a link on their `PATH`. Beside each archive and installer, Fledge writes a `.sha256` file with its SHA-256, for people and package managers who check what they download.
 
@@ -166,7 +166,7 @@ Fledge ships a gem's precompiled build as it is when one of the gem's builds fit
 
 ### Describe your app
 
-To set your app's name, version, and icon, and to make it open windows, add `fledge.yml` beside your `Gemfile`. Without it, you get a console app, named as [Build](#build) says, at your gemspec's version or `0.0.0`.
+To give your app a name, a version, and an icon, and to make it open windows, add `fledge.yml` beside your `Gemfile`. Without it, you get a console app, named after your gemspec or your project's folder, at your gemspec's version or `0.0.0`.
 
 <!-- SPDX-SnippetBegin -->
 <!--

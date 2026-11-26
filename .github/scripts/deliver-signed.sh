@@ -69,8 +69,8 @@ check_entitlements() {
 }
 
 check_code "$hello"
-check_entitlements "$hello/hello"
-out=$(cd / && env -i PATH=/usr/bin:/bin HOME="$work" "$hello/hello")
+check_entitlements "$hello/Hello"
+out=$(cd / && env -i PATH=/usr/bin:/bin HOME="$work" "$hello/Hello")
 case "$out" in "Hello from Ruby 4.1.0 on "*) echo "ok: Hello ran: $out" ;; *) fail "Hello printed: $out" ;; esac
 
 check_code "$bundle/Contents/Resources"

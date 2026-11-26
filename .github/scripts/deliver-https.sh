@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 # Delivers the HTTPS probe (test/fixtures/https), built with fledge
-# build, on macOS or Linux: unpacks ARCHIVE, https-PLATFORM.tar.gz, in a
+# build, on macOS or Linux: unpacks ARCHIVE, Https-PLATFORM.tar.gz, in a
 # folder of its own for each case and runs the app with no Ruby of the
 # computer's reachable, asking the server .github/scripts/https-server.sh
 # runs, whose FOLDER it is given. The server's certificate is signed by
@@ -59,7 +59,7 @@ case $folder in
   *-darwin) system=macos ;;
   *-linux-musl) system=musl ;;
   *-linux) system=glibc ;;
-  *) fail "$archive is not https-PLATFORM.tar.gz for macOS or Linux" ;;
+  *) fail "$archive is not Https-PLATFORM.tar.gz for macOS or Linux" ;;
 esac
 # The computer's own store, as jdx/ruby's openssl.rb looks for it.
 store=
@@ -82,7 +82,7 @@ check() {
   mkdir -p "$run/empty-path"
   tar -xzf "$archive" -C "$run"
   root="$run/$folder"
-  app="$root/https"
+  app="$root/Https"
   [ -x "$app" ] || fail "$app is not executable after unpacking"
   [ -s "$root/libexec/cert.pem" ] || fail "the app carries no libexec/cert.pem"
   set -- "$1" "$2" PATH="$run/empty-path" HOME="$run"

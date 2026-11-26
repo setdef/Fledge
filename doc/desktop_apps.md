@@ -8,7 +8,7 @@ Use this guide to give an app that [Fledge](../README.md) builds the name, icon,
 
 ## Name and describe your app
 
-Without `fledge.yml`, an app is a console app at your gemspec's version, or `0.0.0`, named after its entry point, because the name of a console app is the command your users type: `exe/greet` and `bin/greet.rb` both give `greet`. An entry point named `main.rb` is not a command, so the app takes your gemspec's name, or else your project's folder's, in lower case: a folder `my_cool_app` gives `my_cool_app`. A windowed app, which needs `fledge.yml`, takes that gemspec or folder name camelized, `MyCoolApp`, since the Dock, the Start menu, and window lists show it. With these keys, you give any app the name, version, and description each system shows, with the name written as you give it:
+Without `fledge.yml`, an app is a console app named after your gemspec or your project's folder, at your gemspec's version or `0.0.0`. With these keys, you give it the name, version, and description each system shows:
 
 <!-- SPDX-SnippetBegin -->
 <!--

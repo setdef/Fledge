@@ -73,9 +73,9 @@ class RustLengthsTest < Minitest::Test
     status = Fledge::CLI::Build.new(out: StringIO.new, err:, env:).call(["-o", File.join(@dir, "dist"), FIXTURE])
 
     assert_equal 0, status, err.string
-    folder = File.join(@dir, "dist", "rust_lengths-#{@platform}")
+    folder = File.join(@dir, "dist", "RustLengths-#{@platform}")
     scrubbed = ENV.keys.grep(Fledge::NativeBuild::SCRUBBED).to_h { |name| [name, nil] }
-    out, ran = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }.merge(scrubbed), File.join(folder, @platform.executable("rust_lengths")), "3",
+    out, ran = Open3.capture2e({ "PATH" => ENV.fetch("PATH") }.merge(scrubbed), File.join(folder, @platform.executable("RustLengths")), "3",
       unsetenv_others: !Gem.win_platform?)
 
     assert_equal 3, ran.exitstatus, out

@@ -3,8 +3,8 @@
 
 # Delivers the HTTPS probe (test/fixtures/https) on Windows, as
 # deliver-https.sh does on macOS and Linux: unpacks ARCHIVE,
-# https-PLATFORM.zip, under a folder named outside ASCII for each case,
-# runs https.exe with Windows' own folders on PATH and nothing else,
+# Https-PLATFORM.zip, under a folder named outside ASCII for each case,
+# runs Https.exe with Windows' own folders on PATH and nothing else,
 # asking the server .github/scripts/https-server.sh runs (through Git's
 # bash and openssl, which every Windows runner has), and checks that it
 # trusts the server, or refuses it, as RubyInstaller's ruby.exe does
@@ -69,7 +69,7 @@ function Check([string] $Case, [string] $Expect) {
   New-Item -ItemType Directory -Force $place | Out-Null
   Expand-Archive -LiteralPath $Archive -DestinationPath $place
   $root = Join-Path $place $name
-  $app = Join-Path $root 'https.exe'
+  $app = Join-Path $root 'Https.exe'
   if (-not (Test-Path -LiteralPath $app)) { Fail "$app is not in the archive" }
   $bundle = @(Get-ChildItem -Path (Join-Path $root 'ruby\lib\ruby\*\etc\ssl\cert.pem'))
   if ($bundle.Count -ne 1) { Fail "the app carries $($bundle.Count) ruby\lib\ruby\*\etc\ssl\cert.pem, not one" }

@@ -726,7 +726,7 @@ class MobileBuildTest < Minitest::Test
   # the gem's Ruby reads it as under bundle exec, and a file the build
   # rewrote takes the place of the gem's own.
   def test_the_files_a_gems_builds_left_alike_join_its_files_in_the_app
-    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"), phone: true)
+    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
     gem = "lib/ruby/gems/4.1.0+5/gems/tabled-1.0.0"
     own = [Fledge::Entry.directory(gem), Fledge::Entry.file("#{gem}/lib/tabled.rb", "the gem's own\n")]
     left = [Fledge::Entry.file("#{gem}/data/table.txt", "from the build\n"), Fledge::Entry.file("#{gem}/lib/tabled.rb", "as the build rewrote it\n")]
@@ -743,7 +743,7 @@ class MobileBuildTest < Minitest::Test
   # moves the app's own ABI's copy to the path as the app starts; the
   # gem's own file stays at the path for an ABI whose build left it be.
   def test_what_each_abis_build_left_for_itself_is_carried_for_that_abi
-    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"), phone: true)
+    app = Fledge::App.at(script_app("identifier: com.example.Hello\n"))
     gem = "lib/ruby/gems/4.1.0+5/gems/tabled-1.0.0"
     own = [Fledge::Entry.directory(gem), Fledge::Entry.file("#{gem}/data/arch.txt", "the gem's own\n")]
     targets = { "aarch64-linux-android" => "arm64-v8a", "x86_64-linux-android" => "x86_64" }.to_h do |name, abi|
@@ -767,7 +767,7 @@ class MobileBuildTest < Minitest::Test
   # +content+, for the target +name+ (+abi+ on Android), and returns its
   # folder.
   private def phone_project_with_ffi_library(phone, name, abi, *files, content: "ELF llhttp", config: "identifier: com.example.Hello\n")
-    app = Fledge::App.at(script_app(config), phone: true)
+    app = Fledge::App.at(script_app(config))
     shared = File.join(@dir, "llhttp.so")
     File.binwrite(shared, content)
     target = Fledge::MobileExtensions::Target.new(name:, root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi:)
@@ -786,7 +786,7 @@ class MobileBuildTest < Minitest::Test
   # and its content), and whose runtime's fledge.links names each of
   # +links+, and returns its folder.
   private def android_project_with_gem_files(folder, label, files, links: [], config: "identifier: com.example.Hello\n")
-    app = Fledge::App.at(script_app(config), phone: true)
+    app = Fledge::App.at(script_app(config))
     entries = [Fledge::Entry.directory(folder), *files.map { |path, content| Fledge::Entry.file("#{folder}/#{path}", content) }]
     runtime = File.join(@runtimes, Fledge::Runtimes.file_name(Fledge::MobilePlatform.find("android")))
     unless links.empty?
@@ -807,7 +807,7 @@ class MobileBuildTest < Minitest::Test
     config += "android:\n  host: host/android\n" unless host.empty?
     root = script_app(config)
     host_files(root, "host/android", host)
-    app = Fledge::App.at(root, phone: true)
+    app = Fledge::App.at(root)
     shared = File.join(@dir, "adder.so")
     File.write(shared, "ELF adder")
     target = Fledge::MobileExtensions::Target.new(name: "x86_64-linux-android", root: @dir, arch_dir: @dir, libdir: @dir, environment: {}, abi: "x86_64")

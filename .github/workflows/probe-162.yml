@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 
 # A spike for issue 162, never for trunk: it runs only on the branch
-# probe/162-winui-arm64, on Windows on ARM64, and gathers facts about why
-# WinUI's XamlControlsResources fails to activate in Basket there. It
-# takes the built Basket from the apps of a green run of ci.yml.
+# probe/162-winui-arm64, on Windows on ARM64, and builds a WinUI 3 app in
+# C#, with no Ruby, for ARM64 and for x64, to see whether the failure of
+# XamlControlsResources is WinUI's own.
 
 name: Probe 162
 
@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   probe:
@@ -30,37 +29,14 @@ jobs:
             .github/scripts/probe-162
           sparse-checkout-cone-mode: false
 
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: apps-aarch64-mingw-ucrt
-          path: ${{ runner.temp }}/delivered
-          run-id: "45862863261"
-          github-token: ${{ github.token }}
-
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: apps-x64-mingw-ucrt
-          path: ${{ runner.temp }}/delivered-x64
-          run-id: "45862863261"
-          github-token: ${{ github.token }}
-
-      - name: Gather the facts with the x64 Basket, which runs emulated
+      - name: Build and run a WinUI 3 app in C#, for ARM64 and for x64
         shell: pwsh
         run: >-
-          powershell -NoProfile -ExecutionPolicy RemoteSigned -File .github/scripts/probe-162/probe.ps1
-          -Archive "$env:RUNNER_TEMP/delivered-x64/Basket-x64-mingw-ucrt.zip" -Out "$env:RUNNER_TEMP/probe-out-x64"
-
-      - name: Gather the facts with the ARM64 Basket
-        if: always()
-        shell: pwsh
-        run: >-
-          powershell -NoProfile -ExecutionPolicy RemoteSigned -File .github/scripts/probe-162/probe.ps1
-          -Archive "$env:RUNNER_TEMP/delivered/Basket-aarch64-mingw-ucrt.zip" -Out "$env:RUNNER_TEMP/probe-out"
+          powershell -NoProfile -ExecutionPolicy RemoteSigned -File .github/scripts/probe-162/cs/probe-cs.ps1
+          -Out "$env:RUNNER_TEMP/probe-out-cs"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: probe-162-4
-          path: |
-            ${{ runner.temp }}/probe-out
-            ${{ runner.temp }}/probe-out-x64
+          name: probe-162-5
+          path: ${{ runner.temp }}/probe-out-cs

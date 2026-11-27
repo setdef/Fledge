@@ -228,14 +228,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Breaking: the runtimes carry Ruby 4.1.0-preview1 in place of Ruby 4.0.9, so `fledge build` needs Ruby 4.1 to run it, and an app gets Ruby 4.1's standard library, default gems, and bundled gems (prism, tsort, and win32-registry join them; net-ftp and net-pop leave).
+- **Breaking:** the runtimes carry Ruby 4.1.0-preview1 in place of Ruby 4.0.9, so `fledge build` needs Ruby 4.1 to run it, and an app gets Ruby 4.1's standard library, default gems, and bundled gems (prism, tsort, and win32-registry join them; net-ftp and net-pop leave).
 - Windows runs Ruby's main branch of 2026-11-10 (`ruby 4.1.0dev`, `0e25874222`, in folders named `4.1.0+6`), from RubyInstaller's head build, since RubyInstaller builds no preview, and every other platform runs 4.1.0-preview1 (in folders named `4.1.0+5`): rv-ruby release `20261023`'s builds on macOS and glibc Linux, and Ruby's source on musl Linux, iOS, and Android.
 - The Windows runtimes add the `libz-1.dll` (zlib 1.4) that build's `zlib.so` needs and, on x64, the `libgcc_s_seh-1.dll` its `digest/blake3.so` needs, from MSYS2's packages, and the launcher finds the second in `ruby\bin\ruby_builtin_dlls`.
 - On iOS and Android, the prism gem is left out for now, so in a phone's app `require "prism"` fails, and so does requiring a bundled gem that depends on it: irb, minitest, rbs, rdoc, repl_type_completor, or typeprof.
 
 ### Removed
 
-- Breaking: Ruby 4.0. No runtime carries it, and the gem needs Ruby 4.1 or newer.
+- **Breaking:** Ruby 4.0. No runtime carries it, and the gem needs Ruby 4.1 or newer.
 
 ### Fixed
 
@@ -251,7 +251,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Breaking: `fledge build --from` on an APP it cannot use (not a folder, not built by Fledge, built by another release or for another system) exits 1, a failed build, and no longer 2, a usage error.
+- **Breaking:** `fledge build --from` on an APP it cannot use (not a folder, not built by Fledge, built by another release or for another system) exits 1, a failed build, and no longer 2, a usage error.
 - The Windows setup program registers one ProgID for each extension in `file_associations`, named from the identifier and a hash of the extension, within Microsoft's limits on a ProgID; reordering or renaming entries no longer renames it. An installed app keeps its earlier `IDENTIFIER.N` entries until it is removed by hand.
 
 ## [0.9.0] - 2026-11-08
@@ -324,9 +324,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Breaking: an app gets the Ruby that runs `fledge build`, its minor version at the patch level Fledge ships, so `fledge build` on a Ruby whose minor version has no runtime, such as a 4.1 preview, fails and says so, instead of building the app with Ruby 4.0.
+- **Breaking:** an app gets the Ruby that runs `fledge build`, its minor version at the patch level Fledge ships, so `fledge build` on a Ruby whose minor version has no runtime, such as a 4.1 preview, fails and says so, instead of building the app with Ruby 4.0.
 - `fledge --help` says that a PATH that is a bare word Fledge reads as a platform, `ios` and `android` today and any platform a later release adds, is read as that platform, so write `./NAME` for a folder of that name; and that changing `identifier` makes a new app to each system.
-- Breaking: a windowed program under `programs` in `fledge.yml` with no `name` takes the app's name (`name`, else the gemspec's or the folder's, camelized), not its file's, so `gui/main.rb` builds `MyGame.app` and `MyGame.exe` instead of `main.app` and `main.exe`. A console program keeps its file's name. Give the windowed program `name:` to keep the old one; a project whose windowed program would now share a name with another program fails the build, naming both.
+- **Breaking:** a windowed program under `programs` in `fledge.yml` with no `name` takes the app's name (`name`, else the gemspec's or the folder's, camelized), not its file's, so `gui/main.rb` builds `MyGame.app` and `MyGame.exe` instead of `main.app` and `main.exe`. A console program keeps its file's name. Give the windowed program `name:` to keep the old one; a project whose windowed program would now share a name with another program fails the build, naming both.
 - The schema of `fledge.yml` names itself by the release's tag, `https://raw.githubusercontent.com/setdef/Fledge/vX.Y.Z/lib/fledge/config.schema.json`, not by `trunk`, and that is the modeline to use, with the tag your `Gemfile` names: `trunk`'s schema describes what comes next, which your Fledge may refuse. A modeline that names `trunk` still works.
 
 ### Fixed
@@ -583,19 +583,19 @@ Nothing an app's developer or its users can observe changed: this release proves
 - `doc/licensing.md`: what ships in an app on each platform, under which license, and what each license asks of app developers.
 
 [Unreleased]: https://github.com/setdef/Fledge/compare/v0.17.0...HEAD
-[0.17.0]: https://github.com/setdef/Fledge/compare/v0.16.0...v0.17.0
-[0.16.0]: https://github.com/setdef/Fledge/compare/v0.15.0...v0.16.0
-[0.15.0]: https://github.com/setdef/Fledge/compare/v0.14.0...v0.15.0
-[0.14.0]: https://github.com/setdef/Fledge/compare/v0.13.0...v0.14.0
-[0.13.0]: https://github.com/setdef/Fledge/compare/v0.12.0...v0.13.0
-[0.12.0]: https://github.com/setdef/Fledge/compare/v0.11.0...v0.12.0
-[0.11.0]: https://github.com/setdef/Fledge/compare/v0.10.0...v0.11.0
-[0.10.0]: https://github.com/setdef/Fledge/compare/v0.9.0...v0.10.0
-[0.9.0]: https://github.com/setdef/Fledge/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/setdef/Fledge/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/setdef/Fledge/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/setdef/Fledge/compare/v0.5.1...v0.6.0
-[0.5.1]: https://github.com/setdef/Fledge/compare/v0.5.0...v0.5.1
+[0.17.0]: https://github.com/setdef/Fledge/releases/tag/v0.17.0
+[0.16.0]: https://github.com/setdef/Fledge/releases/tag/v0.16.0
+[0.15.0]: https://github.com/setdef/Fledge/releases/tag/v0.15.0
+[0.14.0]: https://github.com/setdef/Fledge/releases/tag/v0.14.0
+[0.13.0]: https://github.com/setdef/Fledge/releases/tag/v0.13.0
+[0.12.0]: https://github.com/setdef/Fledge/releases/tag/v0.12.0
+[0.11.0]: https://github.com/setdef/Fledge/releases/tag/v0.11.0
+[0.10.0]: https://github.com/setdef/Fledge/releases/tag/v0.10.0
+[0.9.0]: https://github.com/setdef/Fledge/releases/tag/v0.9.0
+[0.8.0]: https://github.com/setdef/Fledge/releases/tag/v0.8.0
+[0.7.0]: https://github.com/setdef/Fledge/releases/tag/v0.7.0
+[0.6.0]: https://github.com/setdef/Fledge/releases/tag/v0.6.0
+[0.5.1]: https://github.com/setdef/Fledge/releases/tag/v0.5.1
 [0.5.0]: https://github.com/setdef/Fledge/releases/tag/v0.5.0
 [0.4.0]: https://github.com/setdef/Fledge/releases/tag/v0.4.0
 [0.3.0]: https://github.com/setdef/Fledge/releases/tag/v0.3.0

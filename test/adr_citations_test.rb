@@ -8,7 +8,7 @@
 require_relative "test_helper"
 require "open3"
 
-# Every citation of an ADR names one that doc/contributors/adr/ still
+# Every citation of an ADR names one that docs/contributors/adr/ still
 # holds. An ADR that no longer passes is deleted, so a citation left
 # behind sends its reader to nothing; this test is what notices one.
 class AdrCitationsTest < Minitest::Test
@@ -31,7 +31,7 @@ class AdrCitationsTest < Minitest::Test
   ANOTHER_PROJECT = %r{(?:(?:Lota|Tokra|Rooibos)'s|setdef/(?:lota|tokra|rooibos)\b)[^.]{0,40}\z}
 
   def adrs
-    @adrs ||= Dir.children(File.join(ROOT, "doc/contributors/adr")).grep(/\A\d{3}\.md\z/).map { |name| name[0, 3] }
+    @adrs ||= Dir.children(File.join(ROOT, "docs/contributors/adr")).grep(/\A\d{3}\.md\z/).map { |name| name[0, 3] }
   end
 
   def tracked
@@ -61,7 +61,7 @@ class AdrCitationsTest < Minitest::Test
         before = text[0, match.begin(0)]
         line = before.count("\n") + 1
         next if before[-[before.size, 80].min, 80].match?(ANOTHER_PROJECT)
-        next if path.start_with?("doc/contributors/adr/") && text.lines[line - 1].match?(/\bsupersede/)
+        next if path.start_with?("docs/contributors/adr/") && text.lines[line - 1].match?(/\bsupersede/)
 
         match[1].scan(/\d{3}/).each { |number| found << [line, number] unless adrs.include?(number) }
       end
@@ -85,9 +85,9 @@ class AdrCitationsTest < Minitest::Test
     problems = tracked.reject { |path| EXEMPT.keys.any? { |exempt| path.start_with?(exempt) } }.flat_map do |path|
       text = read(path) or next []
       missing(path, text).map do |line, number|
-        "#{path}:#{line} cites ADR #{number}, which doc/contributors/adr/ does not hold. Cite instead the " \
+        "#{path}:#{line} cites ADR #{number}, which docs/contributors/adr/ does not hold. Cite instead the " \
           "design document and section its reason moved to (git log --diff-filter=D -- " \
-          "doc/contributors/adr/#{number}.md shows where), or an ADR that exists."
+          "docs/contributors/adr/#{number}.md shows where), or an ADR that exists."
       end
     end
 
@@ -121,8 +121,8 @@ class AdrCitationsTest < Minitest::Test
 
   def test_leaves_what_an_adr_supersedes_alone_in_an_adr_only
     line = "- This supersedes ADR #{NONE}, which it restates."
-    assert_empty missing("doc/contributors/adr/001.md", line)
-    assert_equal [[1, NONE]], missing("doc/contributors/design/x.md", line)
+    assert_empty missing("docs/contributors/adr/001.md", line)
+    assert_equal [[1, NONE]], missing("docs/contributors/design/x.md", line)
   end
 
   def test_reads_the_changelogs_unreleased_section_and_not_the_released_ones

@@ -8,6 +8,6 @@
 namespace :adr do
   desc "Print each ADR's title, problem, decision drivers, and chosen option"
   task :digest do
-    ruby "tasks/adr_digest.rb", *Dir["doc/contributors/adr/[0-9]*.md"], verbose: false
+    ruby "tasks/adr_digest.rb", *Dir["docs/contributors/adr/[0-9]*.md"], verbose: false
   end
 end

@@ -11,8 +11,8 @@ Lota (github.com/setdef/Lota) is a Ruby library for 2D games, built on the engin
 ## What it shows
 
 - **A game that is only Ruby.** [`game/main.rb`](game/main.rb) draws circles and reads clicks, and [`game/conf.rb`](game/conf.rb) names the window. [`main.rb`](main.rb) starts the game as Lota's own fuser does. No file in the folder is C, Objective-C, Swift, Java, or Kotlin.
-- **A gem that is not on RubyGems.org.** Lota publishes its gems with each release on GitHub. The `Gemfile` asks for `lota` at one version, and the build takes the gem from `vendor/cache`, checked against the SHA-256 in `Gemfile.lock` ([Gems in a Fledge app](../../doc/gems.md)).
-- **A framework's own host on a phone.** SDL3 owns a phone's screen and starts the app its own way, so Lota brings the startup files that run Ruby inside SDL. `fledge.yml`'s `ios: host:` and `android: host:` name the folder, and `fledge build` lays those files over the project it writes (`doc/contributors/design/phone-projects.md`, "Host files"). You do not write them: they come in Lota's gem.
+- **A gem that is not on RubyGems.org.** Lota publishes its gems with each release on GitHub. The `Gemfile` asks for `lota` at one version, and the build takes the gem from `vendor/cache`, checked against the SHA-256 in `Gemfile.lock` ([Ship gems from private servers, git, and folders](../../docs/how-to/gem-sources.md)).
+- **A framework's own host on a phone.** SDL3 owns a phone's screen and starts the app its own way, so Lota brings the startup files that run Ruby inside SDL. `fledge.yml`'s `ios: host:` and `android: host:` name the folder, and `fledge build` lays those files over the project it writes ([Change the host](../../docs/how-to/phones.md#change-the-host)). You do not write them: they come in Lota's gem.
 - **A game that says it is running.** Each dot that appears prints a line on standard error, such as `Pop: 3 dots, 0 popped`, which a phone's system log shows, since a phone gives an app no environment variable to end it with. The score line on standard output is the one a desktop's check reads.
 - **A windowed app.** `kind: windowed` in `fledge.yml` makes a double-clickable app on each desktop, with no console.
 
@@ -82,7 +82,7 @@ export BUNDLE_BUILD__LOTA="--with-rice-dir=$HOME/Fledge/examples/lota_pop/vendor
 bundle exec fledge build android ~/Fledge/examples/lota_pop
 ```
 
-Run `./gradlew assembleDebug` in `dist/Pop-android` to build the Android app. Lota 0.8.0's iOS host is for the iOS runtime of Fledge v0.16.0, whose Ruby is not a framework, so `fledge build ios` stops on a runtime of this checkout until Lota has a host for it (issue 164). [iPhone, iPad, and Android](../../doc/phones.md) says what each project needs and how to sign and submit it.
+Run `./gradlew assembleDebug` in `dist/Pop-android` to build the Android app. Lota 0.8.0's iOS host is for the iOS runtime of Fledge v0.16.0, whose Ruby is not a framework, so `fledge build ios` stops on a runtime of this checkout until Lota has a host for it (issue 164). [Build for iPhone and Android](../../docs/how-to/phones.md) says what each project needs and how to sign and submit it.
 
 ## Read the code
 

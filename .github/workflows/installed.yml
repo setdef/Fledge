@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: MIT
 
 # The shipped path, end to end: on a fresh runner of each platform, Fledge is
-# installed from its git tag with Bundler, never from RubyGems.org, both ways
-# README.md's Installation gives, with its line: in hello's own Gemfile,
-# which builds hello in its folder, and in a Gemfile of Fledge's own,
-# which builds the other apps by their paths
+# installed from its git tag with Bundler, never from RubyGems.org, with the line
+# README.md's Installation gives, in hello's own Gemfile, which builds hello
+# in its folder, and in a Gemfile of Fledge's own, which builds the other
+# apps by their paths
 # (test/workflow_installed_test.rb); fledge build, with no FLEDGE_RUNTIME_DIR and an empty
 # cache, downloads that version's runtime from the GitHub Release and
 # checks it against the SHA-256 the gem pins, and compiles
@@ -201,10 +201,10 @@ jobs:
           } >> "$GITHUB_ENV"
       # SPDX-SnippetEnd
 
-      # Both ways README.md's Installation gives, each with the README's
-      # line (test/workflow_installed_test.rb holds the two to it): in
-      # hello's own Gemfile, and in a Gemfile of Fledge's own, outside any
-      # project, which builds the other apps by their paths.
+      # The line README.md's Installation gives (test/workflow_installed_test.rb
+      # holds the two to it), in hello's own Gemfile, and in a Gemfile of
+      # Fledge's own, outside any project, which builds the other apps by
+      # their paths.
       - name: Install Fledge from the tag with Bundler, in hello's Gemfile and in a folder of its own
         env:
           TAG: ${{ inputs.tag }}
@@ -214,7 +214,7 @@ jobs:
           for folder in "$GITHUB_WORKSPACE/examples/hello" "$RUNNER_TEMP/project"; do
             cat > "$folder/Gemfile" <<GEMFILE
           source "https://rubygems.org"
-          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
+          gem "fledge", github: "setdef/Fledge", tag: "$TAG"
           GEMFILE
             [ -z "$COMMIT" ] || { sed "s|tag: \"$TAG\"|ref: \"$COMMIT\"|" "$folder/Gemfile" > "$folder/Gemfile.commit" && mv "$folder/Gemfile.commit" "$folder/Gemfile"; }
             cd "$folder"
@@ -414,7 +414,7 @@ jobs:
           for folder in /work/examples/hello /project; do
             cat > "$folder/Gemfile" <<GEMFILE
           source "https://rubygems.org"
-          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
+          gem "fledge", github: "setdef/Fledge", tag: "$TAG"
           GEMFILE
             [ -z "$COMMIT" ] || { sed "s|tag: \"$TAG\"|ref: \"$COMMIT\"|" "$folder/Gemfile" > "$folder/Gemfile.commit" && mv "$folder/Gemfile.commit" "$folder/Gemfile"; }
             cd "$folder"
@@ -507,10 +507,10 @@ jobs:
         if: matrix.phone == 'android'
         run: echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
 
-      # Both ways README.md's Installation gives, each with the README's
-      # line (test/workflow_installed_test.rb holds the two to it): in
-      # hello's own Gemfile, and in a Gemfile of Fledge's own, outside any
-      # project, which builds the other apps by their paths.
+      # The line README.md's Installation gives (test/workflow_installed_test.rb
+      # holds the two to it), in hello's own Gemfile, and in a Gemfile of
+      # Fledge's own, outside any project, which builds the other apps by
+      # their paths.
       - name: Install Fledge from the tag with Bundler, in hello's Gemfile and in a folder of its own
         env:
           TAG: ${{ inputs.tag }}
@@ -520,7 +520,7 @@ jobs:
           for folder in "$GITHUB_WORKSPACE/examples/hello" "$RUNNER_TEMP/project"; do
             cat > "$folder/Gemfile" <<GEMFILE
           source "https://rubygems.org"
-          gem "fledge", git: "https://github.com/setdef/Fledge", tag: "$TAG", group: :development
+          gem "fledge", github: "setdef/Fledge", tag: "$TAG"
           GEMFILE
             [ -z "$COMMIT" ] || { sed "s|tag: \"$TAG\"|ref: \"$COMMIT\"|" "$folder/Gemfile" > "$folder/Gemfile.commit" && mv "$folder/Gemfile.commit" "$folder/Gemfile"; }
             cd "$folder"

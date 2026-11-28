@@ -47,6 +47,14 @@ path = 'lib/fledge/templates/ios/Host/Assets.xcassets/**'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT"
 
+# The documentation: the READMEs and everything under docs/, the ADRs and the
+# generated licensing page among them. None carries a header, so this covers
+# them; the examples in them are MIT-0, between snippet comments.
+[[annotations]]
+path = ['README.md', 'README.rdoc', 'docs/**']
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
+SPDX-License-Identifier = "CC-BY-4.0"
+
 # The recipes the package-manager proof installs, each in the format its
 # package manager reads, under the file names that manager expects, which
 # leave no place for a header.

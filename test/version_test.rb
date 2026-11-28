@@ -36,6 +36,7 @@ class VersionTest < Minitest::Test
     Dir.mktmpdir do |dir|
       FileUtils.mkdir_p(File.join(dir, "lib", "fledge"))
       FileUtils.cp(File.expand_path("../fledge.gemspec", __dir__), dir)
+      FileUtils.cp(File.expand_path("../README.rdoc", __dir__), dir)
       version = File.read(File.expand_path("../lib/fledge/version.rb", __dir__)).sub(running, "9.8.7")
       File.write(File.join(dir, "lib", "fledge", "version.rb"), version)
 

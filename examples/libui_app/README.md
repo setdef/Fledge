@@ -15,8 +15,8 @@ A program that opens a window is where shipping Ruby hurts most. The person who 
 - **Icons.** `icon: icons/icon` names `icons/icon.icns` for macOS, `icons/icon.ico` for Windows, and `icons/icon-16.png` to `icons/icon-512.png` for Linux.
 - **Installers.** `installers: [dmg, nsis, appimage]` asks for a disk image, a setup program, and an AppImage beside each archive.
 - **A gem that carries a library.** LibUI's builds for each platform carry libui-ng's shared library, and its `Gemfile.lock` locks the four platforms those builds exist for: `arm64-darwin`, `x86_64-linux`, `aarch64-linux`, and `x64-mingw-ucrt`.
-- **Libraries the desktop provides.** On Linux, libui-ng links GTK 3, Pango, Cairo, and GDK, which no gem carries, so `linux: system_libraries` names them as the distribution's ([Gems in a Fledge app](../../doc/gems.md#a-gem-that-links-a-library-from-the-linux-distribution)).
-- **Microsoft's Visual C++ runtime.** On Windows, LibUI's DLL needs it, and `windows: visual_c_runtime: local` has the app carry the building computer's copies ([Gems in a Fledge app](../../doc/gems.md#a-gem-whose-dll-needs-the-visual-c-runtime)). You may distribute those copies only if you hold the rights to them.
+- **Libraries the desktop provides.** On Linux, libui-ng links GTK 3, Pango, Cairo, and GDK, which no gem carries, so `linux: system_libraries` names them as the distribution's ([Ship gems with C extensions](../../docs/how-to/native-gems.md#linux-libraries-from-the-distribution)).
+- **Microsoft's Visual C++ runtime.** On Windows, LibUI's DLL needs it, and `windows: visual_c_runtime: local` has the app carry the building computer's copies ([Ship gems with C extensions](../../docs/how-to/native-gems.md#windows-microsofts-visual-c-runtime)). You may distribute those copies only if you hold the rights to them.
 
 Focus Timer is a desktop app: LibUI has no build for a phone.
 

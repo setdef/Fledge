@@ -55,7 +55,7 @@ $ bundle exec fledge build android ~/Fledge/examples/basket
 
 `fledge build` with a path alone builds the desktop app for the system you run it on, and writes it to `dist`. [`fledge.yml`](fledge.yml) asks for every installer a desktop makes: a disk image on a Mac, a setup program and an `.msix` package on Windows, an AppImage and a `.deb` on Linux. The tools each needs are in the README's [Compatibility](../../README.md#compatibility). The `.deb` depends on `libgtk-4-1` and `libadwaita-1-0`, so `apt` installs them. A Basket that starts on Linux without them says which library is missing and exits with status 72.
 
-The other two write a project for a phone: an Xcode project from `fledge build ios` on a Mac, and a Gradle project from `fledge build android`. [iPhone, iPad, and Android](../../doc/phones.md) says how to build, sign, and run them.
+The other two write a project for a phone: an Xcode project from `fledge build ios` on a Mac, and a Gradle project from `fledge build android`. [Build for iPhone and Android](../../docs/how-to/phones.md) says how to build, sign, and run them.
 
 ## See each Windows screen
 
@@ -77,7 +77,7 @@ The `.msix` package depends on the runtime, so install the runtime first. `fledg
 ```
 <!-- SPDX-SnippetEnd -->
 
-The setup program and the `.zip` ask Windows for nothing, so Basket draws the screen the computer allows. [Desktop apps](../../doc/desktop_apps.md#the-microsoft-store) says how the package's publisher works, unsigned and signed.
+The setup program and the `.zip` ask Windows for nothing, so Basket draws the screen the computer allows. [Make a windowed app](../../docs/how-to/windowed-app.md#choose-the-installers) says how the package's publisher works, unsigned and signed.
 
 ## Read the code
 
@@ -85,7 +85,7 @@ The setup program and the `.zip` ask Windows for nothing, so Basket draws the sc
 - [`lib/basket/list.rb`](lib/basket/list.rb) and [`lib/basket/data_folder.rb`](lib/basket/data_folder.rb): the list every screen shares, and where it keeps its file.
 - [`lib/basket/objc.rb`](lib/basket/objc.rb), [`gtk.rb`](lib/basket/gtk.rb), [`winrt.rb`](lib/basket/winrt.rb), [`win32.rb`](lib/basket/win32.rb), and [`android/`](lib/basket/android): Basket's calls into each system's libraries over Fiddle, which each screen builds on.
 - [`fledge.yml`](fledge.yml): Basket's name, icon, and installers, and why its `.msix` depends on the Windows App Runtime and its `.deb` on the packages GTK needs.
-- [iPhone, iPad, and Android](../../doc/phones.md#your-apps-screen) says how a phone's screen works, and what differs from a program in C or Objective-C.
+- [Build for iPhone and Android](../../docs/how-to/phones.md#draw-the-platforms-widgets) says how a phone's screen works, and what differs from a program in C or Objective-C.
 
 ## Use this example if you need to
 

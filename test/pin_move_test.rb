@@ -284,13 +284,15 @@ class PinMoveTest < Minitest::Test
     properties = "distributionSha256Sum=21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607\n" \
       "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.8.2-bin.zip\n"
     path = "lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties"
-    checkout(path => properties) do |root|
+    page = "docs/reference/platforms.md"
+    checkout(path => properties, page => "the project's Gradle wrapper, which downloads Gradle 9.8.2. For a gem's extension\n") do |root|
       new_url = "https://services.gradle.org/distributions/gradle-9.9.2-bin.zip"
       move = mover(root, Answers.new("#{new_url}.sha256" => "ef" * 32))
       move.call(finding("gradle", "9.8.2", "9.9.2"))
 
       assert_equal "distributionSha256Sum=#{'ef' * 32}\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-9.9.2-bin.zip\n", move.read(path)
       assert_includes move.read("runtime/sources.yml"), "sha256: #{'ef' * 32}\n    wrapper_sha256: 3b8a25775a69158b5ad2b1d17a80a88dc7b40a352a73eb27d06c612a7ce68e98\n"
+      assert_equal "the project's Gradle wrapper, which downloads Gradle 9.9.2. For a gem's extension\n", move.read(page)
     end
   end
 

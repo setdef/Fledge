@@ -35,7 +35,20 @@ class ReleaseCommit
   # The files that name the version, as the release commits of every
   # release so far changed them, besides CHANGELOG.md and
   # docs/reference/licensing.md.
-  FILES = %w[lib/fledge/version.rb Gemfile.lock lib/fledge/config.rb lib/fledge/config.schema.json].freeze
+  FILES = %w[
+    lib/fledge/version.rb
+    Gemfile.lock
+    README.md
+    README.rdoc
+    docs/README.md
+    docs/tutorial.md
+    docs/how-to/runtimes.md
+    docs/reference/built-app.md
+    docs/reference/platforms.md
+    docs/reference/fledge.usage.kdl
+    lib/fledge/config.rb
+    lib/fledge/config.schema.json
+  ].freeze
 
   # The CHANGELOG's unreleased section, between its heading and the
   # next, of +text+.

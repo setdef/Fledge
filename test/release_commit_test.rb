@@ -75,8 +75,7 @@ class ReleaseCommitTest < Minitest::Test
 
       assert_equal "VERSION = \"0.17.1\"\n", File.read(File.join(root, "lib/fledge/version.rb"))
       assert_equal "    fledge (0.17.1)\n  fledge (0.17.1)\n", File.read(File.join(root, "Gemfile.lock"))
-      assert_equal "# $schema=https://raw.githubusercontent.com/setdef/Fledge/v0.17.1/lib/fledge/config.schema.json\n" \
-        "tag: \"v0.17.1\" fledge-runtime-0.17.1-arm64-darwin and fledge 0.17.1, not 10.17.0\n", File.read(File.join(root, "lib/fledge/config.rb"))
+      assert_equal "tag: \"v0.17.1\" fledge-runtime-0.17.1-arm64-darwin and fledge 0.17.1, not 10.17.0\n", File.read(File.join(root, "README.md"))
       changelog = File.read(File.join(root, "CHANGELOG.md"))
       assert_includes changelog, "## [Unreleased]\n\n## [0.17.1] - 2026-11-23\n\n### Changed\n\n- libexample 2.0.1, from 2.0.0.\n\n### Fixed\n"
       assert_includes changelog, "[Unreleased]: https://github.com/setdef/Fledge/compare/v0.17.1...HEAD\n" \
@@ -116,8 +115,8 @@ class ReleaseCommitTest < Minitest::Test
 
   def test_refuses_a_file_that_no_longer_names_the_version
     in_tree do |release, root|
-      File.write(File.join(root, "lib/fledge/config.rb"), "no version here\n")
-      assert_match(%r{lib/fledge/config.rb names no 0.17.0}, assert_raises(ReleaseCommit::Error) { release.write("0.17.1", date: "2026-11-23") }.message)
+      File.write(File.join(root, "README.rdoc"), "no version here\n")
+      assert_match(/README.rdoc names no 0.17.0/, assert_raises(ReleaseCommit::Error) { release.write("0.17.1", date: "2026-11-23") }.message)
     end
   end
 
@@ -135,10 +134,12 @@ class ReleaseCommitTest < Minitest::Test
         "CHANGELOG.md" => changelog.gsub("0.17.0", version),
         "lib/fledge/version.rb" => "VERSION = \"#{version}\"\n",
         "Gemfile.lock" => "    fledge (#{version})\n  fledge (#{version})\n",
-        "lib/fledge/config.rb" => "# $schema=https://raw.githubusercontent.com/setdef/Fledge/v#{version}/lib/fledge/config.schema.json\n" \
-          "tag: \"v#{version}\" fledge-runtime-#{version}-arm64-darwin and fledge #{version}, not 10.17.0\n",
+        "README.md" => "tag: \"v#{version}\" fledge-runtime-#{version}-arm64-darwin and fledge #{version}, not 10.17.0\n",
+        "README.rdoc" => "tag: \"v#{version}\"\n",
+        "lib/fledge/config.rb" => "# $schema=https://raw.githubusercontent.com/setdef/Fledge/v#{version}/lib/fledge/config.schema.json\n",
         "lib/fledge/config.schema.json" => "{\"$id\": \"https://raw.githubusercontent.com/setdef/Fledge/v#{version}/lib/fledge/config.schema.json\"}\n",
       }
+      (ReleaseCommit::FILES - files.keys).each { |path| files[path] = "fledge #{version}\n" }
       files.each do |path, text|
         FileUtils.mkdir_p(File.dirname(File.join(root, path)))
         File.write(File.join(root, path), text)

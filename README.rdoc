@@ -1,0 +1,64 @@
+= Fledge
+
+Ship a Ruby app to people who don't have Ruby.
+
+Fledge builds the Ruby program you run, its project, and the gems its
+<tt>Gemfile.lock</tt> locks into an app that carries a Ruby: a folder that runs
+on macOS, Windows, or Linux with nothing installed, and a project Xcode or
+Gradle builds into an iPhone or Android app. The app runs your program as
+<tt>bundle exec ruby</tt> would, and calls nothing of Fledge's.
+
+== Install
+
+Add Fledge to your project's +Gemfile+, from its release tag on GitHub:
+
+  gem "fledge", github: "setdef/Fledge", tag: "v0.17.0"
+
+Then run <tt>bundle install</tt> with Ruby 4.1, the Ruby every Fledge 0.17.0
+app carries. Bundler fetches a gem from GitHub with Git, so +git+ has to be on
+your +PATH+.
+
+== Use
+
+In the project's folder, build the app for the computer you're on:
+
+  $ bundle exec fledge build
+  Downloading fledge-runtime-0.17.0-x86_64-linux.tar.gz from https://github.com/setdef/Fledge/releases/download/v0.17.0
+  Writing the gems' executables for x86_64-linux
+  dist/Greet-x86_64-linux.tar.gz
+
+Each platform's app is built on a computer of that platform. A +fledge.kdl+
+file beside the +Gemfile+ says how the app presents itself: its name, icon,
+identifier, installers, and the files it opens.
+
+  name "Cool App"
+  version "1.2.3"
+  kind windowed
+  identifier "com.example.CoolApp"
+  icon "icons/app"
+
+<tt>fledge ios project</tt> and <tt>fledge android project</tt> write the
+phone apps' projects.
+
+== Documentation
+
+- {The tutorial}[https://github.com/setdef/Fledge/blob/trunk/docs/tutorial.md]: build a command-line tool into an app.
+- {How-to guides}[https://github.com/setdef/Fledge/tree/trunk/docs/how-to]: windowed apps, native gems, signing, phones, and more.
+- {The fledge command}[https://github.com/setdef/Fledge/blob/trunk/docs/reference/fledge.usage.kdl] and {fledge.kdl}[https://github.com/setdef/Fledge/blob/trunk/docs/reference/fledge-kdl.md]: every command, flag, and node.
+- {Platforms}[https://github.com/setdef/Fledge/blob/trunk/docs/reference/platforms.md]: where apps run, and what each build needs.
+- {The changelog}[https://github.com/setdef/Fledge/blob/trunk/CHANGELOG.md].
+
+Questions and bug reports go to {the Fledge forum}[https://forum.setdef.com/c/fledge].
+
+== License
+
+Fledge is released under the MIT License, copyright setdef. Each app it
+builds carries the notices of its runtime's parts, which keep their
+licenses.
+
+== How this was made
+
+Fledge's code, tests, and documentation were requested: AI agents built them
+with little review of the diffs, and the project's tests and checks stand in
+for review. {The README}[https://github.com/setdef/Fledge#how-this-was-made]
+says more.

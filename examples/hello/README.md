@@ -77,7 +77,7 @@ dist/Hello-android
 ```
 <!-- SPDX-SnippetEnd -->
 
-Open `dist/Hello-ios/Hello.xcodeproj` in Xcode, or run `./gradlew assembleDebug` in `dist/Hello-android`, to build the app. On the phone, Hello shows its name on one screen, and its line goes to the system log, since a phone has no terminal. [iPhone, iPad, and Android](../../doc/phones.md) says what each project needs and how to sign and submit it.
+Open `dist/Hello-ios/Hello.xcodeproj` in Xcode, or run `./gradlew assembleDebug` in `dist/Hello-android`, to build the app. On the phone, Hello shows its name on one screen, and its line goes to the system log, since a phone has no terminal. [Build for iPhone and Android](../../docs/how-to/phones.md) says what each project needs and how to sign and submit it.
 
 ## Read the code
 

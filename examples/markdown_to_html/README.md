@@ -8,7 +8,7 @@ A droplet: drop Markdown files on the app, or open them with it, and it writes e
 
 ## What it shows
 
-- **Files dropped on an app, or opened with it.** `fledge.yml` lists Markdown under `file_associations`, and each system hands the program the paths in `ARGV`. See [Desktop apps](../../doc/desktop_apps.md).
+- **Files dropped on an app, or opened with it.** `fledge.yml` lists Markdown under `file_associations`, and each system hands the program the paths in `ARGV`. See [Open files and folders](../../docs/how-to/file-associations.md).
 - **An app with no window.** A success shows nothing but the new file. A failure is a notification on macOS and Linux and a message box on Windows.
 - **Two programs in one app.** `markdown_to_html.rb` is the windowed program and takes the app's name. `bin/md2html` is a console program that prints the HTML of the files it is given, or of standard input, with `--page` as a whole page.
 - **Pure Ruby only.** kramdown and its GitHub-Flavored Markdown parser need no compiler, so one `Gemfile.lock` serves every platform.

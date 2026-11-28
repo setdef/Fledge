@@ -16,6 +16,7 @@ Gem::Specification.new do |spec|
   spec.email = ["kerrick@setdef.com"]
 
   spec.summary = "Ship a Ruby app to people who don't have Ruby."
+  spec.description = File.read(File.expand_path("README.rdoc", __dir__))
   spec.homepage = "https://github.com/setdef/Fledge"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 4.1.0.a"
@@ -36,6 +37,7 @@ Gem::Specification.new do |spec|
     exe
     lib
     sig
+    README.rdoc
     CHANGELOG.md
     LICENSE
     LICENSES

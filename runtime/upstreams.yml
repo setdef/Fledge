@@ -398,6 +398,8 @@ watched:
       licenses: [compiler-rt-ndk]
       also:
         mise.android.toml: ['\[tools\."http:android-ndk"\]\nversion = "(?<version>[^"]+)"']
+        docs/how-to/phones.md: ['NDK (?<version>r\d+[a-z]?)\.']
+        docs/reference/platforms.md: ['built with (?<version>r\d+[a-z]?)\)']
   gradle:
     pins: [mobile.gradle]
     page: https://services.gradle.org/versions/current
@@ -407,6 +409,7 @@ watched:
     keep: [wrapper_sha256]
     also:
       lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties: ['distributions/gradle-(?<version>[\d.]+)-bin\.zip']
+      docs/reference/platforms.md: ['downloads Gradle (?<version>[\d.]+)\.']
   agp:
     pins: [mobile.agp]
     page: https://dl.google.com/android/maven2/com/android/tools/build/gradle/maven-metadata.xml

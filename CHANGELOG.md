@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - libyaml 0.2.7, from 0.2.5.
 - A Windows setup program's finish page shows a plain white bitmap down its left side, where it showed NSIS's own.
 - libffi 3.8.2, from 3.5.2.
+- Gradle 9.9.3, from 9.8.2.
 
 ### Fixed
 

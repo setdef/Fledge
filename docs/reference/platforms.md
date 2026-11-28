@@ -75,7 +75,7 @@ A Mac with Apple silicon, Xcode, and [XcodeGen](https://github.com/yonaskolb/Xco
 
 ### Android
 
-The Android SDK, a JDK 17 or later, and the project's Gradle wrapper, which downloads Gradle 9.8.2. For a gem's extension, the Android NDK (Fledge's runtime is built with r30), on a Mac or Linux; for a Rust extension, Rust with the `aarch64-linux-android` and `x86_64-linux-android` targets.
+The Android SDK, a JDK 17 or later, and the project's Gradle wrapper, which downloads Gradle 9.9.3. For a gem's extension, the Android NDK (Fledge's runtime is built with r30), on a Mac or Linux; for a Rust extension, Rust with the `aarch64-linux-android` and `x86_64-linux-android` targets.
 
 ## What the computer that runs the app needs
 

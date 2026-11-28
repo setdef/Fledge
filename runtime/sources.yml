@@ -498,9 +498,9 @@ mobile:
         url: https://dl.google.com/android/repository/android-ndk-r30-darwin.zip
         sha256: d125634de97b26deb1e1bb1a562f9d839aa5803d1784a1e414485f5ccbe6739f
   gradle:
-    version: 9.8.2
-    url: https://services.gradle.org/distributions/gradle-9.8.2-bin.zip
-    sha256: 21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607
+    version: 9.9.3
+    url: https://services.gradle.org/distributions/gradle-9.9.3-bin.zip
+    sha256: 4f2135b741f272acc88c168a52202a0a63fceee0cd61ee753da79694cd2b1e4b
     # Gradle's wrapper, which every Android project fledge build writes
     # carries (lib/fledge/templates/android/gradle/wrapper), as Gradle
     # publishes its SHA-256 at the distribution's URL with -wrapper.jar.sha256.

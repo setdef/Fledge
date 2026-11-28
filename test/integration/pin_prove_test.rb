@@ -254,7 +254,7 @@ class PinProveTest < Minitest::Test
       write_shims(bin, dir, work)
       server = github({ 1 => [branch_run, causes, "pin-move"], 2 => [trunk_run, trunk_causes, "trunk"] }, dir)
       others.each { |number| FileUtils.touch(File.join(dir, "other-#{number}")) }
-      { 1 => branch_list, 2 => trunk_list }.each { |number, kind| File.write(File.join(dir, "list-#{number}.json"), RUN_LISTS.fetch(kind).gsub("%d", number.to_s)) }
+      { 1 => branch_list, 2 => trunk_list }.each { |number, kind| File.binwrite(File.join(dir, "list-#{number}.json"), RUN_LISTS.fetch(kind).gsub("%d", number.to_s)) }
       env = {
         "PATH" => "#{bin}:#{ENV.fetch('PATH')}",
         "GITHUB_OUTPUT" => File.join(dir, "output"),
@@ -304,7 +304,7 @@ class PinProveTest < Minitest::Test
       git_in(root, "clone", "--quiet", File.join(root, "origin.git"), File.join(root, "checkout"))
       write_commit(work, "other", "landed meanwhile")
       git_in(work, "push", "--quiet", "origin", "HEAD:trunk")
-      File.write(File.join(root, "ancestor-sha"), git_in(work, "rev-parse", "HEAD"))
+      File.binwrite(File.join(root, "ancestor-sha"), git_in(work, "rev-parse", "HEAD"))
     end
   end
 
@@ -338,10 +338,13 @@ class PinProveTest < Minitest::Test
   # fields. A POST that runs the failed jobs again makes the next
   # attempt the current one.
   private def github(outcomes, dir)
+    # The files the gh stand-in reads with shell builtins are written
+    # in binary: File.write on Windows ends each line with CR LF, and
+    # bash's read keeps the CR, so "completed success" is no longer one.
     routes = {}
     outcomes.each do |run, (conclusions, causes, branch)|
       conclusions = Array(conclusions)
-      File.write(File.join(dir, "outcome-#{run}"), conclusions.map { |each| "#{each}\n" }.join)
+      File.binwrite(File.join(dir, "outcome-#{run}"), conclusions.map { |each| "#{each}\n" }.join)
       FileUtils.touch(File.join(dir, "reruns-#{run}"))
       attempt = -> { File.readlines(File.join(dir, "reruns-#{run}")).size + 1 }
       recorded = causes.map { |cause| JSON.parse(File.read(File.join(FIXTURES, "#{CAUSES.fetch(cause)}.json"))) }

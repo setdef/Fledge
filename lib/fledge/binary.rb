@@ -17,8 +17,7 @@ module Fledge
   # whether it loads on the computer the app goes to, and, for Fledge's
   # own runtime, what a license asks of the app's developer, since an LGPL
   # library may ship in a runtime only as a separate shared library that
-  # another file loads, never compiled into it (decision 8 in
-  # <tt>doc/contributors/decisions.md</tt>). The oldest macOS or glibc a
+  # another file loads, never compiled into it. The oldest macOS or glibc a
   # file names decides the oldest system it loads on.
   #
   # Fledge reads none of these formats itself. An objdump reads

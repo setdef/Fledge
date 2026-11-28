@@ -18,9 +18,7 @@ class RuntimeBuilder
   # built with Xcode's compilers after xord/cruby's Rakefile (at 11d62c4,
   # lines 499 to 724), as a shared library with each extension a dynamic
   # library of its own, and packed with Xcode's own tools as an
-  # XCFramework of two dynamic frameworks, FledgeRuby.xcframework
-  # (doc/contributors/design/phone-runtimes.md, "What a phone runtime
-  # holds", and "Ruby's extensions on iOS").
+  # XCFramework of two dynamic frameworks, FledgeRuby.xcframework.
   #
   # Each slice holds FledgeRuby.framework (Ruby and the embedding API,
   # under the install name <tt>@rpath/FledgeRuby.framework/FledgeRuby</tt>,
@@ -85,9 +83,7 @@ class RuntimeBuilder
 
     # A library Apple asks a privacy manifest of, by a symbol that only
     # it defines, and the manifest its own source publishes, in the
-    # pinned tarball runtime/sources.yml names
-    # (doc/contributors/design/phone-runtimes.md, "Ruby's extensions on
-    # iOS").
+    # pinned tarball runtime/sources.yml names.
     MANIFESTS = { "openssl" => ["_OPENSSL_init_crypto", "os-dep/Apple/PrivacyInfo.xcprivacy"] }.freeze
 
     # The name of the framework of the extension at +path+ under
@@ -186,9 +182,7 @@ class RuntimeBuilder
     # what <tt>xcodebuild -create-xcframework</tt> writes for that
     # extension's frameworks, made as fledge build makes them. It depends
     # on no app, so the runtime's build starts Xcode's build tool once
-    # for each extension, and fledge build does not, for each app
-    # (doc/contributors/design/phone-runtimes.md, "Ruby's extensions on
-    # iOS").
+    # for each extension, and fledge build does not, for each app.
     private def indexes(xcframework)
       extensions = Fledge::MobileProject::IOSRubyExtensions.new(xcframework)
       folder = File.join(xcframework, Fledge::MobileProject::IOSRubyExtensions::INDEXES)

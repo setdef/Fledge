@@ -19,12 +19,15 @@ AllCops:
     - "vendor/bundle/**/*"
     # What fledge build writes
     - "dist/**/*"
+    # The recipes the package-manager proof installs, as each manager reads
+    # them: a Homebrew formula is not written in this repository's style.
+    - "test/fixtures/package_managers/**/*"
 # The LF every checkout has (.gitattributes), on Windows too, where
 # goodcop's native would ask for CRLF and fail every file.
 Layout/EndOfLine:
   EnforcedStyle: lf
 # RDoc mis-parses endless methods: the methods after one lose their comments
-# and visibility (doc/contributors/documentation_style.md, section 4). Every
+# and visibility. Every
 # file RDoc reads uses def ... end.
 Style/EndlessMethod:
   Enabled: true

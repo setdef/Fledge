@@ -22,8 +22,7 @@ require_relative "github_api"
 # GitHub to run its failed jobs again, as <tt>gh run rerun --failed</tt>
 # does. It never does so for a run in which any job ran a step and
 # failed, or was cancelled for another reason, so a real failure stays
-# exactly as red as it is (doc/contributors/design/releases.md, "A job
-# no runner took"), nor for any run but trunk's own and the proofs of a
+# exactly as red as it is, nor for any run but trunk's own and the proofs of a
 # pin move (PROOF_BRANCH), whoever asks. .github/workflows/runnerless.yml
 # calls it when a run of CI, Fast, Fast (macOS), or ruby/spec on trunk
 # ends red, and .github/scripts/pin-prove.sh when the run of CI it waits

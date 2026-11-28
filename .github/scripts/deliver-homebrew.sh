@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Installs hello with Homebrew from a local tap, as doc/package_managers.md
-# says, runs it by its command with no Ruby on PATH, and uninstalls it.
+# Installs hello with Homebrew from a local tap, from the formula in
+# test/fixtures/package_managers, runs it by its command with no Ruby on
+# PATH, and uninstalls it.
 #
 #   deliver-homebrew.sh RECIPES RUBY_PLATFORM
 

@@ -9,8 +9,7 @@ require_relative "test_helper"
 require "yaml"
 
 # ruby-master.yml builds runtimes from the day's snapshot of Ruby's
-# master and reports to one issue (doc/contributors/design/runtimes.md,
-# "Testing against Ruby's master"). Each build records its result for
+# master and reports to one issue. Each build records its result for
 # the report instead of failing its job, so a build that recorded
 # nothing, or a job the report does not know, would pass unseen; these
 # keep the two lists one.

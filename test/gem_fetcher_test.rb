@@ -115,8 +115,7 @@ class GemFetcherTest < Minitest::Test
   end
 
   # Bundler asks a gem server again when it fails for a moment
-  # (Bundler::Retry, BUNDLE_RETRY), and so does Fledge
-  # (doc/contributors/design/runtimes.md, "Download retries"); a server
+  # (Bundler::Retry, BUNDLE_RETRY), and so does Fledge; a server
   # without the file is asked once.
   def test_a_server_that_fails_for_a_moment_is_asked_again_and_one_without_the_file_once
     answers = [[500, {}, "oops"], [200, {}, File.binread(@built.path)]]
@@ -182,8 +181,7 @@ class GemFetcherTest < Minitest::Test
   end
 
   # RubyGems.org serves gem files from a bucket that answers 403, not
-  # 404, for a file it does not have (doc/contributors/design/gems.md,
-  # "Fetching a gem's file").
+  # 404, for a file it does not have.
   def test_rubygems_org_is_the_public_server_by_default
     assert_equal ["rubygems.org"], Fledge::GemFetcher.new(cache: File.join(@dir, "cache"), project: @project).public_servers
   end

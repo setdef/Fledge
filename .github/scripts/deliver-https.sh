@@ -8,8 +8,7 @@
 # runs, whose FOLDER it is given. The server's certificate is signed by
 # a test authority made for the run, FOLDER/ca.pem, and each case puts
 # that certificate in one place and checks that the app trusts the
-# server, or refuses it, as the platform's Ruby does under ruby main.rb
-# (doc/contributors/design/runtimes.md, "Certificates"):
+# server, or refuses it, as the platform's Ruby does under ruby main.rb:
 #
 #   none      nowhere: every app refuses, so the check is seen to fail
 #             when certificates do not work.

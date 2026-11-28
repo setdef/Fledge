@@ -12,9 +12,7 @@ require_relative "recipe"
 
 class RuntimeBuilder
   # iOS and iPadOS, and Android: CRuby built from its own source for a
-  # phone, shared, with each of its extensions a file
-  # (doc/contributors/design/phone-runtimes.md, "Why Ruby is a shared
-  # library, with each extension a file"), and with YJIT and
+  # phone, shared, with each of its extensions a file, and with YJIT and
   # ZJIT where the phone lets an app run code it writes (Android;
   # jit_options).
   #
@@ -26,14 +24,12 @@ class RuntimeBuilder
   # OpenSSL and libyaml built the same way, as a shared library with each
   # extension a file, and no JIT on iOS. A miniruby built for
   # the build machine from the same source writes the builtin binary a
-  # cross build cannot (doc/contributors/design/phone-runtimes.md, "The
-  # builtin binary"). Each subclass names its targets' toolchains and
+  # cross build cannot. Each subclass names its targets' toolchains and
   # packs what they built: an XCFramework for iOS (IOS), an AAR for
   # Android (Android).
   class Mobile < Recipe
-    # One slice of a mobile runtime: the target name Fledge gives it
-    # (doc/contributors/design/phone-runtimes.md, "Targets"), what Ruby calls its
-    # platform there, its
+    # One slice of a mobile runtime: the target name Fledge gives it, what Ruby
+    # calls its platform there, its
     # compiler's target triple, OpenSSL's name for it, and for iOS the
     # SDK and XCFramework slice, or for Android the ABI.
     class Target < Data.define(:name, :ruby_platform, :triple, :openssl, :sdk, :slice, :abi)
@@ -76,8 +72,7 @@ class RuntimeBuilder
       ]),
     }.freeze
 
-    # Where the embedding API's C lives (doc/contributors/design/phone-runtimes.md,
-    # "The embedding API").
+    # Where the embedding API's C lives.
     MOBILE = File.join(ROOT, "runtime", "mobile")
 
     # Static libruby, as Ruby's build names it: libruby-static.a, or on

@@ -82,9 +82,7 @@ module Fledge
       # to the extension (<tt>--exclude-libs</tt>), as the NDK asks of a
       # shared library that links libc++ statically, so that a library
       # the extension loads is not bound to its copy of them; every
-      # other symbol is exported as a desktop's mkmf exports it
-      # (doc/contributors/design/phone-projects.md, "Each extension
-      # file's symbols").
+      # other symbol is exported as a desktop's mkmf exports it.
       DLDFLAGS = "-Wl,-z,max-page-size=16384 -Wl,-rpath,'$$ORIGIN' -Wl,--exclude-libs,libc++_static.a:libc++abi.a:libunwind.a"
 
       # Creates the finder, which writes its toolchain files and unpacks

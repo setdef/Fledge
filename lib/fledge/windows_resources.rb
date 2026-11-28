@@ -16,14 +16,14 @@ module Fledge
   #
   # Explorer, the taskbar, Alt-Tab, and a shortcut show a program's first
   # icon group; Task Manager shows its FileDescription; a Properties
-  # dialog shows its ProductName, CompanyName, versions, and copyright
-  # (decision 18). Without them, every app built with Fledge would show
-  # the launcher's blank icon and its bare file name.
+  # dialog shows its ProductName, CompanyName, versions, and copyright. Without
+  # them, every app built with Fledge would show the launcher's blank icon and
+  # its bare file name.
   #
   # This module has rcedit write them, as electron-builder and
   # electron-packager have it write an Electron app's: Electron's own
   # resource editor (MIT), which calls Windows' UpdateResource, so it
-  # runs on Windows, where each Windows app is built (decisions, 2026-10-28). The
+  # runs on Windows, where each Windows app is built. The
   # Windows runtime carries a pinned build of it in its +tools+ folder,
   # which no app holds. It sets FileDescription, ProductName, and
   # InternalName to the app's name, OriginalFilename to its program's,
@@ -88,8 +88,7 @@ module Fledge
     # keeps an emulated program open for a while after it exits, so the
     # build's own folder, where the runtime's rcedit is, could not be
     # deleted after it ran; the copy is the temporary folder's to clear,
-    # as makensis's is (Fledge::Nsis; doc/contributors/design/runtimes.md,
-    # "Windows on ARM64").
+    # as makensis's is (Fledge::Nsis).
     private_class_method def self.run(rcedit, *)
       work = Dir.mktmpdir("fledge-rcedit")
       begin

@@ -4,8 +4,7 @@
  */
 
 /*
- * Fledge's embedding API for Ruby on iOS, iPadOS, and Android
- * (doc/contributors/design/phone-runtimes.md, "The embedding API").
+ * Fledge's embedding API for Ruby on iOS, iPadOS, and Android.
  *
  * A phone runs no program of Fledge's own: the app is the developer's,
  * or a framework's (Lota's SDL_main, Tokra's Tauri host), and Ruby is a
@@ -31,8 +30,7 @@ extern "C" {
 
 /*
  * The statuses fledge_ruby_run and fledge_ruby_run_app return when they
- * cannot start Ruby, from sysexits(3), as Fledge's launcher exits
- * (doc/contributors/design/launcher.md, "Messages and exit statuses"):
+ * cannot start Ruby, from sysexits(3), as Fledge's launcher exits:
  * EX_NOINPUT for an app whose fledge.cfg or program is missing,
  * and EX_SOFTWARE for anything else.
  */
@@ -76,8 +74,7 @@ int fledge_ruby_run_app(const char *root, int argc, char *const *argv);
  * into this process, so that require "feature" runs init instead of
  * looking for a file: iOS's Ruby loads none, and on Android an
  * extension linked in has none, where one an extconf.rb builds in C or
- * C++ is a file Ruby loads, which needs no call
- * (doc/contributors/design/phone-projects.md, "Registering extensions").
+ * C++ is a file Ruby loads, which needs no call.
  * feature is the name the extension's extconf.rb gives create_makefile,
  * such as "greeter/greeter", with no ".so". Call it before fledge_ruby_run
  * or fledge_ruby_run_app, from a constructor or the host's startup: Ruby

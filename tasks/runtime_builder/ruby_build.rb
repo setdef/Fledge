@@ -18,8 +18,7 @@ class RuntimeBuilder
   # use them, with Mozilla's CA certificates as libexec/cert.pem, found
   # as rv-ruby's Ruby finds them (Certificates). The musl recipe builds
   # its Ruby with it, and RubyArchive the Rubies Fledge publishes for
-  # glibc Linux and macOS (doc/contributors/design/runtimes.md, "Fledge's
-  # own Ruby builds").
+  # glibc Linux and macOS.
   #
   # Ruby is built in its source folder, as rv-ruby builds it
   # (Abstract/rv-ruby.rb, lines 157 to 174, at spinel-coop/rv-ruby

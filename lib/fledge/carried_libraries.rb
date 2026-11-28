@@ -25,9 +25,8 @@ module Fledge
   # as delocate and dylibbundler do. The developer
   # names every library the app is to carry, its own needs among them, and
   # distributes them under their licenses, which are the developer's to
-  # honor, as their gems' are (the decisions of 2026-11-22 and
-  # 2026-10-28): Fledge carries nothing unlisted and says nothing of a
-  # license.
+  # honor, as their gems' are: Fledge carries nothing unlisted and says nothing
+  # of a license.
   #
   # This class finds each listed library where dyld finds it for the
   # developer's own <tt>bundle exec</tt>: at a file's absolute install
@@ -43,7 +42,6 @@ module Fledge
   # command as it was, then signs each changed file ad hoc, as Apple
   # Silicon runs only signed code. The copies in the app change; the
   # gems the developer's <tt>bundle exec</tt> loads do not.
-  # (doc/contributors/design/gems.md, "Libraries a Mac app carries".)
   #
   # Use it through Fledge::AppGems.
   #

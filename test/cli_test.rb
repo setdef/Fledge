@@ -51,8 +51,7 @@ class CLITest < Minitest::Test
   end
 
   # A bare word Fledge reads as a platform is read so by every later
-  # release, and the help says to write ./NAME for a folder of that name
-  # (doc/contributors/design/public-interface.md, "Reserved names"),
+  # release, and the help says to write ./NAME for a folder of that name,
   # naming each word the parser takes today.
   def test_help_reserves_the_words_it_reads_as_platforms
     out, = fledge("--help")
@@ -156,7 +155,7 @@ class CLITest < Minitest::Test
     assert_equal "fledge build: unrecognized option '--frobnicate'\n#{USAGE}", err
   end
 
-  # Each platform's app is built on that platform (decisions, 2026-10-28), so the
+  # Each platform's app is built on that platform, so the
   # --target of Fledge 0.0.1.pre.7 is a usage error that says so.
   def test_a_target_is_a_usage_error_that_says_to_build_on_that_platform
     out, err, status = fledge("build", "--target", "x86_64-linux", "examples/hello")

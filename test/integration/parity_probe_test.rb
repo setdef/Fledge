@@ -83,10 +83,9 @@ class ParityProbeTest < Minitest::Test
   # bytes outside it; the probe still reports. Windows has no C locale:
   # Ruby takes its locale from the console's code page, never from
   # LC_ALL (localeinit.c, lines 48 to 51, at Ruby 4.1.0-preview1), and
-  # the parity check runs the probe under code page 437 there instead
-  # (doc/contributors/design/parity.md, "The environments").
+  # the parity check runs the probe under code page 437 there instead.
   def test_the_probe_reports_in_a_c_locale
-    skip "Windows has no C locale: Ruby's locale follows the console's code page (doc/contributors/design/launcher.md, 'The locale')" if Gem.win_platform?
+    skip "Windows has no C locale: Ruby's locale follows the console's code page" if Gem.win_platform?
 
     out, err, status = probe("ünïcödé", env: { "LC_ALL" => "C" })
 

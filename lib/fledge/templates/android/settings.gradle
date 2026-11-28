@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT
 //
-// Written by fledge build (doc/contributors/design/phone-projects.md): a Gradle project of one Android
+// Written by fledge build: a Gradle project of one Android
 // app, which ./gradlew assembleDebug builds as an APK, ./gradlew
 // bundleRelease as the app bundle Google Play takes, or Android Studio
 // opens.

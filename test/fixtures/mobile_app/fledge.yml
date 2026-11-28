@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# What iOS and Android show of the app, and know it by (doc/contributors/design/phone-projects.md): a name
+# What iOS and Android show of the app, and know it by: a name
 # with a space in it, its identifier, and its icon, as Briefcase names
 # the files: icons/app-1024.png for iOS, icons/app-48.png to
 # icons/app-192.png for Android, and the desktop's beside them. The

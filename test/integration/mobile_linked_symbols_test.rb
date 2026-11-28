@@ -13,8 +13,7 @@ require_relative "../support/ios"
 require_relative "../../tasks/mobile_parity"
 
 # Which definition each extension linked into a phone's app calls when
-# two parts of the app define one name (doc/contributors/design/
-# phone-projects.md, "Each linked extension's symbols"): every iOS
+# two parts of the app define one name: every iOS
 # extension, and on Android those a Rakefile builds, which go into
 # libfledgeext.so. Each app is a developer's project of path gems:
 # fledge build writes its Xcode or Gradle project, Xcode or Gradle

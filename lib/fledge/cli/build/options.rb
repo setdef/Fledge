@@ -19,15 +19,14 @@ module Fledge
       # profile <tt>--notarize</tt> has Apple notarize a signed macOS app
       # with, the app <tt>--from</tt> builds from, and
       # the one PATH, with <tt>--</tt> ending the options. A desktop build
-      # is for the computer it runs on (decisions, 2026-10-28); a phone's, which no phone
+      # is for the computer it runs on; a phone's, which no phone
       # builds, is named first, as Briefcase's <tt>briefcase create
-      # iOS</tt> and Flutter's <tt>flutter build ios</tt> name it (doc/contributors/design/phone-projects.md, "The operand").
+      # iOS</tt> and Flutter's <tt>flutter build ios</tt> name it.
       class Options < Data.define(:out, :path, :phone, :sign, :from, :sign_command, :notarize)
         # The options +argv+ gives. A first operand that names a phone
         # (Fledge::MobilePlatform.names) is the phone; a folder of that
         # name is <tt>./ios</tt>, or follows <tt>--</tt>. A platform added
-        # later takes its word here too, which the help reserves
-        # (doc/contributors/design/public-interface.md, "Reserved names").
+        # later takes its word here too, which the help reserves.
         # Raises
         # Fledge::UsageError for an option it does not know, one without
         # its value, or more than one PATH, and for the <tt>--target</tt>

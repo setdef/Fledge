@@ -273,8 +273,7 @@ class MobileRuntimeTest < Minitest::Test
     assert_raises(Fledge::UsageError) { RuntimeBuilder.platform("arm64-ios") }
   end
 
-  # The phone runtimes' statuses are frozen for 1.x
-  # (doc/contributors/design/public-interface.md, "Frozen for 1.x"), and
+  # The phone runtimes' statuses are frozen for 1.x, and
   # are sysexits' values as the desktop launcher's are.
   def test_the_phone_runtimes_statuses_are_the_launchers
     root = File.expand_path("..", __dir__)

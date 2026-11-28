@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 # Makes every Gradle build on this runner patient with the Maven
-# repositories it downloads from (doc/contributors/design/
-# phone-projects.md, "Gradle's downloads in CI"). Each CI job that runs
+# repositories it downloads from. Each CI job that runs
 # Gradle runs it before Gradle starts:
 #
 #   .github/scripts/gradle-patience.sh

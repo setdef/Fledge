@@ -19,8 +19,7 @@ module Fledge
   # local deployment, and limits distributing it to licensed Visual
   # Studio users, a right only the app's developer can hold: so Fledge
   # copies it only when the project asks, only from the computer that
-  # builds the app, and nothing Fledge itself publishes carries it
-  # (doc/contributors/design/gems.md, "The Visual C++ runtime").
+  # builds the app, and nothing Fledge itself publishes carries it.
   #
   # This class finds each DLL the gems need (Linkage#visual_c_libraries)
   # in a folder, the building computer's System32, where Microsoft's

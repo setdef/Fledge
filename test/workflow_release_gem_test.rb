@@ -9,8 +9,7 @@ require_relative "test_helper"
 require "yaml"
 
 # Every GitHub Release carries the .gem built from its tag, for a developer
-# to install when RubyGems.org is down (doc/contributors/design/releases.md,
-# "release.yml").
+# to install when RubyGems.org is down.
 class WorkflowReleaseGemTest < Minitest::Test
   WORKFLOW = File.expand_path("../.github/workflows/release.yml", __dir__)
 

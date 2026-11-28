@@ -5,8 +5,8 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# On a phone the extension is a static library linked into the app and
-# registered under the name extconf.rb gave create_rust_makefile, so this
-# require finds it without a file
-# (doc/contributors/design/phone-projects.md, "Registering extensions").
+# On a phone the extension is a static library
+# linked into the app and registered under the
+# name extconf.rb gave create_rust_makefile,
+# so this require finds it without a file.
 require "rusty/rusty"

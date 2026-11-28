@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery (Plan 001) on Windows: runs a built app the way a person who
+# Delivery on Windows: runs a built app the way a person who
 # has never installed Ruby would, and fails unless it behaves. It is
 # deliver.sh's counterpart, with the same checks where Windows has them,
 # and more where Windows has more ways in. CI delivers examples/hello and
@@ -151,10 +151,8 @@ foreach ($line in @('This app was built with Fledge', '  ruby/bin/ruby_builtin_d
 Write-Host "ok: the app carries its notices and SBOM"
 
 # The source of each component whose license asks for it travels in the
-# app, in notices\sources\ID\
-# (doc/contributors/design/license-audit.md, "notices/sources/ and the
-# source bundles"): the archive whose SHA-256 its BUILD.txt names, and
-# NOTICES.txt names the folder.
+# app, in notices\sources\ID\: the archive whose SHA-256 its BUILD.txt names,
+# and NOTICES.txt names the folder.
 foreach ($id in @('gmp', 'nsis')) {
   $folder = Join-Path $root "notices\sources\$id"
   $build = Join-Path $folder 'BUILD.txt'
@@ -213,8 +211,7 @@ Check 'clean environment' 0 $app $clean
 Check 'exit status 3 reaches the caller' 3 $app $clean @('3')
 Check "a renamed copy, $folderName.exe" 0 $renamed $clean
 
-# As a package manager puts a console app on PATH (doc/contributors/
-# research/2026-11-04-package-managers.md, sections 2, 3, and 5): winget
+# As a package manager puts a console app on PATH: winget
 # links a portable package's program into its Links folder by a symbolic
 # link named as its command, in another folder here, and Scoop reaches
 # the version it installed through a junction, its current folder. The
@@ -363,10 +360,9 @@ Write-Host "ok: the app's own gems ignore the person's GEM_HOME"
 # launcher, waiting for it as Ruby's own exec waits on Windows.
 # The probe restarts from this folder, whose name is not ASCII, in a
 # clean, a person's, and a hostile environment, and the restarted probe
-# must find nothing changed (doc/contributors/design/parity.md, "Restart
-# checks"): its program, code page, and AppUserModelID, a DLL loaded by a
-# narrow path, the gems, and ENV. A restart is a new process here, so its
-# PID is not compared.
+# must find nothing changed: its program, code page, and AppUserModelID, a DLL
+# loaded by a narrow path, the gems, and ENV. A restart is a new process here,
+# so its PID is not compared.
 foreach ($pair in @(@('clean', $clean), @("person's", $person), @('hostile', $hostile))) {
   $restart = Invoke-App $probeApp $pair[1] @('restart')
   if ($restart.Code -ne 0 -or $restart.Err -ne '' -or $restart.Out -cnotmatch '\Arestarted as itself\r?\n\z') {

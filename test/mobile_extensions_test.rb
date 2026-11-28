@@ -8,8 +8,7 @@
 require_relative "test_helper"
 require_relative "support/gems"
 
-# Native gems on phones (doc/contributors/design/phone-projects.md,
-# "Gems with extensions"): which extensions Fledge compiles, how the
+# Native gems on phones: which extensions Fledge compiles, how the
 # registration unit and the link flags are written, and where an
 # Android NDK is found. test/integration/mobile_extensions_build_test.rb
 # compiles a real gem for every target of a phone, with the real mobile
@@ -307,9 +306,7 @@ class MobileExtensionsTest < Minitest::Test
   end
 
   # CMake reads a toolchain file from CMAKE_TOOLCHAIN_FILE in the
-  # environment when a build folder is new
-  # (doc/contributors/design/phone-projects.md, "CMake toolchain
-  # files"): for an iOS slice,
+  # environment when a build folder is new: for an iOS slice,
   # CMake's own iOS support, aimed at the slice's SDK, processor, and
   # deployment target with Xcode's compilers.
   def test_an_ios_slice_toolchain_file_aims_cmake_at_the_slice

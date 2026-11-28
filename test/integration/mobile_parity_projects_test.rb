@@ -10,8 +10,7 @@ require_relative "../support/gems"
 require_relative "../support/loopback_server"
 require_relative "../../tasks/mobile_parity"
 
-# The mobile check's projects (doc/contributors/design/phone-projects.md,
-# "Parity on a phone"), each made by fledge build in a process of its
+# The mobile check's projects, each made by fledge build in a process of its
 # own, from fake phone runtimes. test/mobile_parity_test.rb covers the
 # rest of the check that needs no simulator or emulator.
 class MobileParityProjectsTest < Minitest::Test

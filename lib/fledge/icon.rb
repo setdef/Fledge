@@ -14,7 +14,7 @@ module Fledge
   # Windows from icon resources inside its program, made from an
   # <tt>.ico</tt>, and Linux desktops from PNGs in the hicolor icon
   # theme's folders, each at several sizes, so the icon stays sharp in a
-  # Dock, a title bar, and a file list (decision 18). Each system's own
+  # Dock, a title bar, and a file list. Each system's own
   # tools make its format, and the icon editors you draw with export
   # them.
   #

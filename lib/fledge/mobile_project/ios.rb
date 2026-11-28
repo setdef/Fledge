@@ -18,7 +18,7 @@ require_relative "ios_ruby_extensions"
 module Fledge
   class MobileProject
     # An app's Xcode project for iPhone and iPad, as Fledge::MobileProject
-    # describes it (doc/contributors/design/phone-projects.md).
+    # describes it.
     #
     # The project is XcodeGen's, as Tauri's iOS projects are: Fledge writes
     # XcodeGen's <tt>project.yml</tt> from its template, with the app's
@@ -158,7 +158,7 @@ module Fledge
       end
 
       # The linker's flag that gives the main thread, where every app's
-      # Ruby runs (doc/contributors/design/phone-widgets.md, "Threads"),
+      # Ruby runs,
       # a 64 MB stack, as test/fixtures/sdl_phone's host asks for it.
       private def main_thread_flags
         ["-Wl,-stack_size,0x4000000"]
@@ -176,10 +176,8 @@ module Fledge
 ].uniq
       end
 
-      # Links the extensions into the app
-      # (doc/contributors/design/phone-projects.md, "Linking extensions on
-      # iOS"): one static library for each slice, made by Apple's libtool
-      # from the archives mkmf made, packed by
+      # Links the extensions into the app: one static library for each slice,
+      # made by Apple's libtool from the archives mkmf made, packed by
       # <tt>xcodebuild -create-xcframework</tt> as the runtime's is, which
       # the project links; and the registration unit
       # in <tt>Host/</tt>, which Xcode compiles with the host app, so its

@@ -24,8 +24,7 @@ module Fledge
     # Fledge builds, so it is tested only there. As Briefcase's
     # <tt>briefcase run iOS --test</tt> builds the app with a test entry
     # point in place of its own and reads the suite's result from the
-    # app's log (doc/contributors/design/phone-projects.md, "Tests in the
-    # app"), this command writes the phone's project with the test
+    # app's log, this command writes the phone's project with the test
     # program PROGRAM in place of the app's program, as <tt>fledge build
     # ios PROGRAM</tt> writes it, builds it with Xcode or Gradle, runs it
     # on the booted Simulator or adb's device with Fledge::PhoneRun,

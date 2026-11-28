@@ -12,8 +12,7 @@ require_relative "support/gems"
 # files its gemspec lists, which are what a RubyGems install of it
 # holds, and every file under its require paths, which Ruby can load
 # whether listed or not; a test's compiled fixture elsewhere in the
-# folder is neither (doc/contributors/design/gems.md, "The linkage
-# check").
+# folder is neither.
 class GemFilesTest < Minitest::Test
   FILES = {
     "lib/alpha.rb" => "# alpha\n",

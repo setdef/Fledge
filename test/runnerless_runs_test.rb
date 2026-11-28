@@ -13,8 +13,7 @@ require "yaml"
 
 # How a run on trunk that is red only because GitHub never gave one of
 # its jobs a runner comes right on its own, and how every other red run
-# stays as red as it is (doc/contributors/design/releases.md, "A job no
-# runner took"). Each case is GitHub's own answer for a real run of this
+# stays as red as it is. Each case is GitHub's own answer for a real run of this
 # repository, recorded in test/fixtures/runnerless with only the fields
 # read here kept, and served by a loopback server at GitHub's paths.
 class RunnerlessRunsTest < Minitest::Test

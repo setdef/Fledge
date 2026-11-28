@@ -71,8 +71,7 @@ const char *fledge_ruby_certificates(void);
 /*
  * Makes root/bin/ruby, where RbConfig.ruby looks, a link to the
  * runtime's ruby program, where the system lets an app run one, before
- * Ruby boots in the app (android.c; doc/contributors/design/phone-runtimes.md,
- * "The ruby program on Android"). iOS lets no app run a
+ * Ruby boots in the app (android.c). iOS lets no app run a
  * program, so apple.c does nothing.
  */
 void fledge_ruby_link_program(const char *root);
@@ -84,9 +83,8 @@ void fledge_ruby_link_program(const char *root);
  * Has Ruby read RubyGems' wrapper of a gem's command, kept in
  * root's FLEDGE_COMMANDS, wherever it reads root/bin/NAME as Ruby, since
  * that is a link to the runtime's ruby program, as Android lets an app
- * run only its native libraries (commands.c; doc/contributors/design/phone-runtimes.md,
- * "Gem commands on Android"). Does nothing when root holds no such
- * folder. iOS lets no app run a program, so apple.c does nothing.
+ * run only its native libraries (commands.c). Does nothing when root holds no
+ * such folder. iOS lets no app run a program, so apple.c does nothing.
  */
 void fledge_ruby_read_commands(const char *root);
 

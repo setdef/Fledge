@@ -9,9 +9,8 @@ require_relative "test_helper"
 require_relative "../tasks/runtime_builder"
 
 # What RuntimeBuilder::Hardening reads of each format's tool output, and
-# the flags each recipe passes (doc/contributors/design/launcher.md,
-# "Hardening"). test/integration/runtime_hardening_test.rb reads files
-# that a real compiler and linker made.
+# the flags each recipe passes. test/integration/runtime_hardening_test.rb reads
+# files that a real compiler and linker made.
 class RuntimeHardeningTest < Minitest::Test
   # What GNU's objdump -p printed of a program built with every
   # protection: Debian's /usr/bin/true, trimmed to the lines read.

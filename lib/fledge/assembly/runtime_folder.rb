@@ -70,8 +70,7 @@ module Fledge
 
       # The headers, static libraries, and pkg-config files of the
       # libraries the runtime's Ruby was built with, which fledge build
-      # compiles a gem against (doc/contributors/design/runtimes.md,
-      # "What a runtime keeps for compiling gems"): every header beside
+      # compiles a gem against: every header beside
       # Ruby's own folder of them, every static library but the libruby
       # an app's own mkmf links its checks against, and the pkg-config
       # files. No running Ruby code reads them.

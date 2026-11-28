@@ -12,9 +12,8 @@ require "open3"
 require "yaml"
 
 # Which commit pin-watch.yml's Pick job offers to the release when the
-# Alone jobs landed the moves (doc/contributors/design/runtimes.md,
-# "The proof"): the step's own script, run as the workflow runs it, with
-# real git, and the real tasks/ci_runs.rb and tasks/green_walk.rb
+# Alone jobs landed the moves: the step's own script, run as the workflow runs
+# it, with real git, and the real tasks/ci_runs.rb and tasks/green_walk.rb
 # reading a loopback server that answers as GitHub's API does. Only gh
 # stands in, for the one lookup of when the run started.
 class PinPickTest < Minitest::Test

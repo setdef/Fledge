@@ -5,8 +5,7 @@
 # among them, each day (tasks/keep_schedules.rb). GitHub disables a
 # public repository's scheduled workflows after 60 days in which nothing
 # happened in it, and a disabled schedule fails no run, so the pin watch
-# would stop unseen in the quiet repository that is its happy path
-# (doc/contributors/design/runtimes.md, "A quiet repository").
+# would stop unseen in the quiet repository that is its happy path.
 #
 # Enabling a workflow takes actions: write, the least the API allows
 # for it. A workflow a person disabled is left as it is. The run fails,

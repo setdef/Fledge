@@ -5,11 +5,9 @@
 # Linux runtimes are built in, so that a gem compiled from source there
 # needs no newer glibc than 2.28, the runtimes' floor, and the app runs
 # on every Linux the floor admits. It is what a developer does who
-# follows fledge build's warning about a gem compiled on a newer glibc
-# (doc/contributors/design/gems.md, "The toolchain and the oldest
-# systems"), with the image as the older Linux: AlmaLinux 8 with GCC
-# from its gcc-toolset, binutils, and make, which is all a C extension's
-# build needs.
+# follows fledge build's warning about a gem compiled on a newer glibc, with the
+# image as the older Linux: AlmaLinux 8 with GCC from its gcc-toolset, binutils,
+# and make, which is all a C extension's build needs.
 #
 #   .github/scripts/glibc-app.sh PLATFORM RUNTIMES OUT PROJECT...
 #

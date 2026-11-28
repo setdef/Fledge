@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Installs hello with Scoop from the manifest in doc/package_managers.md,
-# runs it by its command with no Ruby on PATH, and uninstalls it.
+# Installs hello with Scoop from the manifest in
+# test/fixtures/package_managers, runs it by its command with no Ruby on PATH,
+# and uninstalls it.
 #
 #   deliver-scoop.ps1 -Recipes DIR -Platform RUBY_PLATFORM
 

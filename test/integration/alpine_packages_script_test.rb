@@ -10,8 +10,7 @@ require "fileutils"
 require "open3"
 require "tmpdir"
 
-# .github/scripts/alpine-packages.sh (doc/contributors/design/runtimes.md,
-# "Alpine's packages"), run as a subprocess against the real
+# .github/scripts/alpine-packages.sh, run as a subprocess against the real
 # runtime/sources.yml with an apk that writes down what it was asked to
 # add.
 class AlpinePackagesScriptTest < Minitest::Test

@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# cut.yml's release of a commit CI has proven, with nobody in it
-# (doc/contributors/design/releases.md, "How a release is made"), in
+# cut.yml's release of a commit CI has proven, with nobody in it, in
 # stages that its steps run one after another in one job, so that a token
 # can be minted just before each push.
 #
@@ -113,8 +112,7 @@ branch)
 chore: release $version
 
 Released with nobody in the loop from $commit, whose CI passed on
-every job, by cut.yml (doc/contributors/design/releases.md, "How a
-release is made").
+every job, by cut.yml.
 
 Provenance: requested
 EOF

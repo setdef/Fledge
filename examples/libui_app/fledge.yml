@@ -14,16 +14,16 @@
 # icons/icon-512.png for Linux. It ships as an archive and an installer
 # for each system: a disk image, a setup program, and an AppImage.
 #
-# On Linux, libui-ng's library links GTK 3, its Pango and Cairo, and
-# GDK, which the desktop provides and no gem carries, so the app names
-# them as the distribution's (doc/gems.md, "A gem that links a library
-# from the Linux distribution").
+# On Linux, libui-ng's library links GTK 3,
+# its Pango and Cairo, and GDK, which the
+# desktop provides and no gem carries, so
+# the app names them as the distribution's.
 #
-# On Windows, LibUI's DLL needs Microsoft's Visual C++ runtime, which
-# Windows does not include. With local, the app carries the copies the
-# building computer has, which you may distribute only if you hold the
-# rights to (doc/gems.md, "A gem whose DLL needs the Visual C++
-# runtime").
+# On Windows, LibUI's DLL needs Microsoft's
+# Visual C++ runtime, which Windows does not
+# include. With local, the app carries the
+# copies the building computer has, which you
+# may distribute only if you hold the rights to.
 name: Focus Timer
 kind: windowed
 identifier: com.setdef.fledge.FocusTimer

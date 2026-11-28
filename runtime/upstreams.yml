@@ -3,8 +3,7 @@
 
 # Where each pin of runtime/sources.yml is released upstream, so that
 # tasks/pin_watch.rb can find a release newer than the pin with nobody
-# remembering to look (doc/contributors/design/runtimes.md, "Keeping the
-# pins current"). A test fails when a component of runtime/sources.yml
+# remembering to look. A test fails when a component of runtime/sources.yml
 # is in neither list below, so a new pin is watched, or says why not.
 #
 # Each watched entry names:
@@ -107,8 +106,7 @@
 # names: what prose calls the input, the first in CHANGELOG.md; the key
 #   by default. test/pin_move_test.rb fails when a line names a movable
 #   pin's version beside one of these anywhere but in the files above,
-#   the records of what changed (CHANGELOG.md, the research and plans
-#   kept as they were on their day), and the files of named.
+#   the records of what changed (CHANGELOG.md), and the files of named.
 # named: files that name the version for itself and not as the pin: a
 #   fact about that release, a source cited at it, a test's own data,
 #   another build's copy of the same input (mise.toml's MSYS2 zlib), or
@@ -310,7 +308,7 @@ watched:
     tag: '\Av(?<version>\d+\.\d+\.\d+)\z'
     line: 1
     licenses: [libxcrypt, libxcrypt-static, libxcrypt-source]
-    named: [doc/contributors/design/runtimes.md, tasks/runtime_builder/linux.rb, test/runtime_builder_test.rb,
+    named: [tasks/runtime_builder/linux.rb, test/runtime_builder_test.rb,
       test/license_audit_test.rb, test/integration/licensing_page_test.rb]
   rcedit:
     pins: [rcedit]
@@ -324,7 +322,7 @@ watched:
     names: [llvm-readobj, LLVM]
     member: path
     licenses: [llvm-readobj]
-    named: [doc/contributors/design/gems.md, mise.rust.toml, test/contributor_tools_test.rb]
+    named: [mise.rust.toml, test/contributor_tools_test.rb]
     linked:
       url: https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-{version}/llvm/utils/release/build_llvm_release.bat
       zlib-llvm-readobj: '^set zlib_version=(?<version>\S+)'
@@ -343,7 +341,6 @@ watched:
     pattern: '/NSIS%203/(?<version>3\.\d+(?:\.\d+)?)/'
     names: [NSIS]
     licenses: [nsis, nsis-source]
-    named: [doc/contributors/design/signing.md]
   # The OpenSSL release line RubyInstaller's Windows Ruby links.
   openssl:
     pins: [mobile.openssl, musl-ruby.openssl]
@@ -358,7 +355,6 @@ watched:
     github: yaml/libyaml
     tag: '\A(?<version>\d+\.\d+\.\d+)\z'
     licenses: [libyaml-mobile, libyaml-musl, libyaml-fledge]
-    named: [doc/contributors/design/runtimes.md]
   libffi:
     pins: [mobile.libffi, musl-ruby.libffi]
     github: libffi/libffi
@@ -370,7 +366,7 @@ watched:
     tag: '\Av(?<version>\d+\.\d+(?:\.\d+)*)\z'
     line: 1
     licenses: [zlib-musl]
-    named: [doc/contributors/design/runtimes.md, mise.toml]
+    named: [mise.toml]
   # curl's page of Mozilla's CA certificates, which links every dated
   # extract it has published.
   ca-certificates:
@@ -393,17 +389,15 @@ watched:
     page: https://dl.google.com/android/repository/repository2-3.xml
     pattern: 'path="ndk;(?<version>[\d.]+)">(?:(?!</remotePackage>|<preview>).)*?<channelRef ref="channel-0"/>'
     names: [NDK]
-    named: [doc/contributors/design/phone-projects.md, lib/fledge/mobile_extensions/cmake.rb]
+    named: [lib/fledge/mobile_extensions/cmake.rb]
     also:
       lib/fledge/mobile_extensions/ndk.rb: ['RECOMMENDED = "(?<version>[^"]+)"']
-      doc/contributors/device-test.md: ['"ndk;(?<version>[\d.]+)"', 'ndk/(?<version>[\d.]+)\n']
     release:
       field: version
       pattern: 'path="ndk;{version}">(?:(?!</remotePackage>).)*?<url>android-ndk-(?<version>r\d+[a-z]?)-linux\.zip</url>'
       licenses: [compiler-rt-ndk]
       also:
         mise.android.toml: ['\[tools\."http:android-ndk"\]\nversion = "(?<version>[^"]+)"']
-        doc/contributors/device-test.md: ['NDK (?<version>r\d+[a-z]?)\.\*\*', 'NDK (?<version>r\d+[a-z]?) is the one']
   gradle:
     pins: [mobile.gradle]
     page: https://services.gradle.org/versions/current
@@ -411,7 +405,6 @@ watched:
     names: [Gradle]
     checksum: beside
     keep: [wrapper_sha256]
-    named: [doc/contributors/design/phone-projects.md]
     also:
       lib/fledge/templates/android/gradle/wrapper/gradle-wrapper.properties: ['distributions/gradle-(?<version>[\d.]+)-bin\.zip']
   agp:
@@ -419,7 +412,6 @@ watched:
     page: https://dl.google.com/android/maven2/com/android/tools/build/gradle/maven-metadata.xml
     pattern: '<version>(?<version>[^<]+)</version>'
     names: [Android Gradle plugin, AGP]
-    named: [doc/contributors/design/phone-projects.md]
     also:
       lib/fledge/mobile_project/android.rb: ['AGP = "(?<version>[^"]+)"']
   xcodegen:
@@ -428,7 +420,6 @@ watched:
     tag: '\A(?<version>\d+\.\d+\.\d+)\z'
     ships: false
     names: [XcodeGen]
-    named: [doc/contributors/device-test.md]
     also:
       mise.toml: ['\[tools\."http:xcodegen"\]\nversion = "(?<version>[^"]+)"']
   bundletool:

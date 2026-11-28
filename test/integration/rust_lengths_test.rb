@@ -14,8 +14,7 @@ require "stringio"
 # its bindings give rb_len_t the runtime's Ruby's width: 8 bytes on every
 # platform Fledge builds for, so that rb_ary_entry finds 3 at -1 of
 # [1, 2, 3] and rb_range_beg_len leaves the canaries beside its lengths
-# whole (doc/contributors/design/gems.md, "Rust gems on Windows and
-# rb_len_t"). On Windows bindings of 4 bytes say 4, nil, and overwritten.
+# whole. On Windows bindings of 4 bytes say 4, nil, and overwritten.
 # It exits with the status its argument names, as every app Delivery
 # runs does (.github/scripts/deliver.sh, "exit status 3 reaches the
 # caller").

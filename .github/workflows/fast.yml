@@ -4,9 +4,7 @@
 # The fast tier: on every push and pull request, the lint and the unit
 # tests (bundle exec rake test, CONTRIBUTING.md, "The tests"), in a few
 # minutes, so each push to trunk gets a verdict of its own while
-# ci.yml's full run, about an hour, covers the pushes in batches
-# (doc/contributors/design/releases.md, "Runs, batches, and the release
-# commit").
+# ci.yml's full run, about an hour, covers the pushes in batches.
 #
 # It is a workflow of its own because GitHub ends a run, and gh run
 # list reports its conclusion, only when its slowest job ends, and

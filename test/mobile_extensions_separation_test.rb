@@ -7,11 +7,10 @@
 
 require_relative "test_helper"
 
-# Which names each extension linked into a phone's app keeps to itself
-# (doc/contributors/design/phone-projects.md, "Each linked extension's
-# symbols"): the arithmetic over the names each part defines, which
-# needs no tool. test/integration/mobile_linked_symbols_test.rb builds
-# real extensions with the phones' tools and runs what they link.
+# Which names each extension linked into a phone's app keeps to itself: the
+# arithmetic over the names each part defines, which needs no tool.
+# test/integration/mobile_linked_symbols_test.rb builds real extensions with the
+# phones' tools and runs what they link.
 class MobileExtensionsSeparationTest < Minitest::Test
   Owner = Fledge::MobileExtensions::Separation::Owner
 

@@ -13,8 +13,7 @@ require_relative "../../tasks/pin_watch"
 
 # PinWatch::Fetch#member_sha256, with the real zstd and tar, on a
 # Zstandard-compressed tarball shaped as LLVM's release archive is: the
-# file the move of llvm-readobj hashes (doc/contributors/design/
-# runtimes.md, "The move").
+# file the move of llvm-readobj hashes.
 class PinMemberTest < Minitest::Test
   MEMBER = "clang+llvm-9.9.9-x86_64-pc-windows-msvc/bin/llvm-readobj.exe"
 

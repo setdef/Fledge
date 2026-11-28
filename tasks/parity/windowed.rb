@@ -11,9 +11,8 @@ require "open3"
 require "rbconfig"
 
 class Parity
-  # The windowed check (doc/contributors/design/parity.md, "The windowed
-  # check"): the probe built as a windowed app, and ruby main.rb, each
-  # started as the desktop starts an app, with what the desktop gives it
+  # The windowed check: the probe built as a windowed app, and ruby main.rb,
+  # each started as the desktop starts an app, with what the desktop gives it
   # in place of a terminal's. The probe writes its report to a file
   # (parity report FILE), since a windowed app has no terminal.
   #

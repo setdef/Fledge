@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Keeps the pins of runtime/sources.yml current, each day, with nobody
-# in the loop unless that fails (doc/contributors/design/runtimes.md,
-# "Keeping the pins current"). The watch asks every upstream whether it
+# in the loop unless that fails. The watch asks every upstream whether it
 # has released a newer version than the pin (tasks/pin_watch.rb reads
 # where from runtime/upstreams.yml), writes what it found into the
 # run's summary, and keeps it as the pin-watch artifact, as JSON.

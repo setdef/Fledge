@@ -17,7 +17,7 @@ require_relative "../mac_bundle"
 module Fledge
   class MobileProject
     # An app's Gradle project for Android, as Fledge::MobileProject
-    # describes it (doc/contributors/design/phone-projects.md).
+    # describes it.
     #
     # The project is one Android app module, with Gradle's own wrapper,
     # pinned to the Gradle Fledge's runtime is built with, as Briefcase's,
@@ -28,7 +28,7 @@ module Fledge
     # <tt>libexec/</tt>, and Ruby's headers in <tt>include/</tt>, which
     # mkmf looks for as on a desktop, are in ROOT, which the build stores as the asset
     # <tt>fledge.zip</tt> that <tt>org.setdef.fledge.FledgeRuby</tt>
-    # unpacks (doc/contributors/design/phone-runtimes.md, "The Java class"). The
+    # unpacks. The
     # app's identifier is its <tt>applicationId</tt>, its name its
     # label, its version its
     # <tt>versionName</tt> and, as a number, its <tt>versionCode</tt>
@@ -65,9 +65,7 @@ module Fledge
       AAR = "FledgeRuby.aar"
 
       # The name of the library that holds the app's gems' extensions
-      # that are linked in and their registration, <tt>libfledgeext.so</tt>
-      # (doc/contributors/design/phone-projects.md, "Linking extensions
-      # on Android").
+      # that are linked in and their registration, <tt>libfledgeext.so</tt>.
       EXTENSIONS = "fledgeext"
 
       # What begins the name of each of the runtime's own extensions among
@@ -209,8 +207,7 @@ module Fledge
       # extracts, its native libraries, so the wrapper in the app's files
       # can be read but not run; the program run as NAME runs Ruby on
       # the wrapper, and Ruby reads the wrapper wherever it reads
-      # <tt>bin/NAME</tt> (doc/contributors/design/phone-runtimes.md,
-      # "Gem commands on Android").
+      # <tt>bin/NAME</tt>.
       private def place_commands(root)
         bin = File.join(root, "bin")
         return unless File.directory?(bin)
@@ -236,9 +233,7 @@ module Fledge
       # FILES, from which the runtime moves the app's own ABI's copy to
       # its path as the app starts (runtime/mobile/library_links.c,
       # fledge_place_abi_files), since one <tt>fledge.zip</tt> serves
-      # every ABI and Android packs no asset for one ABI alone
-      # (doc/contributors/design/phone-projects.md, "Files a gem's build
-      # leaves").
+      # every ABI and Android packs no asset for one ABI alone.
       private def place_apart(root)
         built = @built or return
         lines = built.apart.sort.flat_map do |name, entries|
@@ -259,9 +254,7 @@ module Fledge
       # libraries the extensions link from their own folders. It is
       # linked whenever the app has a compiled extension, with nothing in
       # it but a registration of none when every one is a file, since a
-      # framework's host may load it by name
-      # (doc/contributors/design/phone-projects.md, "Linking extensions
-      # on Android"). The registration unit is kept in
+      # framework's host may load it by name. The registration unit is kept in
       # <tt>extensions/</tt> for whoever reads the project.
       #
       # An extension built as a file (MobileExtensions::Library) and a

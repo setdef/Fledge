@@ -8,9 +8,9 @@
 require_relative "test_helper"
 require_relative "../tasks/licensing_page"
 
-# doc/licensing.md from what runtime/audited.yml records of the runtimes,
-# and the repository, with no runtime: so a change that would leave the
-# page stale (Fledge's version, a word of runtime/licenses.yml, the
+# docs/reference/licensing.md from what runtime/audited.yml records of the
+# runtimes, and the repository, with no runtime: so a change that would leave
+# the page stale (Fledge's version, a word of runtime/licenses.yml, the
 # generator's prose) fails here, before a push, and not an hour later in
 # CI's "Licensing page is current" job, which audits the real runtimes.
 # test/integration/licensing_page_test.rb audits runtime archives.
@@ -51,7 +51,7 @@ class LicensingPageTest < Minitest::Test
       committed = File.read(path)
       line = committed.lines.zip(expected.lines).index { |have, want| have != want }
       assert committed == expected, "#{path.delete_prefix("#{LicenseAudit::ROOT}/")} is stale from line #{line.to_i + 1}: " \
-        "run mise x -- bundle exec rake licensing and commit what it writes (doc/contributors/design/license-audit.md, \"The licensing page\")"
+        "run mise x -- bundle exec rake licensing and commit what it writes"
     end
   end
 

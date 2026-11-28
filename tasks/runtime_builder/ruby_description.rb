@@ -14,8 +14,7 @@ class RuntimeBuilder
   # so that fledge build compares a Gemfile's ruby and each gem's
   # required_ruby_version with the version RubyGems reports on the
   # runtime (Gem.ruby_version): 4.1.0.preview1 for a preview, 4.1.0.dev
-  # for a build of Ruby's master (doc/contributors/design/gems.md, "The
-  # runtime's Ruby version").
+  # for a build of Ruby's master.
   #
   # Ruby names a preview or a development build only in the string its
   # version.c compiles from version.h, "ruby ", RUBY_VERSION, that name,

@@ -5,6 +5,6 @@
 # ffi_phone is a lone script with the ffi gem from rubygems.org, which
 # calls C functions by name. It sits inside Fledge's own gem, so without
 # this file fledge build would take Fledge's Gemfile for its own.
-# The identifier is what iOS and Android know it by (doc/contributors/design/phone-projects.md).
+# The identifier is what iOS and Android know it by.
 name: FfiPhone
 identifier: com.setdef.fledge.FfiPhone

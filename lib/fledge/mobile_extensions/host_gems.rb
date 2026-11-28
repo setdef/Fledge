@@ -24,9 +24,7 @@ module Fledge
     # folders #load_path gives go on the load path of every Ruby the
     # build starts instead, as an <tt>extconf.rb</tt>'s dependencies do.
     # ffi-compiler requires ffi, whose compiled extension must be this
-    # computer's to load; the phone's copy, compiled for the app, cannot
-    # (doc/contributors/research/2026-11-19-ffi-libraries-on-phones.md,
-    # section 4).
+    # computer's to load; the phone's copy, compiled for the app, cannot.
     #
     # Use it from Fledge::MobileExtensions, once for each build.
     #

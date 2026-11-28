@@ -8,11 +8,9 @@
 require_relative "test_helper"
 require "yaml"
 
-# The workflows that carry the example apps into a release
-# (doc/contributors/design/releases.md, "The examples a release
-# carries"): ci.yml's jobs stage each platform's examples, release.yml
-# checks and attaches them, and installed.yml leaves them out of the
-# runtimes' sums.
+# The workflows that carry the example apps into a release: ci.yml's jobs stage
+# each platform's examples, release.yml checks and attaches them, and
+# installed.yml leaves them out of the runtimes' sums.
 class WorkflowReleaseExamplesTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
 

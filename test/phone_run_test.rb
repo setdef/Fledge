@@ -11,8 +11,7 @@ require "tmpdir"
 require "stringio"
 require "fledge/phone_run"
 
-# How fledge test follows an app on a Simulator or emulator
-# (doc/contributors/design/phone-projects.md, "Tests in the app"): what
+# How fledge test follows an app on a Simulator or emulator: what
 # it prints of the app's log, and that the program's status comes only
 # from the host's line. test/integration/phone_test_command_test.rb runs
 # it on a Simulator and an emulator.

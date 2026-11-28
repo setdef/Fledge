@@ -5,12 +5,12 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# As Bundler's bundle gem --ext=c wrote it from Bundler 2.2.0 to 4.0.0:
-# the extension by its path beside this file, where a desktop's RubyGems
-# copies the file it compiles. On Android the extension is a file there
-# too, which Ruby loads. On iOS it is linked into the app and registered
-# under the name extconf.rb gave create_makefile, and fledge build puts
-# a Ruby file at that path that requires it by that name, so this finds
-# it there too (doc/contributors/design/phone-projects.md, "Registering
-# extensions").
+# As Bundler's bundle gem --ext=c wrote it from Bundler
+# 2.2.0 to 4.0.0: the extension by its path beside this
+# file, where a desktop's RubyGems copies the file it
+# compiles. On Android the extension is a file there too,
+# which Ruby loads. On iOS it is linked into the app and
+# registered under the name extconf.rb gave create_makefile,
+# and fledge build puts a Ruby file at that path that
+# requires it by that name, so this finds it there too.
 require_relative "adder/adder"

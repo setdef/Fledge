@@ -44,8 +44,7 @@ module Fledge
   # runtime keeps in its +tools+ folder, which no app holds unless its
   # <tt>fledge.yml</tt> sets +build_tools+ (Assembly::BuildTools): then
   # the app carries them, after its code is signed, as the runtime has
-  # them, for <tt>fledge build --from</tt>
-  # (doc/contributors/design/desktop-apps.md, "Building from a built app").
+  # them, for <tt>fledge build --from</tt>.
   #
   # This class unpacks the runtime with tar (Fledge::Archive), moves it
   # into the folder, adds CONFIG, the app's project, and the files the
@@ -57,7 +56,7 @@ module Fledge
   # folder with tar, which keeps the permissions and symlinks the runtime
   # was built with, as the platform names its archive
   # (Fledge::Platform#archive_extension). Each platform is built on its
-  # own computer (decisions, 2026-10-28), whose disk keeps what its archive needs. It
+  # own computer, whose disk keeps what its archive needs. It
   # refuses to let an added file replace one the runtime holds, replaces
   # a previous build of the same app and platform, and removes what it
   # wrote if the build fails.
@@ -463,9 +462,7 @@ module Fledge
 
     # Makes a copy of +runtime+'s launcher each of the app's programs,
     # last of all, and signs what the build signs: the bundle, which
-    # seals the rest, or the app's folder
-    # (doc/contributors/design/signing.md, "Where signing comes in the
-    # build").
+    # seals the rest, or the app's folder.
     #
     # A bundle's program is the windowed one (App#main); a console program
     # beside it lives in the bundle's +MacOS+ folder, as a bundle's helper

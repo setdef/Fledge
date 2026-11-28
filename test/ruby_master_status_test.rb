@@ -11,8 +11,7 @@ require_relative "../tasks/ruby_master_status"
 # The one place the nightly run against Ruby's master reports to: an
 # issue whose body says the newest master Fledge passed on and what has
 # failed since, and a run that fails only on the night something new
-# breaks (doc/contributors/design/runtimes.md, "Testing against Ruby's
-# master").
+# breaks.
 class RubyMasterStatusTest < Minitest::Test
   RUN = "https://github.com/setdef/Fledge/actions/runs/1"
 

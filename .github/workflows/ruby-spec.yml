@@ -3,8 +3,7 @@
 
 # ruby/spec on stock Ruby and in a built app, on the same runner, from
 # the same runtime (tasks/ruby_spec.rb): every example that fails on one
-# side only fails the job unless RubySpec::JUSTIFIED explains it (doc/contributors/design/parity.md, "ruby/spec"; doc/contributors/design/architecture.md,
-# "What the design answers to").
+# side only fails the job unless RubySpec::JUSTIFIED explains it.
 #
 # ci.yml calls this on every push, once its runtimes are built, for
 # x86_64-linux and arm64-darwin and in phone apps, in the iOS Simulator
@@ -103,8 +102,7 @@ jobs:
             [ -n "$run" ] || { echo "::error::none of trunk's newest 50 commits has a green run of ci.yml that still holds its runtimes"; exit 1; }
             echo "Runtimes of $GITHUB_SERVER_URL/$REPOSITORY/actions/runs/$run"
           fi
-          # macos-26, the macOS floor, runs a Mac's built app
-          # (doc/contributors/design/releases.md, "Which macOS each job runs on").
+          # macos-26, the macOS floor, runs a Mac's built app.
           two='{"os":"ubuntu-24.04","platform":"x86_64-linux"},{"os":"macos-26","platform":"arm64-darwin"}'
           rest='{"os":"ubuntu-24.04-arm","platform":"aarch64-linux"},{"os":"windows-latest","platform":"x64-mingw-ucrt",'
           rest+='"mise":"http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2"},'
@@ -148,8 +146,7 @@ jobs:
       # The pinned Ruby the runtime came from, and ruby/spec and MSpec:
       # the newest set saved for this platform, which the comparison takes
       # a file from only when its SHA-256 is the pin's, downloading the
-      # rest (doc/contributors/design/runtimes.md, "Pinned downloads in
-      # CI"). The job's last steps save what it holds.
+      # rest. The job's last steps save what it holds.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: downloads
         with:
@@ -374,12 +371,10 @@ jobs:
 
       # Gradle's dependency cache that ci.yml's Mobile apps (Android
       # emulator) jobs save, under the same key, for the same template:
-      # they build every variant, so it holds what a debug APK needs
-      # (doc/contributors/design/phone-projects.md, "Gradle's downloads in
-      # CI"). Only restored, so this job's smaller set never takes the key.
-      # Before those jobs have saved the key, the newest set for the same
-      # system and plugin is restored instead.
-      # Gradle retries what a repository refused, patiently
+      # they build every variant, so it holds what a debug APK needs. Only
+      # restored, so this job's smaller set never takes the key. Before those
+      # jobs have saved the key, the newest set for the same system and plugin
+      # is restored instead. Gradle retries what a repository refused, patiently
       # (.github/scripts/gradle-patience.sh says how).
       - name: Make Gradle patient with refused downloads
         run: .github/scripts/gradle-patience.sh

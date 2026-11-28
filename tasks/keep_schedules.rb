@@ -12,8 +12,7 @@ require_relative "github_api"
 # GitHub, which disables a public repository's scheduled workflows after
 # 60 days in which nothing happened in it, never finds one to disable: a
 # quiet repository is the pin watch's happy path, and a disabled schedule
-# fails no run, so nobody would hear of it
-# (doc/contributors/design/runtimes.md, "A quiet repository"). It takes
+# fails no run, so nobody would hear of it. It takes
 # the step liskin/gh-workflow-keepalive takes, one PUT to a workflow's
 # enable endpoint, for every scheduled workflow, not only the one that
 # runs it.

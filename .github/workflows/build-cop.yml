@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# The build cop (doc/contributors/design/releases.md, "The build cop").
+# The build cop.
 # A full run of ci.yml on trunk covers a batch of pushes, and when one
 # goes red after a green one, any commit of the batch may be at fault.
 # This bisects the batch with full runs of single commits, started on

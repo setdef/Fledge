@@ -1,12 +1,10 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Publishes a Fledge release when a vX.Y.Z tag is pushed
-# (doc/contributors/design/releases.md, "Where releases are";
-# "How a release is made"). Only when CI passed on every job, the license
-# audit and Delivery included, for the tagged commit's parent, and for the tagged commit the short CI
-# a pin commit runs, does it create the GitHub Release, with, for each
-# platform:
+# Publishes a Fledge release when a vX.Y.Z tag is pushed. Only when CI passed on
+# every job, the license audit and Delivery included, for the tagged commit's
+# parent, and for the tagged commit the short CI a pin commit runs, does it
+# create the GitHub Release, with, for each platform:
 #
 #   fledge-runtime-VERSION-PLATFORM.tar.gz              the runtime
 #   fledge-runtime-VERSION-PLATFORM.spdx.json           its SPDX 2.3 SBOM
@@ -44,14 +42,12 @@
 # that changes only lib/fledge/SHA256SUMS, written from those runtimes
 # by rake runtime:pin, which is the one tagged. Runtime builds are not
 # reproducible, so this publishes the runtimes the release commit's CI
-# run built, and only when every one matches its pin
-# (doc/contributors/design/releases.md, "The pins").
+# run built, and only when every one matches its pin.
 #
 # The examples come from the same CI run as the runtimes, which passed
 # on every job, Delivery's among them, and are checked against what the
-# tagged commit's tasks/release_examples.rb says a release carries
-# (doc/contributors/design/releases.md, "The examples a release
-# carries"). CI keeps them ninety days, as it keeps the runtimes.
+# tagged commit's tasks/release_examples.rb says a release carries. CI keeps
+# them ninety days, as it keeps the runtimes.
 #
 # It does not run CI again. CI ran on both commits, on a push or a
 # dispatch (releases.md, "Which runs are a commit's"), and this looks
@@ -73,17 +69,16 @@
 #
 # Releases are never deleted: each runtime's NOTICES points at its LGPL
 # source bundle here, and app developers may rely on that link for as
-# long as their apps are out (doc/licensing.md).
+# long as their apps are out.
 #
 # After publishing, it installs Fledge from the tag on a fresh runner of
 # each platform and builds and delivers the examples there with runtimes
 # downloaded from the release itself (installed.yml).
 #
-# Before 1.0, agents may push tags and create releases (decision 6 in doc/contributors/decisions.md), on a commit
+# Before 1.0, agents may push tags and create releases, on a commit
 # whose CI is green. From 1.0.0, once the maintainer has set
-# RubyGems.org to trust this workflow, its last job pushes the gem there
-# (doc/contributors/releasing-1.0.md); before that, nothing here
-# publishes to RubyGems.org.
+# RubyGems.org to trust this workflow, its last job pushes the gem there; before
+# that, nothing here publishes to RubyGems.org.
 
 name: Release
 
@@ -181,7 +176,7 @@ jobs:
             exit 1
           fi
 
-      # doc/contributors/design/releases.md, "How a release is made": tag only a commit whose CI is green. Its run,
+      # Tag only a commit whose CI is green. Its run,
       # on a push or a dispatch, must have finished with the latest attempt of
       # every job a success, so failed jobs run again and passed count.
       # A pin commit's run is the short one: the gate and ci.yml's Changes
@@ -335,7 +330,7 @@ jobs:
           prerelease=()
           case "$VERSION" in *[!0-9.]*) prerelease=(--prerelease) ;; esac
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag "${prerelease[@]}" --title "Fledge $TAG" \
-            --notes "Runtimes for fledge build at $TAG, one per platform, each to build that platform's apps on a computer of that platform, with its SPDX SBOM and NOTICES; and, for Linux and Windows, the source the runtime's licenses ask for: its LGPL libraries', AppImage's runtime's, and NSIS's. What Fledge puts into each platform's app and installer, and what its licenses ask of you: doc/licensing.md at $TAG. Each example app, built and delivered by CI for the platforms it targets, as fledge-example-NAME-VERSION-PLATFORM: the archive and installers of a desktop, a debug-signed APK for Android, and for iOS the Xcode project, archived, for a developer to sign with their team. What changed: CHANGELOG.md." \
+            --notes "Runtimes for fledge build at $TAG, one per platform, each to build that platform's apps on a computer of that platform, with its SPDX SBOM and NOTICES; and, for Linux and Windows, the source the runtime's licenses ask for: its LGPL libraries', AppImage's runtime's, and NSIS's. What Fledge puts into each platform's app and installer, and what its licenses ask of you: docs/reference/licensing.md at $TAG. Each example app, built and delivered by CI for the platforms it targets, as fledge-example-NAME-VERSION-PLATFORM: the archive and installers of a desktop, a debug-signed APK for Android, and for iOS the Xcode project, archived, for a developer to sign with their team. What changed: CHANGELOG.md." \
             release/fledge-runtime-* release/SHA256SUMS "gem/fledge-$VERSION.gem" release-examples/fledge-example-*
 
   installed:
@@ -347,9 +342,8 @@ jobs:
 
   # From 1.0.0, the gem on RubyGems.org, pushed by this job once the
   # maintainer has set RubyGems.org to trust this workflow and set the
-  # repository variable RUBYGEMS_TRUSTED_PUBLISHING to true
-  # (doc/contributors/releasing-1.0.md): a process he decided to trust
-  # publishing counts as his act (decisions.md, 2026-11-22). Until then,
+  # repository variable RUBYGEMS_TRUSTED_PUBLISHING to true: a process he
+  # decided to trust publishing counts as his act. Until then,
   # and for every 0.x version, it does not run. It pushes the very .gem
   # installed.yml built from the tag, installed, and delivered apps from,
   # after every platform passed, with a token RubyGems.org gives this

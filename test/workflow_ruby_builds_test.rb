@@ -7,8 +7,7 @@
 
 # Tests .github/workflows/ruby-builds.yml, which builds Fledge's own Ruby
 # for glibc Linux on each architecture and can publish it, and the pins
-# of .github/scripts/ruby-archive.sh, which it builds with
-# (doc/contributors/design/runtimes.md, "Fledge's own Ruby builds").
+# of .github/scripts/ruby-archive.sh, which it builds with.
 
 require_relative "test_helper"
 require "yaml"

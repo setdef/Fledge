@@ -24,8 +24,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * Fledge's embedding API for Ruby on Android
- * (doc/contributors/design/phone-runtimes.md, "The Java class"): the Java half of
+ * Fledge's embedding API for Ruby on Android: the Java half of
  * runtime/mobile/fledge_ruby.h, as thin as Android needs.
  *
  * <p>Ruby reads its standard library and the app's code from files, and
@@ -45,7 +44,7 @@ import java.util.zip.ZipInputStream;
  * that Ruby on the main thread instead, the one Android's views belong
  * to, with {@link #startAppOnMainThread}. Fledge hands that program
  * nothing: it reaches Java, and its views, as any Ruby program on
- * Android does (doc/contributors/design/phone-widgets.md).
+ * Android does.
  */
 public final class FledgeRuby {
     /** The stack of the thread {@link #start} runs Ruby on, as the spike's host gave it. */

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery (Plan 001): runs a built app the way a person who has never
+# Delivery: runs a built app the way a person who has never
 # installed Ruby would, and fails unless it behaves. CI delivers two:
 # examples/hello, a lone main.rb, and test/fixtures/my_cool_app, a gem whose
 # exe/my_cool_app needs a pure-Ruby gem and a native one.
@@ -84,10 +84,8 @@ abi=$(basename "$1")
 grep -q "^This app was built with Fledge" "$root/notices/NOTICES.txt" || fail "the app has no notices/NOTICES.txt from the license audit"
 
 # The source of each component whose license asks for it travels in the
-# app, in notices/sources/ID/
-# (doc/contributors/design/license-audit.md, "notices/sources/ and the
-# source bundles"): the archive whose SHA-256 its BUILD.txt names, and
-# NOTICES.txt names the folder.
+# app, in notices/sources/ID/: the archive whose SHA-256 its BUILD.txt names,
+# and NOTICES.txt names the folder.
 sources_hold() {
   for id in "$@"; do
     source_dir="$root/notices/sources/$id"
@@ -229,8 +227,7 @@ mkdir -p "$links"
 ln -s "$app" "$links/app-link"
 check "run through a symlink on PATH" 0 env -i PATH="$links" HOME="$home" app-link
 
-# As a package manager puts a console app on PATH (doc/contributors/
-# research/2026-11-04-package-managers.md, section 2): Homebrew's
+# As a package manager puts a console app on PATH: Homebrew's
 # bin.install_symlink makes a relative link in the keg's bin to the
 # program in libexec, and links that into its prefix's bin, relative
 # again, so the launcher is two relative links away, the first of them
@@ -258,8 +255,8 @@ echo "ok: the app wrote nothing into its own folder"
 # as a manager's bin folder on PATH, gets a launcher that refuses to run
 # there and says why, with EX_SOFTWARE (70): Ruby would take that
 # folder's parent as its prefix and look for its standard library there
-# (unix.c, find_root). doc/package_managers.md tells recipes to keep
-# the app in a folder of its own and link the launcher.
+# (unix.c, find_root). A package that puts the launcher in a folder named
+# bin must keep the app in a folder of its own and link the launcher.
 flat="$work/flat/bin"
 mkdir -p "$work/flat"
 cp -R "$root" "$flat"
@@ -347,8 +344,7 @@ restarts "a restart in a hostile environment is the same app" HOME="$dot_gem_hom
   RUBYGEMS_GEMDEPS=- RUBY_YJIT_ENABLE=0 LD_LIBRARY_PATH="$evil/lib"
 
 # A broken app names itself, not Ruby, on standard error, and exits with
-# EX_NOINPUT (66) when the program it runs, app/ENTRY, is missing
-# (doc/contributors/design/launcher.md, "Messages and exit statuses").
+# EX_NOINPUT (66) when the program it runs, app/ENTRY, is missing.
 program="$root/app/$entry"
 mv "$program" "$program.away"
 set +e

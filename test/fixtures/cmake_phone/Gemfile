@@ -5,10 +5,10 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# A path gem whose extconf.rb builds a C++ library with CMake
-# (doc/contributors/design/phone-projects.md, "CMake toolchain files").
-# fledge build ios and fledge build android run that extconf.rb for each
-# phone's targets, and CMake builds the library for each of them.
+# A path gem whose extconf.rb builds a C++ library with
+# CMake. fledge build ios and fledge build android run
+# that extconf.rb for each phone's targets, and CMake
+# builds the library for each of them.
 source "https://rubygems.org"
 
 gem "tally", path: "gems/tally"

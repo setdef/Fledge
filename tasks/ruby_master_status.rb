@@ -8,8 +8,7 @@
 require "json"
 
 # What the nightly run against Ruby's master has found, kept in the body
-# of one issue (doc/contributors/design/runtimes.md, "Testing against
-# Ruby's master").
+# of one issue.
 #
 # Ruby's master breaks now and then, and stays broken until Ruby's
 # committers fix it. A run that failed every night of such a week would

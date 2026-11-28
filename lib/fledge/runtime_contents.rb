@@ -14,9 +14,7 @@ module Fledge
   #
   # An app's gems join the runtime's default and bundled gems in Ruby's
   # own gem folder, <tt>lib/ruby/gems/4.1.0+5</tt> (in <tt>ruby\</tt> on
-  # Windows), where RubyGems and Bundler find them
-  # (doc/contributors/design/gems.md, "Installing into the runtime's gem
-  # folder"). A gem the
+  # Windows), where RubyGems and Bundler find them. A gem the
   # runtime already has at the same version is the runtime's, already
   # audited, and must not be added twice; a gem must suit the runtime's
   # Ruby. The runtime knows all three, so they are read from it rather
@@ -161,8 +159,7 @@ module Fledge
     # The contents of the runtime archive at +path+, or of its folder
     # +under+ (relative to the archive's top folder, ending in a
     # <tt>/</tt>), such as an iOS runtime's XCFramework slice, which holds a
-    # Ruby of its own (doc/contributors/design/phone-runtimes.md, "What a phone
-    # runtime holds"); its paths are then relative to
+    # Ruby of its own; its paths are then relative to
     # that folder. Raises Fledge::Error when it holds no gem folder or no
     # rbconfig.rb.
     #
@@ -234,9 +231,7 @@ module Fledge
     # beside the extension. Those are <tt>ruby_builtin_dlls</tt> in
     # +bin_dir+, which the launcher and the runtime's ruby.exe add, and
     # Ruby's architecture folder, +archdir+, which Fledge's RubyGems
-    # defaults add, as RubyInstaller's start-up does
-    # (doc/contributors/design/runtimes.md, "The DLLs a compiled gem finds
-    # on Windows").
+    # defaults add, as RubyInstaller's start-up does.
     private_class_method def self.searched?(path, bin_dir, archdir)
       folder = File.dirname(path)
       folder == "#{bin_dir}/ruby_builtin_dlls" || folder == archdir || (folder == bin_dir && File.basename(path).match?(Linkage::RUBY_DLL))

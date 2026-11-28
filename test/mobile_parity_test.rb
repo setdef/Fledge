@@ -8,8 +8,7 @@
 require_relative "test_helper"
 require_relative "../tasks/mobile_parity"
 
-# The parts of the mobile check (doc/contributors/design/phone-projects.md,
-# "Parity on a phone") that need no simulator or emulator: reading the
+# The parts of the mobile check that need no simulator or emulator: reading the
 # probe's report and an app's status back from the entries of a system
 # log, the apps it builds, the reference Ruby's environment, and the
 # justifications for what a phone does differently.
@@ -56,8 +55,7 @@ class MobileParityTest < Minitest::Test
   end
 
   # The host app of every project fledge build writes logs the app's
-  # exit status when its program ends
-  # (doc/contributors/design/phone-projects.md, "The host app").
+  # exit status when its program ends.
   def test_the_status_is_the_hosts_last_word
     assert_equal 0, MobileParity.status(["a", "Mobile App exited with status 0"])
     assert_equal 1, MobileParity.status(["Hello exited with status 1"])
@@ -102,9 +100,8 @@ class MobileParityTest < Minitest::Test
 
   # sdl_phone's line matches what it printed on an arm64-v8a phone, which
   # runs Ruby on a thread of its own with a 64 MB stack, and on an iPhone,
-  # which runs it on the main thread with one, and not a shallower stack
-  # (doc/contributors/design/phone-projects.md, "A host that owns the main
-  # loop"); the others it must print are those of a game that took a touch.
+  # which runs it on the main thread with one, and not a shallower stack; the
+  # others it must print are those of a game that took a touch.
   def test_sdl_phones_lines_match_what_it_printed_and_a_shallow_stack_does_not
     app = MobileParity::APPS.find { |candidate| candidate.name == "SdlPhone" }
     phone = "SdlDemo runs Ruby on a thread of its own with a stack of 66583 KB, on aarch64-linux-android with SDL 3.4.18"
@@ -378,8 +375,7 @@ class MobileParityTest < Minitest::Test
   # a certain way is packed: the asset fledge.zip stored, which
   # FledgeRuby unpacks from the APK, and every native library
   # compressed, which only the package installer's extraction puts where
-  # Android lets an app run its ruby program (doc/contributors/design/phone-runtimes.md,
-  # "The ruby program on Android").
+  # Android lets an app run its ruby program.
   def test_what_zipalign_finds_packed_as_android_does_not_take_it
     aligned = <<~ALIGNED
       Verifying alignment of base-master.apk (4)...
@@ -848,11 +844,9 @@ class MobileParityTest < Minitest::Test
   WHOLE = [*PROBE_HOST, 'FLEDGE-PARITY {"ARGV":[],', '"long":"tail"}'].freeze
   CUT = [*PROBE_HOST, 'FLEDGE-PARITY {"ARGV":[],'].freeze
 
-  # liblog drops an entry when logd is busy and tells the app nothing
-  # (doc/contributors/design/phone-runtimes.md, "Output to the system
-  # log"), so a report the log cut short launches the probe again, the
-  # short launch's log kept, and the next launch's whole report is the
-  # one compared.
+  # liblog drops an entry when logd is busy and tells the app nothing, so a
+  # report the log cut short launches the probe again, the short launch's log
+  # kept, and the next launch's whole report is the one compared.
   def test_a_report_the_log_cut_short_launches_the_probe_again
     app = MobileParity.apps("android").find { |each| each.prints.nil? }
     Dir.mktmpdir do |work|

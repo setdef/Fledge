@@ -113,9 +113,8 @@ module FakeRuntime
   end.join.freeze
 
   # Writes the runtime for the phone +phone+ (a Fledge::MobilePlatform)
-  # into +directory+, shaped as doc/contributors/design/phone-runtimes.md, "What
-  # a phone runtime holds", describes it, and returns its path: for iOS,
-  # an XCFramework whose two slices each hold a Ruby; for Android, an
+  # into +directory+, shaped as a phone's runtime is, and returns its path: for
+  # iOS, an XCFramework whose two slices each hold a Ruby; for Android, an
   # AAR beside one Ruby, with fledge.links naming the one extension of
   # Ruby's own its AAR holds for each ABI (ANDROID_LINKS), unless
   # +links+ is false, as 0.17.0's runtime, which linked them in, has

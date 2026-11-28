@@ -8,9 +8,8 @@
 require_relative "test_helper"
 require "yaml"
 
-# What CI's artifacts are named (doc/contributors/design/releases.md,
-# "The pins"): rake runtime:pin, the pin commit's check, and release.yml
-# each download every artifact of a run named runtime-*, and refuse
+# What CI's artifacts are named: rake runtime:pin, the pin commit's check, and
+# release.yml each download every artifact of a run named runtime-*, and refuse
 # anything among them that is not a release asset. So an artifact named
 # so holds release assets and nothing else, whatever else a job keeps.
 class WorkflowArtifactsTest < Minitest::Test
@@ -41,9 +40,8 @@ class WorkflowArtifactsTest < Minitest::Test
   end
 
   # release.yml downloads every artifact named example-* into one folder
-  # and expects only what tasks/release_examples.rb staged
-  # (doc/contributors/design/releases.md, "The examples a release
-  # carries"), so an artifact so named holds that folder and nothing else.
+  # and expects only what tasks/release_examples.rb staged, so an artifact so
+  # named holds that folder and nothing else.
   def test_an_artifact_named_as_an_example_holds_only_the_staged_folder
     named = uploads("ci.yml").select { |upload| upload.fetch("name").start_with?("example-") }
 

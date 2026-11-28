@@ -8,8 +8,7 @@
 require_relative "test_helper"
 require "yaml"
 
-# The runtime's commit stage, runtime-proof.yml
-# (doc/contributors/design/releases.md, "The runtime's commit stage"):
+# The runtime's commit stage, runtime-proof.yml:
 # on a push to trunk that changes what the proof reads, it runs the very
 # task bin/check --runtime runs before the push, and its paths cover
 # every file of the repository the proof's code loads or names.
@@ -51,7 +50,7 @@ class WorkflowRuntimeProofTest < Minitest::Test
   end
 
   def test_the_coverage_check_fails_for_a_file_outside_the_paths
-    refute paths.any? { |glob| covers?(glob, "doc/contributors/design/releases.md") }
+    refute paths.any? { |glob| covers?(glob, "CONTRIBUTING.md") }
     assert paths.any? { |glob| covers?(glob, "tasks/runtime_proof.rb") }
   end
 

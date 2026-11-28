@@ -14,15 +14,13 @@ require "time"
 require "yaml"
 
 # .github/scripts/keep-rubyinstaller-head.sh, which keeps RubyInstaller's
-# signed head build of the day each Ruby 4.1 release appears
-# (doc/contributors/design/runtimes.md, "Keeping RubyInstaller's head
-# build"). Each test runs the script with bash against one loopback
-# server standing in for cache.ruby-lang.org, GitHub's API, and
-# RubyInstaller's release downloads, and against a signing key of the
-# test's own, made with gpg, which a sources.yml of the test's own pins
-# as runtime/sources.yml pins RubyInstaller's. Publishing is gh's: a gh
-# of the test's own records what it is asked and keeps the files it is
-# given, so a test sees what would be published and what reading the
+# signed head build of the day each Ruby 4.1 release appears. Each test runs the
+# script with bash against one loopback server standing in for
+# cache.ruby-lang.org, GitHub's API, and RubyInstaller's release downloads, and
+# against a signing key of the test's own, made with gpg, which a sources.yml of
+# the test's own pins as runtime/sources.yml pins RubyInstaller's. Publishing is
+# gh's: a gh of the test's own records what it is asked and keeps the files it
+# is given, so a test sees what would be published and what reading the
 # release back returns.
 class KeepRubyInstallerHeadTest < Minitest::Test
   ROOT = File.expand_path("../..", __dir__)

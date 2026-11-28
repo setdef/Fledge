@@ -8,8 +8,7 @@
 require_relative "test_helper"
 require "yaml"
 
-# How long ci.yml keeps what a run uploads (doc/contributors/design/releases.md,
-# "How long a run keeps what it made"). What a later workflow reads from a
+# How long ci.yml keeps what a run uploads. What a later workflow reads from a
 # run is kept longer than what only the run's own jobs read, which is
 # kept three days, long enough to run a failed job again over a weekend.
 # What release.yml publishes, the runtimes and the examples it attaches,

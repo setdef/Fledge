@@ -11,8 +11,7 @@ require "yaml"
 # Maven Central refuses some of GitHub's runners for minutes at a time,
 # and Gradle's own retries give up after three seconds, so every CI job
 # that runs Gradle first makes it patient, with
-# .github/scripts/gradle-patience.sh (doc/contributors/design/
-# phone-projects.md, "Gradle's downloads in CI"). The jobs that run
+# .github/scripts/gradle-patience.sh. The jobs that run
 # Gradle are the jobs that restore its dependency cache.
 class WorkflowGradleTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)

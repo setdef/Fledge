@@ -9,7 +9,7 @@ require_relative "test_helper"
 require_relative "../tasks/build_cop"
 require "yaml"
 
-# build-cop.yml (doc/contributors/design/releases.md, "The build cop"):
+# build-cop.yml:
 # it follows CI by the name GitHub matches workflow_run by, on trunk and
 # on the branches it bisects on, and on a schedule, since GitHub does
 # not say whether a run its own token started ends with a workflow_run;

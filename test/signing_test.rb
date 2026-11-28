@@ -87,7 +87,7 @@ class SigningTest < Minitest::Test
   # Notarization asks for the hardened runtime, a secure timestamp, and
   # every Mach-O file signed; YJIT asks for executable memory made
   # without MAP_JIT, and Briefcase lets every app load libraries it did
-  # not sign (doc/contributors/design/signing.md, "Signing on macOS").
+  # not sign.
   def test_a_mac_signs_code_with_the_hardened_runtime_a_timestamp_and_its_entitlements
     signing = Fledge::MacSigning.new("Example")
 

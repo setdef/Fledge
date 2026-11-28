@@ -6,8 +6,7 @@
 /*
  * What a Windows runtime's ruby.exe and rubyw.exe add to Ruby's main.c
  * (ruby_main.c): the DLLs the app's Ruby may load, and handing an app's
- * own program back to the app's launcher
- * (doc/contributors/design/launcher.md, "bin/ruby and restarts"), as
+ * own program back to the app's launcher, as
  * relaunch.c does for bin/ruby on macOS and Linux.
  *
  * A Ruby program restarts itself with exec RbConfig.ruby, $0, *ARGV. In a

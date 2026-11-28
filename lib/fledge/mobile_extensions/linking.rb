@@ -11,9 +11,7 @@ require "shellwords"
 
 module Fledge
   class MobileExtensions
-    # What each target of a phone links of its extensions
-    # (doc/contributors/design/phone-projects.md, "Linking extensions
-    # on iOS" and "Linking extensions on Android").
+    # What each target of a phone links of its extensions.
     #
     # An extconf.rb names what its extension links in mkmf's
     # <tt>$libs</tt> and <tt>$LOCAL_LIBS</tt>: system libraries,
@@ -43,8 +41,7 @@ module Fledge
     module Linking
       # The names of the C++ runtime a desktop's link takes, which an
       # extconf.rb gives when its extension is C and a library it links is
-      # C++: a Mac's and Linux's (doc/contributors/design/phone-projects.md,
-      # "The C++ runtime rule").
+      # C++: a Mac's and Linux's.
       CXX_RUNTIMES = %w[-lc++ -lstdc++].freeze
 
       # The linker flags in +text+, the <tt>$libs</tt> and

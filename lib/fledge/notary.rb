@@ -176,8 +176,7 @@ module Fledge
     private def failure(name, said, status)
       words = said.dup.force_encoding(Encoding::UTF_8).scrub.strip
       hint = if status.exitstatus == NO_PROFILE
-        "\nStore your credentials under that name once, with xcrun notarytool store-credentials #{@profile} " \
-          "(doc/desktop_apps.md, \"Sign your app\")."
+        "\nStore your credentials under that name once, with xcrun notarytool store-credentials #{@profile}."
       end
       "notarytool could not notarize #{name} (#{status}):\n#{words}#{hint}"
     end

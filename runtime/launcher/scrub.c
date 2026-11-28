@@ -10,11 +10,10 @@
  * and windows.c, restore_environment).
  *
  * A person who runs an app never asked for Ruby, so nothing of a Ruby
- * they happen to have may change how the app starts (architecture.md,
- * "What the design answers to"). Ruby, RubyGems, and Bundler read their settings from
- * environment variables, so the launcher hides every variable whose
- * name starts with one of these prefixes. Prefixes, not a list of
- * names, so a variable a later Ruby adds is removed too. Read at Ruby
+ * they happen to have may change how the app starts. Ruby, RubyGems, and
+ * Bundler read their settings from environment variables, so the launcher hides
+ * every variable whose name starts with one of these prefixes. Prefixes, not a
+ * list of names, so a variable a later Ruby adds is removed too. Read at Ruby
  * 4.1.0-preview1:
  *
  *   RUBY      ruby.c: RUBYOPT, RUBYLIB, RUBYPATH, RUBYSHELL,

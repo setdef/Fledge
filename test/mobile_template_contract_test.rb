@@ -10,9 +10,7 @@ require_relative "test_helper"
 require_relative "support/fake_extensions"
 require_relative "../lib/fledge/mobile_project"
 
-# doc/contributors/design/public-interface.md, "Frozen for 1.x", and
-# doc/contributors/design/phone-projects.md, "Host files": a host
-# copies a template's file to replace it at its path, with Fledge's
+# A host copies a template's file to replace it at its path, with Fledge's
 # marks in it, so those paths and marks are frozen for 1.x. A new file
 # or mark is compatible; a path or a mark that goes away breaks every
 # host that copied it.
@@ -53,7 +51,7 @@ class MobileTemplateContractTest < Minitest::Test
   }.freeze
 
   # The native libraries an Android host may load by name, frozen with
-  # the paths (public-interface.md, "Frozen for 1.x"): a host that owns
+  # the paths: a host that owns
   # startup names its libraries in a fixed list, as SDL's SDLActivity
   # does in getLibraries(), and fails to start when one is missing, so a
   # name that is not in every app it is promised for breaks every such
@@ -77,12 +75,12 @@ class MobileTemplateContractTest < Minitest::Test
 
   %w[ios android].each do |system|
     define_method(:"test_every_path_#{system}_hosts_may_replace_is_still_there") do
-      assert_empty PATHS.fetch(system) - files(system), "public-interface.md, \"Frozen for 1.x\", freezes these paths: a host replaces them by name"
+      assert_empty PATHS.fetch(system) - files(system), "These paths are frozen for 1.x: a host replaces them by name"
     end
 
     define_method(:"test_every_mark_#{system}_hosts_may_copy_is_still_there") do
       MARKS.fetch(system).each do |path, expected|
-        assert_empty expected - marks(system, path), "public-interface.md, \"Frozen for 1.x\", freezes the marks of #{path}"
+        assert_empty expected - marks(system, path), "The marks of #{path} are frozen for 1.x: a host copies them"
       end
     end
 

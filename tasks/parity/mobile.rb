@@ -6,16 +6,14 @@
 #++
 
 class Parity
-  # The mobile targets (doc/contributors/design/phone-runtimes.md,
-  # "Targets"), on which the mobile parity check (tasks/mobile_parity.rb)
-  # runs the probe.
+  # The mobile targets, on which the mobile parity check
+  # (tasks/mobile_parity.rb) runs the probe.
   MOBILE = RuntimeBuilder::Mobile::PLATFORMS.values.flat_map(&:targets).map(&:name).freeze
 
   # The iOS targets, whose sandbox lets an app start no program.
   IOS = RuntimeBuilder::Mobile::PLATFORMS.fetch("ios").targets.map(&:name).freeze
 
-  # The Android targets, whose runtime has a ruby program (doc/contributors/design/phone-runtimes.md,
-  # "The ruby program on Android").
+  # The Android targets, whose runtime has a ruby program.
   ANDROID = RuntimeBuilder::Mobile::PLATFORMS.fetch("android").targets.map(&:name).freeze
 
   # The folders of a Ruby's platform-specific files, named for its
@@ -25,12 +23,12 @@ class Parity
 
   # What starting a program raises on iOS: ENOENT in the Simulator,
   # where the program RbConfig.ruby names is missing, and EPERM on a
-  # device, where iOS refuses to start any (doc/phones.md).
+  # device, where iOS refuses to start any.
   ERRNO_SPAWN = /\A"Errno::(?:ENOENT|EPERM): /
 
-  # What decisions 9 and 10 mean on a phone (doc/contributors/design/phone-projects.md,
-  # "Parity on a phone"): each way an app's Ruby on iOS or Android differs from ruby main.rb on the
-  # desktop that runs its simulator, and why each is right.
+  # Each way an app's Ruby on iOS or
+  # Android differs from ruby main.rb on the desktop that runs its simulator,
+  # and why each is right.
   MOBILE_JUSTIFIED = [
     *["ENV", "child ENV"].map do |fact|
       Justification.new(fact:, app: [/\A"HOME"="<home>"\z/], platforms: ANDROID,
@@ -52,7 +50,7 @@ class Parity
     Justification.new(fact: "RUBY_PLATFORM", reference: [/\A"#{DESKTOP_ARCH}"\z/o], app: [/\A"#{MOBILE_ARCH}"\z/o], platforms: MOBILE,
       reason: "Ruby names the platform it was built for: jdx/ruby's for the macOS it was built on (darwin25 for macOS 26) or glibc Linux, a " \
         "phone's for iOS, which Ruby calls arm64-darwin, or Android, which it calls ARCH-linux-android. Fledge " \
-        "names its targets for them in doc/contributors/design/phone-runtimes.md, \"Targets\"."),
+        "names its targets for them."),
     Justification.new(fact: "RUBY_DESCRIPTION", reference: [/\A(?<version>"[^"]*) \[#{DESKTOP_ARCH}\]"\z/o],
       app: [/\A(?<version>"[^"]*) \[#{MOBILE_ARCH}\]"\z/o],
       platforms: MOBILE, reason: "As for RUBY_PLATFORM, which it ends with; the version, date, and revision are the same."),

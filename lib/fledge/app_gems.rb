@@ -29,8 +29,7 @@ module Fledge
   #
   # An app's gems are its developer's choice, and so are their licenses:
   # Fledge ships whatever the app's Gemfile.lock locks, under whatever
-  # license, and takes no position on it (the decision of
-  # 2026-10-28 in <tt>doc/contributors/decisions.md</tt>). What
+  # license, and takes no position on it. What
   # it does check is whether each gem will run where the app goes, since
   # a person who runs the app must never meet an error that names a gem.
   #
@@ -50,8 +49,7 @@ module Fledge
   # among them, where RubyGems or Bundler would put them, except a
   # RubyGems plugin loader the runtime already has for a gem of that
   # name at another version (rdoc, which irb asks for): the runtime's
-  # stays, and the build does not fail on the clash
-  # (doc/contributors/design/gems.md, "RubyGems plugin loaders").
+  # stays, and the build does not fail on the clash.
   #
   # Use it once per target in <tt>fledge build</tt>.
   #
@@ -233,8 +231,7 @@ module Fledge
     # the app goes to has them (<tt>windows: { visual_c_runtime: central
     # }</tt>, Config::Windows), which the launcher looks for in System32
     # before Ruby starts; empty for <tt>local</tt>, whose copies the app
-    # carries, for gems that need none, and before #for
-    # (doc/contributors/design/gems.md, "The Visual C++ runtime").
+    # carries, for gems that need none, and before #for.
     #
     # === Example
     #
@@ -262,8 +259,7 @@ module Fledge
 
     # The wrappers of the executables of the gems in +packages+, as the
     # runtime's RubyGems writes them (Fledge::NativeBuild#binstubs), in the
-    # runtime's bin folder, where it keeps its own gems'
-    # (doc/contributors/design/gems.md, "Gem executables"): all but
+    # runtime's bin folder, where it keeps its own gems': all but
     # a program the runtime already has under that name, whose wrapper
     # finds whichever version of its gem the app's Bundler activates.
     private def executables(packages, runtime)
@@ -278,9 +274,8 @@ module Fledge
     # runtime's bin folder, as #executables puts them: all but a program
     # the runtime already has under that name. Android runs none of
     # them as a script: the app's Ruby reads each where it reads
-    # <tt>bin/NAME</tt>, a link to its ruby program
-    # (doc/contributors/design/phone-runtimes.md, "Gem commands on
-    # Android"). iOS lets no app run a program, so there are none.
+    # <tt>bin/NAME</tt>, a link to its ruby program. iOS lets no app run a
+    # program, so there are none.
     private def phone_executables(packages, runtime, platform)
       return [] unless platform.name == "android"
 
@@ -339,7 +334,7 @@ module Fledge
     # computer lacks (Fledge::VisualCRuntime), whose copies the app
     # carries in the folder of the DLLs Ruby's DLL needs, which the
     # launcher and the runtime's ruby.exe search for every DLL loaded
-    # later (doc/contributors/design/gems.md, "The Visual C++ runtime").
+    # later.
     private def desktop_problems(packages, platform, runtime)
       way = @app.config.windows&.visual_c_runtime if platform.windows?
       readers(platform, runtime) do |readers|
@@ -382,8 +377,7 @@ module Fledge
       ensure
         # Windows on ARM's x86-64 emulator may hold llvm-readobj.exe open
         # for a while after it exits, as with makensis (Fledge::Nsis); what
-        # is left is the system's temporary folder's to clear
-        # (doc/contributors/design/runtimes.md, "Windows on ARM64").
+        # is left is the system's temporary folder's to clear.
         FileUtils.rm_rf(dir)
       end
     end

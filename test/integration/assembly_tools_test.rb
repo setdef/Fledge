@@ -11,7 +11,7 @@ require_relative "../support/disk_images"
 require "open3"
 
 # Fledge::Assembly with the tools of the platform the app is for, on that
-# platform (decisions, 2026-10-28): on a Mac, codesign, plutil, and hdiutil; on
+# platform: on a Mac, codesign, plutil, and hdiutil; on
 # Windows, the real Windows runtime's launchers and rcedit, and Windows'
 # own reading of a program's version information. test/assembly_test.rb
 # covers what fake runtimes alone show.

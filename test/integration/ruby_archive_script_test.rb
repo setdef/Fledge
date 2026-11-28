@@ -5,8 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-# Tests how .github/scripts/ruby-archive.sh starts its container
-# (doc/contributors/design/runtimes.md, "Fledge's own Ruby builds"). Each
+# Tests how .github/scripts/ruby-archive.sh starts its container. Each
 # test runs the script with bash, with a container program on PATH that
 # keeps the arguments it is given and exits, so that the build itself,
 # which needs a computer of the platform's architecture and an hour,

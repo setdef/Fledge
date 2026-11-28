@@ -39,8 +39,7 @@ module Fledge
   #
   # Wherever it comes from, a runtime must have the
   # SHA-256 this gem pins for it in +PINS+, which <tt>rake runtime:pin</tt>
-  # wrote from the very runtimes the release then published
-  # (doc/contributors/design/releases.md, "The pins"). The
+  # wrote from the very runtimes the release then published. The
   # release's own +SHA256SUMS+ catches a damaged download, but a release
   # whose assets and sums were both replaced would pass it; the pins were
   # fixed when this gem was, so it does not, and neither does a mirror
@@ -214,9 +213,7 @@ module Fledge
     # +path+, when it matches the pin for +name+. A runtime this Fledge
     # pins nothing for, or one that does not match while
     # FLEDGE_RUNTIME_DIR_UNCHECKED is set, is used, and the log says it
-    # is unchecked; one that does not match otherwise fails the build
-    # (doc/contributors/design/runtimes.md, "Where fledge build finds a
-    # runtime").
+    # is unchecked; one that does not match otherwise fails the build.
     private def checked(directory, name, path)
       sha256 = pinned(name)
       where = "FLEDGE_RUNTIME_DIR (#{directory})"
@@ -262,9 +259,7 @@ module Fledge
 
     # Downloads +name+ from the mirror, where this version's release
     # keeps it under the mirror's base: MIRROR/vVERSION/NAME. A mirror
-    # that fails is not passed over for the release
-    # (doc/contributors/design/runtimes.md, "Where fledge build finds a
-    # runtime").
+    # that fails is not passed over for the release.
     private def from_mirror(mirror, name, destination, sha256)
       base = "#{mirror}/v#{VERSION}"
       @log&.puts "Downloading #{name} from #{base}"

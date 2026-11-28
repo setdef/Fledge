@@ -12,20 +12,17 @@ require "uri"
 # Finds a commit's green run of ci.yml, on a push or a dispatch, from
 # GitHub's REST API.
 #
-# A release tags a commit only once CI has passed on it (doc/contributors/design/releases.md,
-# "How a release is made"), and publishes the runtimes CI built from that commit's
-# parent. Running all of CI again on the tag proves nothing the push
-# already proved, takes half an hour, and draws every flaky mirror and
-# runner a second time; 0.2.0 was never published because that second
-# run failed on a download unrelated to its runtimes
-# (doc/contributors/design/releases.md, "A pin commit's short CI").
+# A release tags a commit only once CI has passed on it, and publishes the
+# runtimes CI built from that commit's parent. Running all of CI again on the
+# tag proves nothing the push already proved, takes half an hour, and draws
+# every flaky mirror and runner a second time; 0.2.0 was never published because
+# that second run failed on a download unrelated to its runtimes.
 #
 # This class looks the commit's run up instead: a run of a push of it,
 # or one started on a branch whose head it was (workflow_dispatch), as
 # pin-watch.yml starts them, since both check out the very commit and
 # ci.yml chooses its jobs from the commit alone; never a pull request's,
-# which checks out a merge of it (doc/contributors/design/releases.md,
-# "Which runs are a commit's"). A run counts when it has
+# which checks out a merge of it. A run counts when it has
 # finished and the latest attempt of every one of its jobs passed, or,
 # where allowed, was skipped, so a run whose failed jobs were run again
 # counts once they pass. release.yml and the pin commit's CI ask it for
@@ -58,9 +55,7 @@ class CIRuns
 
   # Why a pushed commit can have no run, and how to give it one. A run
   # of ci.yml on trunk covers every commit pushed since the run before it
-  # started, and only its head has a run of its own
-  # (doc/contributors/design/releases.md, "Runs, batches, and the release
-  # commit").
+  # started, and only its head has a run of its own.
   NO_RUN = "a commit pushed with others after it, or whose waiting run a newer push replaced, " \
     "has none of its own; push it alone, as the head of its push, and wait for CI to pass"
 

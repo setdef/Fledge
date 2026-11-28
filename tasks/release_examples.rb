@@ -10,9 +10,8 @@ require_relative "runtime_builder"
 require_relative "runtime_pins"
 require_relative "mobile_parity"
 
-# The example apps a release carries, built (doc/contributors/design/releases.md,
-# "The examples a release carries"). CI's jobs stage each example's files
-# under the names the release gives them, in artifacts named
+# The example apps a release carries, built. CI's jobs stage each example's
+# files under the names the release gives them, in artifacts named
 # <tt>example-*</tt>, and release.yml checks that the folder it gathered
 # from them holds exactly the files this module expects at the tagged
 # commit, and attaches them.
@@ -66,7 +65,7 @@ module ReleaseExamples
   LEFT_OUT = {
     "libui_app" => {
       "x64-mingw-ucrt" => "Focus Timer's app there carries Microsoft's Visual C++ runtime (fledge.yml's windows: visual_c_runtime: local), " \
-        "which nothing setdef publishes may carry (decisions, 2026-11-21), so ci.yml builds it outside dist and uploads none of it",
+        "which nothing setdef publishes may carry, so ci.yml builds it outside dist and uploads none of it",
     },
   }.freeze
 

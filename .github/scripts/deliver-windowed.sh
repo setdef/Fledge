@@ -99,8 +99,7 @@ case "$(uname -s)" in
     icon="$bundle/Contents/Resources/$(plutil -extract CFBundleIconFile raw "$plist")"
     expect "the icon's width" "$(sips -g pixelWidth "$icon" | sed -n 's/^ *pixelWidth: //p')" 1024
     grep -q "^This app was built with Fledge" "$bundle/Contents/Resources/notices/NOTICES.txt" || fail "the app has no notices"
-    # What it opens (file_associations;
-    # doc/contributors/design/desktop-apps.md, "Files an app opens"): document
+    # What it opens (file_associations): document
     # types ranked Alternate, read back by plutil, and then by Launch
     # Services itself, which, once the bundle is registered, must offer
     # the app for a folder and for a report, as Finder's "Open With" does.
@@ -143,8 +142,7 @@ case "$(uname -s)" in
     # open -a APP DOCUMENT is what a double-click on a document in Finder
     # sends: Launch Services starts the app and hands it the document in
     # an Open Documents Apple event, which the launcher gives the program
-    # as an argument (doc/contributors/design/launcher.md, "Documents
-    # opened on macOS"). The app writes its report over the document it
+    # as an argument. The app writes its report over the document it
     # is given, so an empty document means the program never saw it.
     opened="$work/Geöffnet ☃.hellowindow"
     : >"$opened"

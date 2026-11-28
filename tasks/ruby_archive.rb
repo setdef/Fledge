@@ -13,8 +13,7 @@ require_relative "runtime_builder"
 # macOS, in the shape of rv-ruby's archives, so that a runtime's pin in
 # runtime/sources.yml can name either and the Unix recipe copies a
 # runtime from either alike, and so that a developer can install it as
-# their Ruby (doc/contributors/design/runtimes.md, "Fledge's own Ruby
-# builds"). The archive holds one folder, ruby/VERSION/, a prefix of
+# their Ruby. The archive holds one folder, ruby/VERSION/, a prefix of
 # Ruby's own layout: bin/, include/, lib/ with the static libruby and
 # lib/ruby, and libexec/cert.pem.
 #

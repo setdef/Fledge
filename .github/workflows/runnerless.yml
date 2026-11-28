@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Runs again the failed jobs of a run on trunk that is red only because
-# GitHub never gave a job a runner (doc/contributors/design/releases.md,
-# "A job no runner took"). Such a job waits, is cancelled with no
+# GitHub never gave a job a runner. Such a job waits, is cancelled with no
 # runner, no steps, and the annotation "The job was not acquired by
 # Runner of type hosted even after multiple attempts", and the jobs that
 # need it are skipped. tasks/runnerless_runs.rb decides from GitHub's

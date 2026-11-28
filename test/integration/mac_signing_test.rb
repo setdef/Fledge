@@ -8,9 +8,8 @@
 require_relative "../test_helper"
 require_relative "../support/binaries"
 
-# Signing with a timestamp when Apple's timestamp server does not answer
-# (doc/contributors/design/signing.md, "Timestamps"). CI's signed build
-# once failed with codesign's "A timestamp was expected but was not
+# Signing with a timestamp when Apple's timestamp server does not answer. CI's
+# signed build once failed with codesign's "A timestamp was expected but was not
 # found." (run 42126058497, attempt 1, Build (arm64-darwin)) and passed
 # when run again; VS Code and Defold sign again after a wait when
 # codesign's output says so, and so does Fledge::MacSigning. Apple's

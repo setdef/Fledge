@@ -11,14 +11,13 @@ require_relative "ci_runs"
 # Finds the commit to release for a change that landed on trunk: the
 # first commit, the change itself or a later one on trunk's first-parent
 # line, whose own run of ci.yml passed every job, as tasks/ci_runs.rb
-# counts runs (doc/contributors/design/runtimes.md, "The proof").
+# counts runs.
 #
 # A change that was rebased onto trunk when it landed has no green run
 # of its own when a push followed it, since a run of ci.yml covers every
-# commit pushed since the run before it and only its head has a run
-# (doc/contributors/design/releases.md, "Runs, batches, and the release
-# commit"). A later commit holds the change and has such a run; the
-# first of them is the commit that holds the change and was judged.
+# commit pushed since the run before it and only its head has a run. A later
+# commit holds the change and has such a run; the first of them is the commit
+# that holds the change and was judged.
 #
 #   ruby tasks/green_walk.rb COMMIT [BRANCH]
 #

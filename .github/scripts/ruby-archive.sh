@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # Builds Fledge's own Ruby for glibc Linux, tasks/ruby_archive.rb's
-# archive, in Ubuntu 22.04, whose glibc 2.35 is the archive's floor
-# (doc/contributors/design/runtimes.md, "Fledge's own Ruby builds").
+# archive, in Ubuntu 22.04, whose glibc 2.35 is the archive's floor.
 # Every input is pinned here: the image by digest, each package apt
 # installs by version, and the Ruby that runs the task by SHA-256.
 #

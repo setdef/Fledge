@@ -81,10 +81,9 @@ class BuiltAppTest < Minitest::Test
 
   # test/fixtures/my_cool_app's Gemfile, which the gem-shaped probe shares,
   # locks sqlite3, which has no build for some platforms and does not
-  # compile there (Parity::WITHOUT_SQLITE3;
-  # doc/contributors/design/parity.md, "The gem-shaped run").
+  # compile there (Parity::WITHOUT_SQLITE3).
   def gem_shaped!
-    skip "sqlite3, which test/fixtures/my_cool_app locks, does not install on #{@platform} (doc/contributors/design/parity.md, \"The gem-shaped run\")" if
+    skip "sqlite3, which test/fixtures/my_cool_app locks, does not install on #{@platform}" if
       Parity::WITHOUT_SQLITE3.include?(@platform.name)
   end
 
@@ -138,8 +137,7 @@ class BuiltAppTest < Minitest::Test
 
   # Ctrl-C typed into a terminal, and a hangup, end the built
   # console probe as they end ruby main.rb, through Ruby's own handlers
-  # (.github/scripts/deliver-console.sh, which CI's Delivery runs too;
-  # doc/contributors/design/parity.md, "Console checks"). Windows'
+  # (.github/scripts/deliver-console.sh, which CI's Delivery runs too). Windows'
   # console is CI's to check, with deliver-console.ps1.
   def test_ctrl_c_and_a_hangup_end_the_built_app_as_they_end_ruby
     skip "deliver-console.ps1 checks Windows' console in CI" if @platform.windows?
@@ -250,9 +248,9 @@ class BuiltAppTest < Minitest::Test
   # PEP 538): with no locale in the environment, which is C,
   # it reads a folder whose name is not ASCII as UTF-8. Windows has no C
   # locale to turn: its ruby.exe reads paths as UTF-8 whatever the code
-  # page (doc/contributors/design/launcher.md, "The locale").
+  # page.
   def test_the_runtimes_own_ruby_turns_a_c_locale_into_utf8_as_the_launcher_does
-    skip "Windows has no C locale (doc/contributors/design/launcher.md, \"The locale\")" if @platform.windows?
+    skip "Windows has no C locale" if @platform.windows?
 
     Dir.mktmpdir do |dir|
       script = File.join(dir, "Ünïcödé", "encoding.rb")
@@ -270,7 +268,7 @@ class BuiltAppTest < Minitest::Test
   # never coerces under LC_ALL). The probe and the script run from a
   # folder whose name is ASCII, where ruby itself runs in a C locale.
   def test_an_explicit_c_locale_is_kept_and_only_a_bare_one_becomes_utf8
-    skip "Windows takes its encoding from the console's code page (doc/contributors/design/launcher.md, 'The locale')" if @platform.windows?
+    skip "Windows takes its encoding from the console's code page" if @platform.windows?
 
     Dir.mktmpdir do |dir|
       launcher = build_and_unpack(dir, PROBE, place: File.join(dir, "ascii"))
@@ -373,8 +371,7 @@ class BuiltAppTest < Minitest::Test
   # the runtime keeps in Ruby's architecture folder, and libffi-8.dll,
   # which RubyInstaller keeps beside the fiddle gem's extension, as
   # rugged's and ffi's do; the app finds both in the runtime, as every
-  # gem that goes through ffi needs (doc/contributors/design/runtimes.md,
-  # "The DLLs a compiled gem finds on Windows").
+  # gem that goes through ffi needs.
   def test_a_windows_gem_compiled_against_msys2_finds_the_dlls_in_the_runtime
     skip "only a Windows gem compiled from source links MSYS2's DLLs" unless @platform.windows?
 
@@ -693,9 +690,7 @@ class BuiltAppTest < Minitest::Test
   # RUBYOPT sets up the app's own Gemfile, as under bundle exec, though
   # the person's own Bundler settings, in HOME's .bundle/config, name
   # another, and so does their BUNDLE_GEMFILE, which on Windows, whose
-  # variable names ignore case, they may spell bundle_gemfile (doc/contributors/design/architecture.md, "What the design answers
-  # to"; doc/contributors/design/launcher.md, "Bundler's
-  # variables spelled otherwise").
+  # variable names ignore case, they may spell bundle_gemfile.
   def test_a_child_ruby_of_a_bundler_app_sets_up_the_apps_gemfile
     Dir.mktmpdir do |dir|
       evil = person_gemfile(dir)
@@ -736,8 +731,7 @@ class BuiltAppTest < Minitest::Test
   end
 
   # bin/ruby hands only its first argument to the launcher, and only
-  # when it is an app's program
-  # (doc/contributors/design/launcher.md, "bin/ruby and restarts"): with
+  # when it is an app's program: with
   # an option before the program, it is plain Ruby, whose RubyGems reads
   # the person's GEM_HOME, as ruby -W1 main.rb would.
   def test_bin_ruby_runs_an_apps_program_through_its_launcher_unless_an_option_comes_first
@@ -765,8 +759,7 @@ class BuiltAppTest < Minitest::Test
     File.rename("#{main}.away", main) if main && File.exist?("#{main}.away")
   end
 
-  # A missing fledge.cfg is EX_NOINPUT, as a missing entry is
-  # (doc/contributors/design/public-interface.md, "Frozen for 1.x").
+  # A missing fledge.cfg is EX_NOINPUT, as a missing entry is.
   def test_a_missing_fledge_cfg_exits_with_ex_noinput
     config = File.join(File.realpath(File.dirname(app)), "fledge.cfg")
     File.rename(config, "#{config}.away")
@@ -1011,8 +1004,7 @@ class BuiltAppTest < Minitest::Test
   # which names a preview as 4.1.0-preview1. Bundler compares it with
   # Gem.ruby_version, 4.1.0.preview1 on a preview and 4.1.0.dev on a
   # build of Ruby's master, so fledge build must read the runtime's Ruby
-  # as that version, and the app's own Bundler then starts the app
-  # (doc/contributors/design/gems.md, "The runtime's Ruby version"). A
+  # as that version, and the app's own Bundler then starts the app. A
   # runtime read as plain 4.1.0 would build an app its Bundler refuses.
   def test_an_app_whose_gemfile_names_the_runtimes_ruby_by_its_ruby_version_file_starts
     version = Fledge::RuntimeContents.read(File.join(@runtimes, Fledge::Runtimes.file_name(@platform))).ruby_version
@@ -1105,8 +1097,7 @@ class BuiltAppTest < Minitest::Test
   # to the runtime and the app in Contents/Resources
   # (Fledge::MacBundle). $0, __FILE__, __dir__, and Ruby's prefix all
   # name the app's real folder there, so File.dirname(__FILE__) is
-  # __dir__, as under ruby (doc/contributors/design/launcher.md, "The
-  # app folder in a macOS bundle").
+  # __dir__, as under ruby.
   def test_a_mac_apps_program_runs_from_the_folder_it_really_is_in
     skip "only a macOS .app runs its program through links" unless @platform.os == "darwin"
 
@@ -1272,7 +1263,7 @@ class BuiltAppTest < Minitest::Test
   # The contract test of --notarize, which only a person with the account runs:
   # Apple's real notary service, with a Developer ID Application
   # identity in FLEDGE_TEST_SIGN_IDENTITY and the keychain profile
-  # FLEDGE_TEST_NOTARY_PROFILE names (doc/contributors/signing-test.md).
+  # FLEDGE_TEST_NOTARY_PROFILE names.
   # Gatekeeper must accept the disk image and the bundle as notarized,
   # and stapler must validate the ticket on each.
   def test_a_notarized_build_opens_with_gatekeepers_blessing

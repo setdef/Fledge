@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Packs the Chocolatey package in doc/package_managers.md, installs it
+# Packs the Chocolatey package in test/fixtures/package_managers, installs it
 # from that local package, runs hello by its command with no Ruby on
 # PATH, and uninstalls it.
 #

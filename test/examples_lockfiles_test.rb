@@ -11,8 +11,7 @@ require_relative "test_helper"
 # BUNDLED WITH names. CI builds every example on Windows, whose runtime
 # carries another Bundler than the other desktops' Ruby 4.1.0-preview1,
 # so there the app ships the lockfile's Bundler, and fledge build refuses
-# a lockfile without its checksum (doc/contributors/design/gems.md, "The
-# lockfile's Bundler"). A lockfile written by a Ruby's own Bundler, a
+# a lockfile without its checksum. A lockfile written by a Ruby's own Bundler, a
 # default gem, has none, and examples/lota_pop landed so; only the
 # Windows Build jobs said so, an hour after the push.
 class ExamplesLockfilesTest < Minitest::Test

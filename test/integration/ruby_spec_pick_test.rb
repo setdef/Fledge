@@ -12,7 +12,7 @@ require "open3"
 require "yaml"
 
 # Which run's runtimes ruby-spec.yml takes when it runs by itself, at
-# night or by hand (doc/contributors/design/runtimes.md, "The proof"):
+# night or by hand:
 # the step's own script, run as the workflow runs it, with real git and
 # the real tasks/ci_runs.rb reading a loopback server that answers as
 # GitHub's API does. Only gh stands in, for the one artifact lookup that

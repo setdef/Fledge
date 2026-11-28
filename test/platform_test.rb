@@ -48,7 +48,7 @@ class PlatformTest < Minitest::Test
   end
 
   # RubyInstaller's Ruby reports exactly the target's name, on x64 and
-  # on ARM64 (doc/contributors/design/runtimes.md, "Windows on ARM64").
+  # on ARM64.
   def test_local_maps_windows_with_the_ucrt
     assert_equal "x64-mingw-ucrt", Fledge::Platform.local(Gem::Platform.new("x64-mingw-ucrt")).name
     assert_equal "aarch64-mingw-ucrt", Fledge::Platform.local(Gem::Platform.new("aarch64-mingw-ucrt")).name
@@ -104,8 +104,7 @@ class PlatformTest < Minitest::Test
 
   # Compiling a gem needs the operating system's name for the libraries
   # it provides, and on macOS the oldest version the runtime runs on,
-  # which a compiled extension may not raise
-  # (doc/contributors/design/releases.md, "Platform floors").
+  # which a compiled extension may not raise.
   def test_each_platform_names_its_os_and_its_oldest_macos_or_glibc
     {
       "arm64-darwin" => ["darwin", "26.0"],

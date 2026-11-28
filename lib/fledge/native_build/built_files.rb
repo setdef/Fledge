@@ -23,8 +23,7 @@ module Fledge
     # <tt>ext/ARCH-OS</tt>, or data an extconf.rb generates. Every such
     # file ships at its path; the linkage and floors checks read those in
     # the gem's require paths and the shared libraries, which Ruby, ffi,
-    # and fiddle open (doc/contributors/design/gems.md, "What a compiled
-    # gem ships").
+    # and fiddle open.
     module BuiltFiles # :nodoc:
       # The names of shared libraries, which ffi_lib, Fiddle.dlopen, and
       # require open by path: Ruby's DLEXT on each platform (+so+,

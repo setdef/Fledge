@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # In an Arch Linux container, which has no Ruby: builds the PKGBUILD from
-# doc/package_managers.md with makepkg, as an AUR helper would, installs
+# test/fixtures/package_managers with makepkg, as an AUR helper would, installs
 # the package with pacman, runs hello by its command, and removes it.
 #
 #   deliver-aur.sh RECIPES RUBY_PLATFORM

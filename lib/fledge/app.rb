@@ -19,8 +19,7 @@ module Fledge
   #
   # A Ruby developer already has an entry point, <tt>exe/my_cool_app</tt>
   # in a gem or <tt>bin/server</tt> in an app, run from the project's root,
-  # where its Gemfile or gemspec is (decision 2 in
-  # <tt>doc/contributors/decisions.md</tt>). Asking for a different
+  # where its Gemfile or gemspec is. Asking for a different
   # layout would make the app's code differ under Fledge, which decision
   # 9 forbids.
   #
@@ -33,7 +32,7 @@ module Fledge
   # with none of them is a project of its own folder. The app's name
   # comes from the gemspec's name, or else the root's folder, camelized
   # as Bundler names a gem's module (<tt>my_cool_app</tt> is
-  # +MyCoolApp+), unless <tt>fledge.yml</tt> names it (decision 5).
+  # +MyCoolApp+), unless <tt>fledge.yml</tt> names it.
   # Everything in the root ships but NEVER_SHIPPED and the build's own
   # output.
   #

@@ -10,9 +10,8 @@ require "open3"
 
 # What the built .gem holds, which is only what the gemspec's file list
 # packs. A git checkout has every file, so installing from a tag cannot
-# show a file the list forgot; a gem from RubyGems.org can (Plan 003,
-# "Fledge on RubyGems.org"). rake package:check installs the gem and
-# runs it; this names what the code reads beside itself.
+# show a file the list forgot; a gem from RubyGems.org can. rake package:check
+# installs the gem and runs it; this names what the code reads beside itself.
 class GemContentsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   PACKED = Gem::Specification.load(File.join(ROOT, "fledge.gemspec")).files.freeze

@@ -286,11 +286,9 @@ class LicenseAudit
   # it is linked from as the app starts, lib/ruby/...: Ruby's own
   # extensions, its encodings, and its bundled gems' extensions, which
   # the audit then reads where the app's Ruby has them, so that each
-  # belongs to Ruby or to its gem as on a desktop
-  # (doc/contributors/design/phone-runtimes.md, "Ruby's extensions on
-  # Android"). Ruby's library, which the file links from libdir, is read
-  # in the AAR, as the embedding API linked into it is. Empty for every
-  # other runtime.
+  # belongs to Ruby or to its gem as on a desktop. Ruby's library, which the
+  # file links from libdir, is read in the AAR, as the embedding API linked into
+  # it is. Empty for every other runtime.
   private def linked
     @linked ||= begin
       links = File.join(tree, "fledge.links")
@@ -405,8 +403,7 @@ class LicenseAudit
   # which the policy then judges (LicenseAudit::Policy).
   # Refuses a Mach-O that a macOS runtime holds and Fledge's oldest macOS
   # would not load: a pin that raises the deployment target would
-  # otherwise raise a floor only a major version may raise
-  # (doc/contributors/design/releases.md, "Platform floors").
+  # otherwise raise a floor only a major version may raise.
   private def check_macos_floor(binaries)
     return unless @facts.fetch("os") == "darwin"
 

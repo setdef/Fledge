@@ -8,21 +8,21 @@ import org.libsdl.app.SDLActivity;
 import org.setdef.fledge.FledgeRuby;
 
 /**
- * The app's screen when SDL3 owns it
- * (doc/contributors/design/phone-projects.md, "A host that owns the
- * main loop"), in place of the MainActivity fledge build writes, under
- * the same name, so the manifest stays as it is. SDL's Java side needs
- * an Activity, which makes the surface SDL draws on and passes it
- * touches, and it starts the game's
- * main function on a thread it names SDLThread (SDLActivity.java at
- * release-3.4.18, lines 254 to 262 and 2169 to 2190). This class loads
- * libSDL3.so first, whose JNI_OnLoad registers SDL's Java methods, then
- * Ruby and the app's extensions, and runs the app's Ruby program from
- * SDL's main: on a separate thread with FledgeRuby's 64 MB stack,
- * which SDLThread waits for, so the game ends when Ruby does. Launched
- * with the extra fledge.sdlthread set to true, it runs Ruby on SDLThread
- * itself instead, whose stack is the system's default for a thread, to
- * measure it.
+ * The app's screen when SDL3 owns it, in place of the
+ * MainActivity fledge build writes, under the same name, so
+ * the manifest stays as it is. SDL's Java side needs an
+ * Activity, which makes the surface SDL draws on and passes
+ * it touches, and it starts the game's main function on a
+ * thread it names SDLThread (SDLActivity.java at
+ * release-3.4.18, lines 254 to 262 and 2169 to 2190). This
+ * class loads libSDL3.so first, whose JNI_OnLoad registers
+ * SDL's Java methods, then Ruby and the app's extensions,
+ * and runs the app's Ruby program from SDL's main: on a
+ * separate thread with FledgeRuby's 64 MB stack, which
+ * SDLThread waits for, so the game ends when Ruby does.
+ * Launched with the extra fledge.sdlthread set to true, it
+ * runs Ruby on SDLThread itself instead, whose stack is the
+ * system's default for a thread, to measure it.
  */
 public class MainActivity extends SDLActivity {
     @Override

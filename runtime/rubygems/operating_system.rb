@@ -61,13 +61,10 @@ end
 # DllDirectory.new, so that a gem's extension finds the DLLs the
 # runtime keeps there, as under ruby.exe: rugged's, compiled from
 # source, imports the libz-1.dll the runtime adds there. The other two
-# would let the person's own folders into the app's DLL search
-# (doc/contributors/design/architecture.md, "What the design
-# answers to"), and the launcher hides RUBY_DLL_PATH
-# from Ruby's boot (scrub.c). The rest of RubyInstaller's file writes
-# into the gem folder, may set GEM_HOME, and creates
-# %ProgramData%\gemrc, which no app may do
-# (doc/contributors/design/runtimes.md, "Fledge's RubyGems defaults").
+# would let the person's own folders into the app's DLL search, and the launcher
+# hides RUBY_DLL_PATH from Ruby's boot (scrub.c). The rest of RubyInstaller's
+# file writes into the gem folder, may set GEM_HOME, and creates
+# %ProgramData%\gemrc, which no app may do.
 # Loading Msys2Installation, whose class includes Colors, and
 # DllDirectory, which requires win32/dll_directory, loads the files
 # RubyInstaller's call loads, and DllDirectory.new converts the path to
@@ -96,8 +93,7 @@ end
 # force_activate runs, and only on its thread, Bundler is told its bundle
 # is not frozen; the temporary bundle is still never locked.
 #
-# The modules are anonymous, so an app sees no constant of Fledge's
-# (decisions 9 and 10).
+# The modules are anonymous, so an app sees no constant of Fledge's.
 unfrozen = Module.new do
   def frozen_bundle?
     Thread.current[:__fledge_force_activate] ? false : super

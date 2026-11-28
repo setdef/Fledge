@@ -14,8 +14,7 @@ module Fledge
     # Puts the iOS runtime's own extensions into the Xcode project, each
     # in a framework of its own, and a link at each path where Ruby looks
     # for it, so that Ruby loads and records each at the path a desktop
-    # has (doc/contributors/design/phone-runtimes.md, "Ruby's extensions
-    # on iOS").
+    # has.
     #
     # A runtime whose Ruby is a dynamic framework holds, in each slice of
     # its XCFramework, its extensions as dynamic libraries at their paths

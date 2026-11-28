@@ -15,7 +15,7 @@ module Fledge
   # (a Scoop manifest, a Homebrew formula, a winget manifest, an AUR
   # +PKGBUILD+) names the archive by its address and its SHA-256, so a
   # developer who publishes one needs that hash for each archive.
-  # Each platform's app is built on its own computer (decisions, 2026-10-28), so one
+  # Each platform's app is built on its own computer, so one
   # list for a whole release, as GoReleaser's <tt>checksums.txt</tt>, would be
   # written once per computer under one name; a file per archive, as
   # cargo-dist writes and GoReleaser writes with +split+, never collides.
@@ -24,8 +24,7 @@ module Fledge
   # format of GNU coreutils' +sha256sum+: the hash in lowercase hex, two
   # spaces, and the file's name without its folder, so that
   # <tt>sha256sum -c</tt> (or <tt>shasum -a 256 -c</tt> on macOS) checks it
-  # from the folder both are in (doc/contributors/design/public-interface.md,
-  # "The checksum file").
+  # from the folder both are in.
   #
   # Use it on each file the build prints.
   #

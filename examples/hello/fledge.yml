@@ -8,5 +8,5 @@
 # Fledge's repository. A fledge.yml makes its folder a project's root,
 # and the app is named for the folder, camelized: Hello. The
 # identifier is what iOS and Android know it by, which a phone's project
-# needs (doc/contributors/design/phone-projects.md).
+# needs.
 identifier: com.setdef.fledge.Hello

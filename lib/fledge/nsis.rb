@@ -16,12 +16,11 @@ module Fledge
   # A Windows app's setup program: an NSIS installer.
   #
   # Windows shows an app's notifications only when a shortcut in the
-  # Start menu carries the AppUserModelID the app gives itself
-  # (doc/contributors/design/launcher.md, "Windows"), and only an
+  # Start menu carries the AppUserModelID the app gives itself, and only an
   # installer makes one. People also expect an app
   # they install to be in Settings' list of apps, where they can remove
   # it. NSIS is the installer Tauri's bundler writes by default, and on
-  # Windows, where Windows apps are built (decisions, 2026-10-28), Tauri runs NSIS's own
+  # Windows, where Windows apps are built, Tauri runs NSIS's own
   # release, as Fledge does: the Windows runtime carries it in its tools
   # folder, which no app holds.
   #
@@ -127,7 +126,7 @@ module Fledge
     # The bitmap down the left side of the setup program's finish page:
     # plain white, the page's own color, as a 24-bit bitmap of
     # SIDEBAR_WIDTH by SIDEBAR_HEIGHT pixels. Fledge reads no image
-    # format (doc/contributors/design/desktop-apps.md, "Icons"), so it
+    # format, so it
     # cannot draw the app's icon there; a script that sets no bitmap
     # gets the one NSIS ships.
     #
@@ -258,8 +257,7 @@ module Fledge
         # On Windows on ARM, the x86 emulator's cache service (XtaCache)
         # keeps makensis.exe open for a while after it exits, so the copy
         # it ran from may not delete yet; it is the system's temporary
-        # folder's to clear, never the build's own
-        # (doc/contributors/design/runtimes.md, "Windows on ARM64").
+        # folder's to clear, never the build's own.
         FileUtils.rm_rf(work)
       end
       @to

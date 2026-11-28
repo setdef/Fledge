@@ -12,11 +12,8 @@ require "rbconfig"
 require "tmpdir"
 
 # What fledge build prints to standard output when the project's Gemfile
-# and gemspec print: the paths of what it wrote, and nothing else
-# (doc/contributors/design/public-interface.md, "The command's
-# conventions"). The evaluation runs in fledge build's own process, as
-# bundle install's does (doc/contributors/design/gems.md, "Reading the
-# Gemfile and lockfile").
+# and gemspec print: the paths of what it wrote, and nothing else. The
+# evaluation runs in fledge build's own process, as bundle install's does.
 class BuildOutputTest < Minitest::Test
   EXE = File.expand_path("../../exe/fledge", __dir__)
   LIB = File.expand_path("../../lib", __dir__)

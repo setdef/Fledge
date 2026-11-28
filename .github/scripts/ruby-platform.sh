@@ -8,8 +8,7 @@
 # to. A macOS Ruby names its platform for the macOS it was built on
 # (arm64-darwin25 on macOS 26), so a move of that Ruby's pin to a build
 # made on a newer macOS changes the name there, which the move rewrites,
-# and in no workflow, which the token that pushes a move cannot change
-# (doc/contributors/design/runtimes.md, "The move").
+# and in no workflow, which the token that pushes a move cannot change.
 #
 #   .github/scripts/ruby-platform.sh arm64-darwin   # arm64-darwin25
 set -euo pipefail

@@ -13,8 +13,7 @@ require_relative "../support/ios"
 require_relative "../../tasks/mobile_parity"
 
 # What a phone app carries of the files a gem's build left in the gem's
-# folder (doc/contributors/design/phone-projects.md, "Files a gem's
-# build leaves"): a path gem whose extconf.rb writes data outside its
+# folder: a path gem whose extconf.rb writes data outside its
 # require paths, which its Ruby reads by its path, as under bundle exec,
 # where RubyGems leaves the gem's folder as the build left it. fledge
 # build writes the app's Xcode or Gradle project, Xcode or Gradle builds

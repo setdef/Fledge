@@ -18,8 +18,7 @@ require "open3"
 # computer that lacks it meets Ruby's
 # GObjectIntrospection::RepositoryError from inside the gem. With the
 # check, the app names the typelib and exits with EX_OSFILE before Ruby
-# starts (doc/contributors/design/launcher.md, "System libraries on
-# Linux").
+# starts.
 #
 # It needs GLib's and GObject introspection's development files, which
 # pkg-config finds, and the typelib somewhere only GI_TYPELIB_PATH

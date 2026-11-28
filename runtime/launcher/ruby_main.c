@@ -41,8 +41,7 @@
  * restart of the app, and a gem's executable start from the locale the
  * person has, which for an app a desktop started is C; with main.c's
  * setlocale they would read the app's folder, whose name need not be
- * ASCII, as US-ASCII, and Bundler would fail to set up the app's gems
- * (doc/contributors/design/launcher.md, "The locale").
+ * ASCII, as US-ASCII, and Bundler would fail to set up the app's gems.
  *
  * On Windows it is ruby.exe, and, built as a GUI program, rubyw.exe, in
  * place of RubyInstaller's in ROOT\ruby\bin, linked against Ruby's DLL

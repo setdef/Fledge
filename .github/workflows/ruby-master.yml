@@ -1,8 +1,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Fledge against Ruby's master, every night (doc/contributors/design/
-# runtimes.md, "Testing against Ruby's master"). Fledge's releases pin
+# Fledge against Ruby's master, every night. Fledge's releases pin
 # one Ruby; this builds the runtimes Fledge builds Ruby for itself, musl
 # Linux and the phones, from the day's snapshot of Ruby's master, with
 # the scripted edits and the license audit, and checks each musl
@@ -109,8 +108,7 @@ jobs:
 
       # Trunk's downloads for the platform, restored and never saved: the
       # snapshot is a new file every night, so a set saved with it would
-      # be a new entry of the whole set each night (doc/contributors/
-      # design/runtimes.md, "Pinned downloads in CI"). The build then
+      # be a new entry of the whole set each night. The build then
       # downloads what the set lacks, the snapshot among it.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -132,8 +130,7 @@ jobs:
             sh -c '.github/scripts/alpine-packages.sh build && ruby tasks/runtime_builder.rb "$PLATFORM"'
 
       # As ci.yml's parity-musl, on the runtime just built, whose
-      # reference is its own bin/ruby, master's (doc/contributors/design/
-      # parity.md).
+      # reference is its own bin/ruby, master's.
       - name: Check parity with ruby main.rb and bundle exec, in Alpine
         id: parity
         if: steps.build.outcome == 'success'
@@ -196,8 +193,7 @@ jobs:
 
       # Trunk's downloads for the platform, restored and never saved: the
       # snapshot is a new file every night, so a set saved with it would
-      # be a new entry of the whole set each night (doc/contributors/
-      # design/runtimes.md, "Pinned downloads in CI"). The build then
+      # be a new entry of the whole set each night. The build then
       # downloads what the set lacks, the snapshot among it.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

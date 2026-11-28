@@ -5,10 +5,10 @@
 # SPDX-License-Identifier: MIT
 #++
 
-# An app whose Gemfile.lock was written by Bundler 4.0.19, which no
-# runtime's Ruby ships as its own: bundle exec runs it with Bundler
-# 4.0.19, which bundle install installs, and so must the built app
-# (doc/contributors/design/gems.md, "The lockfile's Bundler").
+# An app whose Gemfile.lock was written by Bundler
+# 4.0.19, which no runtime's Ruby ships as its own:
+# bundle exec runs it with Bundler 4.0.19, which
+# bundle install installs, and so must the built app.
 source "https://rubygems.org"
 
 gem "concurrent-ruby", "~> 1.3"

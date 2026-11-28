@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Delivery of the console (doc/contributors/design/parity.md,
-# "Console checks"): runs the console probe
+# Delivery of the console: runs the console probe
 # (test/fixtures/console) in a terminal of its own, a pseudo-terminal
 # that script(1) opens, as a person runs an app in Terminal or a Linux
 # terminal emulator, and ends it as they would:

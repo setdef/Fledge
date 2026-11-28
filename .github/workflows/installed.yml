@@ -1,9 +1,8 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# The shipped path, end to end (Plan 001's walking skeleton in
-# production): on a fresh runner of each platform, Fledge is installed
-# from its git tag with Bundler, never from RubyGems.org, both ways
+# The shipped path, end to end: on a fresh runner of each platform, Fledge is
+# installed from its git tag with Bundler, never from RubyGems.org, both ways
 # README.md's Installation gives, with its line: in hello's own Gemfile,
 # which builds hello in its folder, and in a Gemfile of Fledge's own,
 # which builds the other apps by their paths
@@ -14,14 +13,14 @@
 # each app it builds is delivered as CI delivers every push's
 # (.github/scripts/deliver.sh, or deliver.ps1 on Windows). The windowed app's installer, made with the
 # runtime's own tools, is installed and its app run, as CI installs every
-# push's (decisions, 2026-10-28). Another job writes phones' projects from
-# the tag and builds them with Xcode and Gradle (doc/contributors/design/phone-projects.md), and another
+# push's. Another job writes phones' projects from
+# the tag and builds them with Xcode and Gradle, and another
 # downloads every runtime of the release and checks it against SHA256SUMS,
 # which must be the tag's lib/fledge/SHA256SUMS, the pins the gem ships.
 # The next jobs build the .gem from the tag and install that file instead
 # of the tag on each platform, which proves what the gemspec packs; and
 # package-managers.yml installs hello with Scoop, Homebrew, winget,
-# Chocolatey, and pacman, from the recipes in the guide.
+# Chocolatey, and pacman, from the recipes in test/fixtures/package_managers.
 #
 # release.yml calls this after it publishes a release, with the tag
 # alone; run it by hand (workflow_dispatch) to check any published tag
@@ -32,8 +31,7 @@
 # sums job checks the release against the commit's pins, and the
 # package managers' job, which installs only the tag, is skipped. So
 # these steps run on every platform, with the Fledge a release would
-# tag, before the release commit is made (doc/contributors/design/
-# releases.md, "installed.yml"). The tag's call never has a commit:
+# tag, before the release commit is made. The tag's call never has a commit:
 # workflow_call declares none (test/workflow_installed_test.rb).
 
 name: Installed from a tag
@@ -69,8 +67,8 @@ env:
   RUST_TOOLCHAIN: "1.99.1"
 
 jobs:
-  # The guide's recipes, installed with each package manager's own tool
-  # (doc/package_managers.md).
+  # The recipes in test/fixtures/package_managers, installed with each
+  # package manager's own tool.
   package-managers:
     name: Package managers
     if: ${{ !inputs.commit }}
@@ -108,8 +106,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-26, the macOS floor (doc/contributors/design/
-          # releases.md, "Which macOS each job runs on").
+          # macos-26, the macOS floor.
           - os: macos-26
             platform: arm64-darwin
           - os: ubuntu-24.04
@@ -118,7 +115,7 @@ jobs:
             platform: aarch64-linux
           - os: windows-latest
             platform: x64-mingw-ucrt
-          # Windows on ARM64 (doc/contributors/design/runtimes.md, "Windows on ARM64"), whose apps here need no gem
+          # Windows on ARM64, whose apps here need no gem
           # compiled for it: no my_cool_app or native_app.
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
@@ -226,7 +223,7 @@ jobs:
             [ "$version" = "fledge ${TAG#v}" ] || { echo "::error::bundle exec fledge --version printed '$version' in $folder, not 'fledge ${TAG#v}'"; exit 1; }
           done
 
-      # mksquashfs, which writes windowed_app's AppImage (decisions, 2026-10-28), as a
+      # mksquashfs, which writes windowed_app's AppImage, as a
       # Linux developer installs it, pinned to Ubuntu 24.04's build.
       - name: Install mksquashfs
         if: runner.os == 'Linux'
@@ -451,7 +448,7 @@ jobs:
           checks/.github/scripts/deliver.sh "dist/Hello-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "Hello from Ruby 4.1.0 on $PLATFORM" --no-ruby-installed &&
           checks/.github/scripts/deliver.sh "dist/MyCoolApp-$PLATFORM.tar.gz" "dist/Parity-$PLATFORM.tar.gz" "$(cat dist/my_cool_app.expected)" --no-ruby-installed'
 
-  # A phone's project from the tag (doc/contributors/design/phone-projects.md): fledge build ios on a Mac and
+  # A phone's project from the tag: fledge build ios on a Mac and
   # fledge build android on Linux, installed from the tag with Bundler,
   # download that version's mobile runtime from the release, checked
   # against the gem's pins, and write the projects of examples/hello and
@@ -570,8 +567,7 @@ jobs:
 
       # Gradle's dependency cache that ci.yml's Mobile apps (Android
       # emulator) jobs save for the same template, under the same key,
-      # only restored (doc/contributors/design/phone-projects.md,
-      # "Gradle's downloads in CI"). The template's Gradle files come
+      # only restored. The template's Gradle files come
       # from the tag's checkout, which the gem installed above holds too.
       # When the cache lacks that key, the newest set for the same system
       # and plugin is restored instead.
@@ -619,12 +615,12 @@ jobs:
 
   # The built gem, which holds only what the gemspec's file list packs: a
   # tag's checkout has every file, so the jobs above cannot show a file the
-  # list forgot, and from 1.0.0 people install this .gem from RubyGems.org
-  # (Plan 003, "Fledge on RubyGems.org"). One Linux runner builds it, as a
-  # person builds the one gem they push, and each platform installs that
-  # file, with no Fledge checkout, and builds and delivers hello and the
-  # windowed app, builds an app --from one that carries its tools, and on
-  # a Mac and on Linux writes a phone's project from the gem's templates.
+  # list forgot, and from 1.0.0 people install this .gem from RubyGems.org. One
+  # Linux runner builds it, as a person builds the one gem they push, and each
+  # platform installs that file, with no Fledge checkout, and builds and
+  # delivers hello and the windowed app, builds an app --from one that carries
+  # its tools, and on a Mac and on Linux writes a phone's project from the gem's
+  # templates.
   gem:
     name: Build the gem from the tag
     runs-on: ubuntu-24.04
@@ -660,8 +656,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-26, the macOS floor (doc/contributors/design/
-          # releases.md, "Which macOS each job runs on").
+          # macos-26, the macOS floor.
           - os: macos-26
             platform: arm64-darwin
           - os: ubuntu-24.04

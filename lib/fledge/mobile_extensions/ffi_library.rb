@@ -13,9 +13,7 @@ module Fledge
     # in the gem, where the build left it, its file, and the paths,
     # relative to the app's Ruby root, at which the gem looks for it
     # (.links). Every such gem read gives <tt>ffi_lib</tt> a path in its
-    # own folder, which ffi hands <tt>dlopen</tt> unchanged
-    # (doc/contributors/research/2026-11-19-ffi-libraries-on-phones.md,
-    # section 3).
+    # own folder, which ffi hands <tt>dlopen</tt> unchanged.
     #
     # === Example
     #

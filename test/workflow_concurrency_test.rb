@@ -8,8 +8,7 @@
 require_relative "test_helper"
 require "yaml"
 
-# How CI's runs queue (doc/contributors/design/releases.md, "Runs,
-# batches, and the release commit"): a push to trunk never
+# How CI's runs queue: a push to trunk never
 # cancels a run in progress there, a release or pin commit's run waits
 # behind no other run and no push replaces it, and the fast tier runs
 # on every push to trunk and judges each alone, its macOS leg in a

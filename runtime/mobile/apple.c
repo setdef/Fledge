@@ -14,8 +14,7 @@
  * set it for the app it ran, and as a developer tool still may (Apple's
  * DTS, developer.apple.com/forums/thread/705868). macOS 27 and the iOS
  * 26 Simulator copy it whatever the variable's value, NO and an empty
- * one included, so what counts is that it is there
- * (doc/contributors/design/phone-runtimes.md, "Output to the system log").
+ * one included, so what counts is that it is there.
  */
 
 #include "mobile.h"

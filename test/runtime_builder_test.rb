@@ -101,8 +101,7 @@ class RuntimeBuilderTest < Minitest::Test
   end
 
   # Windows on ARM64 takes RubyInstaller's ARM64 build of the same day,
-  # signed with the same key (doc/contributors/design/runtimes.md,
-  # "Windows on ARM64").
+  # signed with the same key.
   def test_windows_on_arm_pins_rubyinstallers_arm64_build_signed_by_the_same_key
     platforms = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms")
     arm = platforms.fetch("aarch64-mingw-ucrt")
@@ -115,7 +114,7 @@ class RuntimeBuilderTest < Minitest::Test
   # RubyInstaller's rubyinstaller-head URL serves each day's build in
   # place of the last, so the pin names the copy of the day's files that
   # Fledge keeps as a pre-release of its own repository, named for the
-  # source and the day (doc/contributors/design/runtimes.md).
+  # source and the day.
   def test_windows_pins_rubyinstaller_its_signature_and_the_key_that_signed_it
     pin = builder("x64-mingw-ucrt").sources.fetch("ruby").fetch("platforms").fetch("x64-mingw-ucrt")
     signature = pin.fetch("signature")

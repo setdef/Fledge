@@ -21,8 +21,7 @@ module Fledge
   # A developer runs a gem-shaped app as <tt>bundle exec exe/my_cool_app</tt>:
   # Bundler puts the project's own <tt>lib</tt> and every gem its
   # Gemfile.lock locks on the load path. A built app does the same, with
-  # Bundler, so the app's code stays as it is (decision 9 in
-  # <tt>doc/contributors/decisions.md</tt>). For that, each
+  # Bundler, so the app's code stays as it is. For that, each
   # target's runtime needs the very gems Bundler would choose on that
   # target, which a Gemfile.lock records for every platform it lists, as
   # <tt>bundle lock --add-platform</tt> and <tt>bundle cache
@@ -85,7 +84,7 @@ module Fledge
     # current machine's platform and install only <tt>ruby</tt> platform
     # gems" (<tt>lib/bundler/man/bundle-config.1.ronn</tt>, at Bundler
     # 4.0.20), so that an iOS Ruby, which reports <tt>arm64-darwin</tt>,
-    # never resolves a macOS gem (doc/contributors/design/phone-runtimes.md, "Targets").
+    # never resolves a macOS gem.
     FORCE_RUBY_PLATFORM = "BUNDLE_FORCE_RUBY_PLATFORM: \"true\"\n"
 
     # Where Bundler finds a path gem's gemspecs (Bundler::Source::Path,
@@ -283,13 +282,12 @@ module Fledge
     # locks the Mac only under another Darwin version, such as
     # <tt>arm64-darwin-24</tt>, is taken as <tt>bundle exec</tt> on that
     # Ruby takes it, and #app_files then holds the lockfile with the
-    # runtime's platform added, which the app's frozen Bundler needs
-    # (doc/contributors/design/gems.md). A Fledge::MobilePlatform's app
-    # runs Bundler with <tt>force_ruby_platform</tt>, as which the lockfile
-    # must lock +ruby+, and each gem is its +ruby+
-    # build. A gem from a gem server whose best build for +platform+ has a
-    # +required_ruby_version+ that excludes +ruby_version+ gives way to
-    # its source build, as the built app's Bundler would choose it
+    # runtime's platform added, which the app's frozen Bundler needs. A
+    # Fledge::MobilePlatform's app runs Bundler with
+    # <tt>force_ruby_platform</tt>, as which the lockfile must lock +ruby+, and
+    # each gem is its +ruby+ build. A gem from a gem server whose best build for
+    # +platform+ has a +required_ruby_version+ that excludes +ruby_version+
+    # gives way to its source build, as the built app's Bundler would choose it
     # (Fledge::Bundle::Selection): the block, given the Fledge::LockedGem
     # of a build, answers its +required_ruby_version+ (a
     # Gem::Requirement), which the lockfile does not record; without a

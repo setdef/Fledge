@@ -45,8 +45,8 @@
 #     patch level this Fledge ships, and the build fails when this
 #     Fledge has no runtime for it. A ruby line in the Gemfile must
 #     accept the runtime's Ruby. Your code runs as it does under ruby
-#     main.rb or bundle exec; doc/differences_from_ruby.md lists each
-#     difference, and why.
+#     main.rb or bundle exec, with the few differences Fledge's
+#     documentation lists, each with its reason.
 #
 #     An app is console (it runs in a terminal) or windowed (it opens
 #     its own windows): a windowed app is an .app bundle on macOS,

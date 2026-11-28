@@ -26,12 +26,9 @@ require_relative "mobile_extensions/stub"
 require_relative "mobile_extensions/targets"
 
 module Fledge
-  # Compiles an app's gems' C, C++, and Rust extensions for a phone
-  # (doc/contributors/design/phone-projects.md, "Gems with extensions").
+  # Compiles an app's gems' C, C++, and Rust extensions for a phone.
   #
-  # An app gem's extension cannot be a file on iOS
-  # (doc/contributors/design/phone-runtimes.md, "Why Ruby is a shared
-  # library, with each extension a file"), where only
+  # An app gem's extension cannot be a file on iOS, where only
   # frameworks hold code, so each one is compiled to a static archive,
   # linked into the app, and registered under the name <tt>require</tt>
   # asks for, which Ruby's own
@@ -50,8 +47,7 @@ module Fledge
   # ones. Fledge::MobileProject::IOS and Fledge::MobileProject::Android
   # link the archives into the app as each system needs. An
   # <tt>extconf.rb</tt> that runs CMake first finds the target's CMake
-  # toolchain file in <tt>CMAKE_TOOLCHAIN_FILE</tt> (CMake;
-  # doc/contributors/design/phone-projects.md, "CMake toolchain files"). An
+  # toolchain file in <tt>CMAKE_TOOLCHAIN_FILE</tt> (CMake). An
   # <tt>extconf.rb</tt> that writes rb-sys's Makefile instead has Cargo
   # build a static library for the target (Rust), which keeps the
   # <tt>Init_</tt> function rb-sys names after the extension. Each
@@ -394,11 +390,9 @@ module Fledge
       []
     end
 
-    # The C source of the registration unit
-    # (doc/contributors/design/phone-projects.md, "Registering
-    # extensions"): for each of +registrations+, the pairs #call returns,
-    # it declares the extension's Init function and registers it by the
-    # name <tt>require</tt> asks for
+    # The C source of the registration unit: for each of +registrations+, the
+    # pairs #call returns, it declares the extension's Init function and
+    # registers it by the name <tt>require</tt> asks for
     # (<tt>fledge_ruby_add_extension</tt>), from a constructor, so that the
     # unit needs no call from the host app, whatever host it is. It
     # includes the embedding API's +header+ by the name the app's build

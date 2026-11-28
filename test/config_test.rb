@@ -42,8 +42,7 @@ class ConfigTest < Minitest::Test
     assert_equal "0.1.0.pre.2", load("version: 0.1.0.pre.2\n").version
   end
 
-  # A macOS build number, held for CFBundleVersion
-  # (doc/contributors/design/public-interface.md, "Reserved names").
+  # A macOS build number, held for CFBundleVersion.
   def test_reads_a_macos_build_number
     assert_equal "1.2.417", load("macos:\n  build: \"1.2.417\"\n").macos&.build
     assert_nil load("macos:\n  build:\n").macos&.build
@@ -51,8 +50,7 @@ class ConfigTest < Minitest::Test
   end
 
   # The libraries from the developer's computer that a macOS app carries,
-  # by the file names its gems' compiled files give them, once each
-  # (doc/contributors/design/gems.md, "Libraries a Mac app carries").
+  # by the file names its gems' compiled files give them, once each.
   def test_reads_the_libraries_a_mac_app_carries
     config = load("macos:\n  carried_libraries: [libSDL3.0.dylib, libc++.1.dylib, libSDL3.0.dylib]\n")
     assert_equal ["libSDL3.0.dylib", "libc++.1.dylib"], config.macos&.carried_libraries
@@ -129,10 +127,9 @@ class ConfigTest < Minitest::Test
     assert_equal [], load("windows:\n  msix_dependencies:\n").windows.msix_dependencies
   end
 
-  # Fledge takes no position on an app's gems' licenses (2026-10-28;
-  # doc/contributors/design/gems.md, "Checks that are not about
-  # licenses"), so the keys that corrected a gem's license or said what
-  # its compiled code holds are gone, and fail like any other unknown key.
+  # Fledge takes no position on an app's gems' licenses (2026-10-28), so the
+  # keys that corrected a gem's license or said what its compiled code holds are
+  # gone, and fail like any other unknown key.
   def test_refuses_what_it_cannot_use
     known = "It knows name, kind, identifier, version, icon, publisher, copyright, description, long_description, homepage, license_file, installers, programs, ios, android, linux, macos, windows, file_associations, and build_tools."
     {
@@ -290,8 +287,7 @@ class ConfigTest < Minitest::Test
     assert_equal ["dmg"], load(yaml).installers
   end
 
-  # doc/contributors/design/phone-projects.md, "Host files": ios and
-  # android each name the folder of the project's own host files, which
+  # ios and android each name the folder of the project's own host files, which
   # fledge build ios or fledge build android copies over the project it
   # writes. The folder is checked when that phone's project is built, so
   # a desktop build never needs it.
@@ -326,8 +322,7 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  # doc/contributors/design/phone-projects.md, "What each library
-  # needs": android names, once each, the native libraries the app's
+  # android names, once each, the native libraries the app's
   # host adds to the APK through its own Gradle dependencies, each a
   # name Android's package installer extracts, lib*.so.
   def test_reads_the_libraries_an_android_host_adds
@@ -353,10 +348,8 @@ class ConfigTest < Minitest::Test
     end
   end
 
-  # The libraries a project's gems load from the Linux distribution
-  # (doc/contributors/design/gems.md, "Libraries from the Linux
-  # distribution"), by the names their compiled files give them, once
-  # each.
+  # The libraries a project's gems load from the Linux distribution, by the
+  # names their compiled files give them, once each.
   def test_reads_the_system_libraries_a_projects_gems_load_on_linux
     config = load("linux:\n  system_libraries: [libwebkit2gtk-4.1.so.0, libgtk-3.so.0, libwebkit2gtk-4.1.so.0]\n")
 
@@ -373,8 +366,7 @@ class ConfigTest < Minitest::Test
   end
 
   # The relationships a .deb's Depends gains for what the app's Ruby
-  # opens by itself (doc/contributors/design/desktop-apps.md, "Depends
-  # on what the app's Ruby opens"), as Debian Policy 7.1 writes them,
+  # opens by itself, as Debian Policy 7.1 writes them,
   # once each, on Linux only.
   def test_reads_the_deb_dependencies_a_projects_ruby_needs_on_linux
     config = load("linux:\n  deb_depends: [libgtk-4-1, \"libadwaita-1-0 (>= 1.4)\", \"libfoo1t64 | libfoo1\", libgtk-4-1, \"libc6:any (>> 2.30)\"]\n")
@@ -387,8 +379,7 @@ class ConfigTest < Minitest::Test
   end
 
   # The GObject introspection data a project's gems load from the Linux
-  # distribution by name while the app runs (doc/contributors/design/gems.md,
-  # "Typelibs from the Linux distribution"), each as libgirepository
+  # distribution by name while the app runs, each as libgirepository
   # names a typelib, its namespace and version, once each.
   def test_reads_the_system_typelibs_a_projects_gems_load_on_linux
     config = load("linux:\n  system_typelibs: [Gtk-4.0, GdkPixbuf-2.0, cairo-1.0, HarfBuzz-0.0, Gtk-4.0]\n")

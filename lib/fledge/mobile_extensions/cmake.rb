@@ -17,9 +17,7 @@ module Fledge
     # environment variable when a build folder is new (CMake 3.21 and
     # later), so Fledge writes one for each target and puts it there, as
     # cibuildwheel does for a Python package's build on Android. The
-    # <tt>extconf.rb</tt> runs <tt>cmake</tt> as it would on a desktop
-    # (doc/contributors/design/phone-projects.md, "CMake toolchain
-    # files").
+    # <tt>extconf.rb</tt> runs <tt>cmake</tt> as it would on a desktop.
     #
     # For an iOS slice the file sets CMake's own iOS variables to the
     # slice's SDK, processor, and deployment target, with the compilers

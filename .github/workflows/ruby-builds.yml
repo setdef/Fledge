@@ -5,8 +5,7 @@
 # archive, on a runner of each architecture, in the Ubuntu 22.04 image
 # and with the packages and driver Ruby .github/scripts/ruby-archive.sh
 # pins, and can publish both archives on a pre-release of this
-# repository for a runtime's pin to name
-# (doc/contributors/design/runtimes.md, "Fledge's own Ruby builds").
+# repository for a runtime's pin to name.
 # The build prunes the archive as a runtime is pruned, runs the
 # archive's own checks (its glibc floor, YJIT and ZJIT, the libraries
 # bin/ruby links, and no build folder left in rbconfig.rb, pkg-config, or

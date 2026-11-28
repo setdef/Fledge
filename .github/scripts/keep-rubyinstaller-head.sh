@@ -3,8 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # Keeps RubyInstaller's signed head build of the day each Ruby 4.1
-# release appears (doc/contributors/design/runtimes.md, "Keeping
-# RubyInstaller's head build"). RubyInstaller publishes Ruby 4.1 for
+# release appears. RubyInstaller publishes Ruby 4.1 for
 # Windows only as its rolling rubyinstaller-head release, whose files it
 # replaces every night, and only that release's .asc files let a build
 # be checked against RubyInstaller's key. So when the newest of the

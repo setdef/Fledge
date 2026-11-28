@@ -5,16 +5,16 @@
 # SPDX-License-Identifier: MIT
 #++
 
-# The HTTPS probe: a GET over HTTPS, with Ruby's own net/http and
-# openssl, to the URL its one argument names, which Delivery points at a
-# server of its own on the same computer, whose certificate a test
-# authority made for the run has signed (.github/scripts/https-server.sh).
-# It prints the status, or that the certificate did not verify, with
-# each variable that points OpenSSL at a file, so that the line says
-# whose certificates were asked. Delivery puts the authority where the
+# The HTTPS probe: a GET over HTTPS, with Ruby's own net/http
+# and openssl, to the URL its one argument names, which Delivery
+# points at a server of its own on the same computer, whose
+# certificate a test authority made for the run has signed
+# (.github/scripts/https-server.sh). It prints the status, or
+# that the certificate did not verify, with each variable that
+# points OpenSSL at a file, so that the line says whose
+# certificates were asked. Delivery puts the authority where the
 # platform's Ruby looks, or nowhere, and checks the line
-# (.github/scripts/deliver-https.sh and deliver-https.ps1;
-# doc/contributors/design/runtimes.md, "Certificates").
+# (.github/scripts/deliver-https.sh and deliver-https.ps1).
 require "net/http"
 
 uri = URI(ARGV.fetch(0))

@@ -14,9 +14,8 @@
 #
 # SOURCES is runtime/sources.yml unless given. The pins live there, not
 # in the workflows, because a workflow's own token cannot push a commit
-# that changes a workflow file, and the pin move pushes with that token
-# (doc/contributors/design/runtimes.md, "Container images"). It runs the
-# runner's own Ruby, which every GitHub-hosted Ubuntu image has, before
+# that changes a workflow file, and the pin move pushes with that token. It runs
+# the runner's own Ruby, which every GitHub-hosted Ubuntu image has, before
 # any Ruby of Fledge's is set up.
 set -eu
 exec ruby -ryaml -rjson -e '

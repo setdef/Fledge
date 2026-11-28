@@ -11,8 +11,7 @@ require "open3"
 require "tmpdir"
 
 # .github/scripts/ruby-master-result.sh and ruby-master-report.sh, which
-# ruby-master.yml's jobs and its report run (doc/contributors/design/
-# runtimes.md, "Testing against Ruby's master"), night after night,
+# ruby-master.yml's jobs and its report run, night after night,
 # against a gh of the test's own that keeps the one issue's body in a
 # file: the first night opens the issue, a new break fails the run once,
 # the same break the next night does not, and a job that recorded

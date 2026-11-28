@@ -11,11 +11,10 @@ require_relative "unix"
 class RuntimeBuilder
   # musl Linux (Alpine and the CI images built on it): CRuby built from
   # its pinned source on the computer it is for, as python-build-standalone
-  # builds Python (doc/contributors/design/runtimes.md, "Where each
-  # platform's Ruby comes from"), because rv-ruby's musl
+  # builds Python, because rv-ruby's musl
   # builds link the standard library's extensions into their own
   # bin/ruby, where a launcher linked against their libruby cannot reach
-  # them (Plan 001, spike 1). It is configured as rv-ruby's
+  # them. It is configured as rv-ruby's
   # glibc builds are, a static libruby that finds its library from the
   # program that holds it, with YJIT, but with each extension a shared
   # object, as on glibc, and OpenSSL, libyaml, libffi, and zlib built

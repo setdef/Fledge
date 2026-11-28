@@ -13,8 +13,7 @@ require_relative "parity"
 
 # The proof before the push of a commit that changes a runtime, or the
 # Ruby a parity check compares one with (CONTRIBUTING.md, "Before a
-# push"; doc/contributors/design/runtimes.md, "Proving a runtime change
-# before its push"): on a computer of the platform, the checks of CI's
+# push"): on a computer of the platform, the checks of CI's
 # that run an app built from the changed runtime, each by the script or
 # task CI runs it with. For a desktop platform: the runtime, built as
 # CI's Runtime job builds it unless FLEDGE_RUNTIME_DIR names one; the

@@ -19,8 +19,7 @@ module Fledge
     # as <tt>bundle exec</tt> would on the developer's computer, so the
     # build does not refuse; it says what it saw, as a warning, because
     # a person who builds the app can then fix the build computer before
-    # anyone runs it (doc/contributors/design/gems.md, "A gem whose
-    # extension was skipped").
+    # anyone runs it.
     module Skipped # :nodoc:
       # The warnings about +gem+, whose gemspec lists +extensions+, when
       # none of +entries+, the files its build left that Ruby may load,

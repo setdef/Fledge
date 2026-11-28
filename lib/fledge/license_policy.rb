@@ -11,14 +11,12 @@ module Fledge
   # Everything Fledge itself copies into an app, its runtime, the app's
   # developer gives to whoever receives the app. The rule is
   # that a developer must be able to ship an app with no copyleft
-  # obligation beyond keeping notices (decisions 8 and 24 in
-  # <tt>doc/contributors/decisions.md</tt>): permissive licenses ship
-  # freely, Fledge's own files among them, which are MIT (decisions,
-  # 2026-11-07); the LGPL ships only as a separate shared library whose
-  # source Fledge publishes; and the GPL and the AGPL do not ship at all.
-  # The rule is for what Fledge puts in an app, not for the app's own
-  # gems, whose licenses are the developer's choice and responsibility
-  # (decisions of 2026-10-28).
+  # obligation beyond keeping notices: permissive licenses ship
+  # freely, Fledge's own files among them, which are MIT; the LGPL ships only as
+  # a separate shared library whose source Fledge publishes; and the GPL and the
+  # AGPL do not ship at all. The rule is for what Fledge puts in an app, not for
+  # the app's own gems, whose licenses are the developer's choice and
+  # responsibility.
   #
   # This module holds that policy and judges an SPDX license expression
   # against it, as SPDX 2.3, annex D, reads one: +OR+ takes the least

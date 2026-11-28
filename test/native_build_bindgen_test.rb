@@ -8,9 +8,8 @@
 require_relative "test_helper"
 
 # What a gem's build tells bindgen of Ruby's preprocessor flags, so that a
-# Rust gem's bindings declare rb_len_t as the runtime's Ruby has it
-# (doc/contributors/design/gems.md, "Rust gems on Windows and
-# rb_len_t"); no Ruby is started.
+# Rust gem's bindings declare rb_len_t as the runtime's Ruby has it; no Ruby is
+# started.
 class NativeBuildBindgenTest < Minitest::Test
   # RbConfig::CONFIG["CPPFLAGS"] of the x64 Windows runtime, RubyInstaller's
   # head build, as read there.

@@ -484,8 +484,7 @@ class LicenseAuditTest < Minitest::Test
     assert_equal :forbidden, LicenseAudit.category("AGPL-3.0-or-later")
   end
 
-  # The macOS floor (doc/contributors/design/releases.md, "Platform
-  # floors"): every Mach-O in a macOS runtime, the launcher and bin/ruby
+  # The macOS floor: every Mach-O in a macOS runtime, the launcher and bin/ruby
   # among them, runs on Fledge's oldest macOS, and the audit refuses a
   # runtime with one that says otherwise.
   def macos_floors(files)
@@ -569,7 +568,7 @@ class LicenseAuditTest < Minitest::Test
   # The notices list the runtime Fledge copied in, its third-party
   # components and Fledge's own files, and nothing of the app's own code
   # or of the gems its developer chose, whose licenses are the
-  # developer's (decisions, 2026-10-28). So the heading names the runtime,
+  # developer's. So the heading names the runtime,
   # and the opening says what is not listed.
   def test_notices_say_they_list_the_runtime_and_not_the_apps_own_code_or_gems
     audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
@@ -628,7 +627,7 @@ class LicenseAuditTest < Minitest::Test
 
   # Every platform's notices name Fledge's own files and where their
   # source is, and none names a notice of changed programs: Fledge's
-  # files are MIT, which asks for none (decisions, 2026-11-07).
+  # files are MIT, which asks for none.
   def test_every_platforms_notices_name_fledges_files_and_no_notice_of_changes
     audit_run = LicenseAudit.new(platform: "x86_64-linux", tree: @tree, fledge_version: "0.0.0")
     report = audit_run.call
@@ -734,7 +733,7 @@ class LicenseAuditTest < Minitest::Test
   # RUBY_DESCRIPTION holds Ruby's words, copied out of its program, and
   # no app holds it, so it is Ruby's file, not Fledge's: the notices an
   # app carries name only the files of Fledge's that the app holds, the
-  # program its user runs first, and doc/licensing.md's sentence on
+  # program its user runs first, and docs/reference/licensing.md's sentence on
   # Fledge's own files, made from the same files, stays true.
   def test_the_rubys_description_is_rubys_and_not_among_fledges_own_files
     write("RUBY_DESCRIPTION", DESCRIPTION)
@@ -799,8 +798,7 @@ class LicenseAuditTest < Minitest::Test
   end
 
   # Windows on ARM64's GNU MP is MSYS2's CLANGARM64 build of the same
-  # source package, and its bundle says so
-  # (doc/contributors/design/runtimes.md, "Windows on ARM64").
+  # source package, and its bundle says so.
   def test_the_windows_on_arm_source_bundle_names_msys2s_clangarm64_build
     Dir.mktmpdir do |directory|
       downloads = File.join(directory, "downloads")
@@ -869,8 +867,7 @@ class LicenseAuditTest < Minitest::Test
 
   # An iOS runtime: an XCFramework whose two slices each carry Ruby's
   # framework and the Ruby it runs, its extensions files there, as
-  # CPython's iOS XCFramework does (doc/contributors/design/phone-runtimes.md,
-  # "Ruby's extensions on iOS"), audited as one runtime with a Ruby tree
+  # CPython's iOS XCFramework does, audited as one runtime with a Ruby tree
   # per slice, each gem one component, and OpenSSL's privacy manifest
   # OpenSSL's.
   def test_an_ios_runtime_accounts_for_the_ruby_of_each_slice

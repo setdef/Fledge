@@ -40,7 +40,7 @@
  * its embedded manifest names, ruby_builtin_dlls, and each extension's
  * (openssl.so needs libssl) through the extension's own
  * *.so-assembly.manifest, so no folder is ever added to PATH. The Windows
- * launcher spike (Plan 001, spike 2) proved this layout, and found the
+ * launcher spike proved this layout, and found the
  * alternatives worse.
  *
  * It starts Ruby the way Ruby's own main.c does (main.c lines 37 to 63
@@ -72,10 +72,8 @@
  *      keeps RubyGems to the runtime's gems, away from the person's own.
  *   4. Runs the app with arguments equivalent to
  *        NAME --disable=rubyopt -- ROOT\app\ENTRY ARGS
- *      which is what ruby ROOT\app\ENTRY ARGS does with no RUBYOPT
- *      (doc/contributors/design/launcher.md, "The program runs as
- *      ruby runs it"): no -I, so the app loads its own files with
- *      require_relative.
+ *      which is what ruby ROOT\app\ENTRY ARGS does with no RUBYOPT: no -I, so
+ * the app loads its own files with      require_relative.
  *   5. Once Ruby has booted and before ENTRY runs, fixes RubyGems'
  *      paths, and for an app with a Gemfile has Bundler set up the app's
  *      gems, as bundle exec would (setup_bundler).

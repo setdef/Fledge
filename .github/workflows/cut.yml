@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Cuts a release of a commit CI has proven, off trunk, and records it on
-# trunk (doc/contributors/design/releases.md, "How a release is made").
+# trunk.
 # The release commit and the pin commit are made on the branch
 # release-next, which only this workflow writes, so that trunk never
 # has to stand still for them: Cut makes both, has CI prove each there,
@@ -12,9 +12,8 @@
 # entries, in one commit (.github/scripts/release-record.sh).
 #
 # pin-watch.yml calls it once a move of the pins is green on trunk, so
-# that an upstream's fix reaches a release with nobody in the loop
-# (decisions.md, 2026-11-22). By hand, on any commit whose CI passed on
-# every job:
+# that an upstream's fix reaches a release with nobody in the loop. By hand, on
+# any commit whose CI passed on every job:
 #
 #   gh workflow run cut.yml -f commit=SHA              # stops before the tag
 #   gh workflow run cut.yml -f commit=SHA -f publish=true

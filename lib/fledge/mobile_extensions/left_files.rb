@@ -28,9 +28,7 @@ module Fledge
     # records its target. Nor does it carry compiled code, which a phone
     # runs only from the app's executable, its frameworks, or its native
     # libraries, where Fledge puts what Ruby loads of it, or the files
-    # Fledge's own build writes beside an extension
-    # (doc/contributors/design/phone-projects.md, "Files a gem's build
-    # leaves").
+    # Fledge's own build writes beside an extension.
     #
     # === Example
     #

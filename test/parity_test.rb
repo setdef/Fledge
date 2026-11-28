@@ -281,9 +281,8 @@ class ParityTest < Minitest::Test
   end
 
   # A windowed Windows app has no console, so Ruby takes its locale from
-  # the ANSI code page, which the launcher's manifest makes UTF-8
-  # (doc/contributors/design/launcher.md, "The locale"); only there, and
-  # only for that encoding.
+  # the ANSI code page, which the launcher's manifest makes UTF-8; only there,
+  # and only for that encoding.
   def test_a_windowed_windows_app_may_take_utf8_as_its_locale
     reference = { "Encoding.find('locale')" => "Windows-1252" }
     app = { "Encoding.find('locale')" => "UTF-8" }

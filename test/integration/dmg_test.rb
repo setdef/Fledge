@@ -8,7 +8,7 @@
 require_relative "../test_helper"
 
 # A Mac app's disk image when <tt>hdiutil create</tt> finds its volume
-# busy (doc/contributors/design/desktop-apps.md, "The disk image"). On a
+# busy. On a
 # GitHub macOS runner hdiutil sometimes fails with "create failed -
 # Resource busy" when another process (XProtect, by the runner image's
 # maintainers' account) holds the scratch volume it makes the image

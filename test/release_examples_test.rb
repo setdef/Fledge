@@ -9,8 +9,7 @@ require_relative "test_helper"
 require_relative "../tasks/release_examples"
 require "tmpdir"
 
-# The example apps a release carries (doc/contributors/design/releases.md,
-# "The examples a release carries"): which files each platform's job
+# The example apps a release carries: which files each platform's job
 # stages, what a release's folder of them must hold, and how each is named.
 class ReleaseExamplesTest < Minitest::Test
   VERSION = "1.2.3"

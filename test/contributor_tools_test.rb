@@ -60,8 +60,7 @@ class ContributorToolsTest < Minitest::Test
   end
 
   # Every file mise.toml names by URL, patchelf's among them, is pinned
-  # by SHA-256 (doc/contributors/design/architecture.md, "What the design
-  # answers to").
+  # by SHA-256.
   def test_every_download_mise_toml_names_is_pinned_by_sha256
     downloads = mise_toml.lines.grep(/\burl = "/)
 
@@ -87,7 +86,7 @@ class ContributorToolsTest < Minitest::Test
   # serve, mise installs LLVM's own release, which carries libclang with
   # clang's headers, as CI's Windows runners have it, by its SHA-256; but
   # only with MISE_ENV=rust, since it is 4 GB unpacked, and every download
-  # that file names is pinned so too (architecture.md, same section).
+  # that file names is pinned so too.
   def test_mise_installs_llvm_for_bindgen_on_x64_windows_with_mise_env_rust
     downloads = rust_toml.lines.grep(/\burl = "/)
 
@@ -138,7 +137,7 @@ class ContributorToolsTest < Minitest::Test
   def android_toml = File.read(File.join(ROOT, "mise.android.toml"))
 
   # The Android tools mise installs with MISE_ENV=android, from Google's
-  # and Adoptium's own downloads, are pinned by SHA-256 too (architecture.md, same section).
+  # and Adoptium's own downloads, are pinned by SHA-256 too.
   def test_every_download_mise_android_toml_names_is_pinned_by_sha256
     downloads = android_toml.lines.grep(/\burl = "/)
 

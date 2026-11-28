@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.12.0.schema.json
+# Example.Hello.installer.yaml
+PackageIdentifier: Example.Hello
+PackageVersion: 1.0.0
+InstallerType: zip
+NestedInstallerType: portable
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/example/hello/releases/download/v1.0.0/Hello-x64-mingw-ucrt.zip
+    InstallerSha256: HASH FROM Hello-x64-mingw-ucrt.zip.sha256
+    NestedInstallerFiles:
+      - RelativeFilePath: Hello-x64-mingw-ucrt\Hello.exe
+        PortableCommandAlias: hello
+  - Architecture: arm64
+    InstallerUrl: https://github.com/example/hello/releases/download/v1.0.0/Hello-aarch64-mingw-ucrt.zip
+    InstallerSha256: HASH FROM Hello-aarch64-mingw-ucrt.zip.sha256
+    NestedInstallerFiles:
+      - RelativeFilePath: Hello-aarch64-mingw-ucrt\Hello.exe
+        PortableCommandAlias: hello
+ManifestType: installer
+ManifestVersion: 1.12.0

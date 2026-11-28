@@ -9,8 +9,7 @@ require "yaml"
 require_relative "test_helper"
 require_relative "../tasks/parity"
 
-# Parity::JUSTIFIED and Parity::MOBILE_JUSTIFIED may only shrink in 1.x
-# (doc/contributors/design/public-interface.md, "Frozen for 1.x"). An
+# Parity::JUSTIFIED and Parity::MOBILE_JUSTIFIED may only shrink in 1.x. An
 # entry joins test/parity_justified.yml only by a deliberate change to
 # that list, so that widening how a built app may differ from ruby
 # main.rb cannot pass unnoticed. The words of a reason may change
@@ -35,7 +34,7 @@ class ParityJustifiedTest < Minitest::Test
   { "JUSTIFIED" => Parity::JUSTIFIED, "MOBILE_JUSTIFIED" => Parity::MOBILE_JUSTIFIED }.each do |name, entries|
     define_method(:"test_#{name.downcase}_allows_nothing_the_list_does_not") do
       assert_empty self.class.added(entries), "Parity::#{name} allows a difference test/parity_justified.yml does not list. " \
-        "public-interface.md, \"Frozen for 1.x\", forbids a new difference from ruby main.rb after 1.0: these lists may only shrink in 1.x, " \
+        "A new difference from ruby main.rb is forbidden after 1.0: these lists may only shrink in 1.x, " \
         "so adding an entry waits for a major version, and then changes the list on purpose."
     end
   end

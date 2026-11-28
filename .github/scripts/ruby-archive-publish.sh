@@ -4,8 +4,7 @@
 
 # Publishes Fledge's own Ruby archives for glibc Linux, as
 # .github/scripts/ruby-archive.sh builds them, on a pre-release of this
-# repository (doc/contributors/design/runtimes.md, "Fledge's own Ruby
-# builds"), so that a runtime's pin can name them by URL and SHA-256 as
+# repository, so that a runtime's pin can name them by URL and SHA-256 as
 # it names an upstream input ("Rolling upstream inputs").
 #
 #   .github/scripts/ruby-archive-publish.sh FOLDER

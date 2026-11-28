@@ -20,8 +20,7 @@ require "yaml"
 require "zlib"
 
 # Finds the pins of runtime/sources.yml that upstream has released a
-# newer version of (doc/contributors/design/runtimes.md, "Keeping the
-# pins current").
+# newer version of.
 #
 # Every input a runtime is built from is pinned, so a security fix
 # upstream, in OpenSSL or in Ruby itself, reaches no app until the pin
@@ -55,8 +54,7 @@ class PinWatch < Data.define(:sources, :upstreams, :unwatched)
   # two releases, whichever is longer. Measured against every line
   # OpenSSL's, RubyInstaller's, jdx/ruby's, and Ruby's histories hold, it
   # called no line ended that released again, and called OpenSSL's ended
-  # lines ended 181 to 189 days after their last release
-  # (doc/contributors/design/runtimes.md, "A line that has ended").
+  # lines ended 181 to 189 days after their last release.
   ENDED_DAYS = 180
   ENDED_GAPS = 1.5
   ENDED_RELEASES = 3

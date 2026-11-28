@@ -8,8 +8,7 @@
 require "fileutils"
 require_relative "pin_watch"
 
-# Moves the pins the watch found behind to upstream's newer release
-# (doc/contributors/design/runtimes.md, "Keeping the pins current").
+# Moves the pins the watch found behind to upstream's newer release.
 #
 # A pin is a version, the URL of each file, and each file's SHA-256, and
 # its version is named again in a few files beside runtime/sources.yml:
@@ -127,7 +126,7 @@ class PinMove
     body = "The pin watch found #{findings.one? ? 'this pin' : 'these pins'} behind upstream, and the " \
       "workflow that keeps the pins current moved #{findings.one? ? 'it' : 'them'} with tasks/pin_move.rb, " \
       "taking each SHA-256 from upstream's own record of it, and proved the move with a full run of CI " \
-      "before it reached trunk (doc/contributors/design/runtimes.md, \"Keeping the pins current\"): #{list}."
+      "before it reached trunk: #{list}."
     "#{subject}\n\n#{body.gsub(/(.{1,72})(?:\s+|\z)/, "\\1\n")}\nProvenance: requested\n"
   end
 

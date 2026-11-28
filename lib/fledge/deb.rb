@@ -21,7 +21,7 @@ module Fledge
   # Briefcase makes one by writing the package's <tt>DEBIAN/control</tt>
   # and running <tt>dpkg-deb --build --root-owner-group</tt>, and so does
   # this module; Tauri's bundler writes the archive itself, which
-  # Fledge does not (decisions, 2026-10-28). It lays the built app's folder out as
+  # Fledge does not. It lays the built app's folder out as
   # +dpkg-deb+ packs it: the folder in <tt>/usr/lib/PACKAGE</tt> (Debian
   # Policy 9.1.1 lets a package keep a mixture of files in a
   # subdirectory of +/usr/lib+), its desktop entry, with the program's
@@ -271,8 +271,7 @@ module Fledge
     # version. A package that holds several typelibs provides that name
     # for each, as gir1.2-gtk-4.0 provides gir1.2-gdk-4.0 and
     # gir1.2-glib-2.0 provides gir1.2-gobject-2.0, so apt installs the
-    # package that holds the typelib
-    # (doc/contributors/design/desktop-apps.md, "Depends").
+    # package that holds the typelib.
     #
     # === Example
     #

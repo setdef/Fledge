@@ -63,8 +63,7 @@ class BuildCommandTest < Minitest::Test
 
   # Beside each file it prints, the build writes that file's SHA-256 in
   # sha256sum's format, which a package manager's recipe needs, and does
-  # not print it (doc/contributors/design/public-interface.md, "The
-  # checksum file").
+  # not print it.
   def test_the_archive_gets_a_checksum_file_beside_it_that_is_not_printed
     out, err, status = build("hello")
 
@@ -164,7 +163,7 @@ class BuildCommandTest < Minitest::Test
   end
 
   # A phone's name, first, asks for its project, as Briefcase's create
-  # iOS and Flutter's build ios do (doc/contributors/design/phone-projects.md); after the PATH, or after
+  # iOS and Flutter's build ios do; after the PATH, or after
   # --, it is a path, and ./ios names a folder called ios.
   def test_a_phone_named_first_asks_for_its_project
     {

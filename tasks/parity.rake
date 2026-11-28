@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 #++
 
-desc "Compare a built app's Ruby with ruby main.rb on the runtime's own Ruby (doc/contributors/design/parity.md)"
+desc "Compare a built app's Ruby with ruby main.rb on the runtime's own Ruby"
 task :parity do
   ruby "tasks/parity.rb"
 end

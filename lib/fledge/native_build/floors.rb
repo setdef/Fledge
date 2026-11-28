@@ -24,8 +24,7 @@ module Fledge
     # symbol versions make it, so the app needs this computer's glibc,
     # which a Linux with an older one would not have; the app's
     # <tt>.deb</tt> says so (Fledge::Deb), and building on an older
-    # system lowers it (doc/contributors/design/gems.md, "The glibc a
-    # compiled gem needs").
+    # system lowers it.
     module Floors # :nodoc:
       COMPILED_ADVICE = "Fledge compiled it on this computer, and a compiled file needs the glibc it was compiled with or a newer one: " \
         "build the app on a Linux with an older glibc, such as AlmaLinux 8, to lower that."

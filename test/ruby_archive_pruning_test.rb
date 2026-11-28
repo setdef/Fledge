@@ -10,8 +10,7 @@ require_relative "../tasks/ruby_archive"
 
 # The pruning of Fledge's own Ruby archive (tasks/ruby_archive.rb): the
 # archive is for compiling against and running a newer Ruby, and goes
-# through the pruning a runtime does (doc/contributors/design/runtimes.md,
-# "What a runtime prunes, and why nothing reads it") before the license
+# through the pruning a runtime does before the license
 # audit reads it.
 class RubyArchivePruningTest < Minitest::Test
   SOURCES = YAML.safe_load_file(File.join(RuntimeBuilder::ROOT, "runtime", "sources.yml"))

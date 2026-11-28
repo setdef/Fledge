@@ -11,8 +11,7 @@ require "stringio"
 require_relative "../support/android"
 
 # Which definition each Android extension built as a file calls, when
-# two libraries define one name (doc/contributors/design/phone-projects.md,
-# "Each extension file's symbols"). The extensions are built with the
+# two libraries define one name. The extensions are built with the
 # real Android runtime and the developer's NDK, as fledge build builds
 # them, and, where an emulator or device is attached (ANDROID_SERIAL),
 # opened there in order as Ruby's dln.c opens an extension, with
@@ -125,7 +124,7 @@ class MobileExtensionSymbolsTest < Minitest::Test
   end
 
   # A C++ extension links the NDK's shared C++ runtime, libc++_shared.so
-  # (phone-projects.md, "The C++ runtime rule"), so that it and a C++
+  # so that it and a C++
   # library it links, here one a gem's own build links over that
   # runtime too, share one C++ runtime, as a desktop's extension and
   # library share the system's: a string, an exception, type
@@ -133,8 +132,7 @@ class MobileExtensionSymbolsTest < Minitest::Test
   # allocation all cross between them. With a static runtime of its own
   # the extension printed twin_cxx_shares_cout 0, and an app whose
   # extension called such a library this way aborted where a desktop
-  # answered each crossing
-  # (doc/contributors/research/2026-11-20-two-cxx-runtimes.md). The
+  # answered each crossing. The
   # extension exports nothing of the C++ runtime, holding none of it.
   def test_a_cpp_extension_shares_the_cpp_runtime_of_a_library_it_links
     gem = extconf_gem("twin_cxx", <<~RUBY, "twin_cxx.cpp" => crossing_extension("twin_cxx"), "lib.mk" => <<~MAKE, "twin/dep.cpp" => crossing_library("twin_cxx"))
@@ -169,9 +167,8 @@ class MobileExtensionSymbolsTest < Minitest::Test
   # The same crossings with a shared C++ library the extconf.rb builds
   # with CMake, as a gem over a native engine may, from the toolchain
   # file Fledge names in CMAKE_TOOLCHAIN_FILE, which includes the NDK's
-  # android.toolchain.cmake (phone-projects.md, "CMake toolchain
-  # files"). Given no ANDROID_STL, the NDK's file links a shared library
-  # with the static C++ runtime, where a desktop's CMake links the
+  # android.toolchain.cmake. Given no ANDROID_STL, the NDK's file links a shared
+  # library with the static C++ runtime, where a desktop's CMake links the
   # system's shared one, so the library held a copy of its own beside the
   # extension's libc++_shared.so. Exported, that copy took the place of
   # libc++_shared.so's for every library in the extension's group, and

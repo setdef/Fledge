@@ -33,7 +33,7 @@ $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 
 $appName = 'Hello Window'
-# Hello Window-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt (doc/contributors/design/runtimes.md, "Windows on ARM64").
+# Hello Window-PLATFORM.zip: x64-mingw-ucrt, or aarch64-mingw-ucrt.
 $platform = [IO.Path]::GetFileNameWithoutExtension($Archive) -replace "^$appName-", ''
 $identifier = 'com.setdef.fledge.HelloWindow'
 

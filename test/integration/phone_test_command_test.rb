@@ -13,9 +13,8 @@ require "tmpdir"
 require_relative "../support/android"
 require_relative "../support/ios"
 
-# fledge test, as a developer runs it (doc/contributors/design/phone-projects.md,
-# "Tests in the app"): examples/basket's test program, whose tests of
-# its screen make UIKit's or Android's own widgets, and
+# fledge test, as a developer runs it: examples/basket's test program, whose
+# tests of its screen make UIKit's or Android's own widgets, and
 # test/fixtures/phone_tests' programs, one that passes, one that fails,
 # and, on Android, one that prints the host's status line and then fails,
 # each built into its app and run on a Simulator of the test's own, or
@@ -68,8 +67,7 @@ class PhoneTestCommandTest < Minitest::Test
 
   # Uninstalls the apps the Android test installs, before it and after.
   # Before, because a copy signed with another key cannot be replaced,
-  # and fledge test then stops and uninstalls nothing
-  # (doc/contributors/design/phone-projects.md, "Tests in the app"): the
+  # and fledge test then stops and uninstalls nothing: the
   # mobile parity check, run first on CI's emulator, leaves Basket there
   # installed from its release bundle, signed with its own upload key.
   private def uninstall_android_apps

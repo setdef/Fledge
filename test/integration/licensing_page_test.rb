@@ -13,8 +13,8 @@ require_relative "../../tasks/licensing_page"
 # The licensing page from runtime archives for all nine platforms, small
 # but made of real (minimal) ELF, Mach-O, and PE files, which the real
 # license audit checks against the real runtime/licenses.yml. CI runs
-# the page against the nine real runtimes and fails when doc/licensing.md
-# differs.
+# the page against the nine real runtimes and fails when
+# docs/reference/licensing.md differs.
 class LicensingPageFromRuntimesTest < Minitest::Test
   # The Rust that compiled the YJIT of jdx/ruby's macOS and glibc Linux
   # builds, which runtime/sources.yml pins for arm64-darwin,
@@ -132,7 +132,7 @@ class LicensingPageFromRuntimesTest < Minitest::Test
     assert_includes section(text, "Linux on x86-64 (x86_64-linux)"), "; bin/ruby on macOS and Linux, and ruby/bin/ruby.exe and rubyw.exe on Windows, which hold Fledge's code beside Ruby's;"
   end
 
-  # A phone's app is built from the project fledge build writes (doc/contributors/design/phone-projects.md),
+  # A phone's app is built from the project fledge build writes,
   # so the page says what of Fledge's goes into it, and that the host app
   # the developer compiles is Fledge's own code too.
   def test_it_says_what_of_fledges_a_phones_app_holds
@@ -159,10 +159,9 @@ class LicensingPageFromRuntimesTest < Minitest::Test
     assert_includes section(text, "Linux on x86-64 (x86_64-linux)"), "the program the app's user runs"
   end
 
-  # An app's own gems are the developer's choice and responsibility
-  # (decisions of 2026-10-28): the page says Fledge takes no position on
-  # them, judges no gem by its license, and writes no notices of its own
-  # for them.
+  # An app's own gems are the developer's choice and responsibility: the page
+  # says Fledge takes no position on them, judges no gem by its license, and
+  # writes no notices of its own for them.
   def test_it_says_an_apps_own_gems_are_the_developers_to_comply_with
     gems = section(page, "Your app's own gems")
 

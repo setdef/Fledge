@@ -42,8 +42,7 @@ class RuntimeBuilder
       "darwin.c"
     end
 
-    # documents.c, which takes the launch's Open Documents Apple event
-    # (doc/contributors/design/launcher.md, "Documents opened on macOS"),
+    # documents.c, which takes the launch's Open Documents Apple event,
     # is the launcher's alone: bin/ruby is never started by Launch
     # Services.
     private def launcher_os_files

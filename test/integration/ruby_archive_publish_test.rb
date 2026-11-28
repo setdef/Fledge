@@ -7,8 +7,7 @@
 
 # Tests .github/scripts/ruby-archive-publish.sh, which ruby-builds.yml
 # runs to publish Fledge's own Ruby archives for glibc Linux on a
-# pre-release (doc/contributors/design/runtimes.md, "Fledge's own Ruby
-# builds"). Each test runs the script with bash on a folder of stand-in
+# pre-release. Each test runs the script with bash on a folder of stand-in
 # archives, with a gh on PATH that keeps what it is given in a folder of
 # its own and hands it back on download, as GitHub's releases would.
 

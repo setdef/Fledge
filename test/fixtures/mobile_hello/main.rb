@@ -5,22 +5,22 @@
 # SPDX-License-Identifier: MIT
 #++
 
-# What the mobile runtimes promise an app, in one line (ADR 099): json, a
-# default gem, and csv, a bundled gem that RubyGems activates as a gem;
-# prism, a bundled gem whose extension compiles its own libprism beside
-# the one libruby holds (doc/contributors/design/phone-runtimes.md,
-# "Bundled gems' extensions"), parsing with its extension; and HTTPS,
-# which needs the CA certificates the runtime carries: a server on the
-# computer that runs the check, whose certificate a test authority signed,
-# which the check appended to the runtime's certificates in the app
-# (MobileParity::HTTPS), refused with an empty trust store and answered
-# with the runtime's, so that the line shows OpenSSL read the file the
-# runtime carries, and reaches nothing beyond the computer;
-# and YJIT, where the runtime has it (Android's, as a desktop's; iOS
-# lets an app write no code it then runs), enabled as Rails enables it,
-# compiling a method it calls often enough into machine code.
-# tasks/mobile_parity.rb builds it as an app with fledge build ios and
-# fledge build android, runs it on each phone, and checks the line.
+# What the mobile runtimes promise an app, in one line (ADR 099):
+# json, a default gem, and csv, a bundled gem that RubyGems activates
+# as a gem; prism, a bundled gem whose extension compiles its own
+# libprism beside the one libruby holds, parsing with its extension;
+# and HTTPS, which needs the CA certificates the runtime carries: a
+# server on the computer that runs the check, whose certificate a
+# test authority signed, which the check appended to the runtime's
+# certificates in the app (MobileParity::HTTPS), refused with an
+# empty trust store and answered with the runtime's, so that the line
+# shows OpenSSL read the file the runtime carries, and reaches
+# nothing beyond the computer; and YJIT, where the runtime has it
+# (Android's, as a desktop's; iOS lets an app write no code it then
+# runs), enabled as Rails enables it, compiling a method it calls
+# often enough into machine code. tasks/mobile_parity.rb builds it as
+# an app with fledge build ios and fledge build android, runs it on
+# each phone, and checks the line.
 require "json"
 require "csv"
 require "prism"

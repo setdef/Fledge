@@ -11,8 +11,7 @@ require_relative "github_api"
 # from GitHub's API alone.
 #
 # A full run of ci.yml on trunk covers a batch: every commit pushed since
-# the run before it started (doc/contributors/design/releases.md, "Runs,
-# batches, and the release commit"). When a batch goes red after a green
+# the run before it started. When a batch goes red after a green
 # one, any of its commits may be the one at fault. This class bisects
 # the batch with full runs of single commits, started on branches
 # <tt>bisect/SHA</tt>, judges each by the jobs that failed in the red

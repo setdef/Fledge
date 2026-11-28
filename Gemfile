@@ -25,8 +25,8 @@ gem "flog", "4.8.0"
 gem "steep"
 gem "rdoc", "~> 8.1"
 
-# Checks lib/fledge/config.schema.json and the examples against it
-# (doc/contributors/design/public-interface.md). Development only: nothing Fledge ships loads it.
+# Checks lib/fledge/config.schema.json and the examples against it. Development
+# only: nothing Fledge ships loads it.
 gem "json_schemer", "~> 2.5", group: :development
 
 # Lets test/basket_bridge_test.rb and test/basket_windows_test.rb load

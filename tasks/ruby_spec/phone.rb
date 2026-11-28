@@ -9,9 +9,8 @@ require "fileutils"
 require_relative "../mobile_parity"
 
 class RubySpec
-  # The ruby/spec comparison on phones (doc/contributors/design/parity.md,
-  # "ruby/spec on phones"): ruby/spec, run by MSpec, in a phone app built
-  # as a developer builds one, with fledge build ios or android and then
+  # The ruby/spec comparison on phones: ruby/spec, run by MSpec, in a phone app
+  # built as a developer builds one, with fledge build ios or android and then
   # Xcode or Gradle, in the iOS Simulator, on an iPhone and an iPad, and
   # on an Android emulator, each run's output read back from the system
   # log as the mobile parity check reads its probe's (MobileParity). It
@@ -75,8 +74,8 @@ class RubySpec
 
     EXCLUDED = [
       Exclusion.new(
-        reason: "Every example starts ruby with options or a script, and iOS lets no app start a program " \
-          "(doc/contributors/design/phone-projects.md, \"Parity on a phone\"). Android's runtime has a ruby program, " \
+        reason: "Every example starts ruby with options or a script, and iOS lets no app start a program. " \
+          "Android's runtime has a ruby program, " \
           "which RbConfig.ruby names, and runs them.",
         phones: %w[ios], files: ["command_line"], examples: [],
       ),
@@ -105,7 +104,7 @@ class RubySpec
           "backquotes, IO.popen, Open3, Process.wait and its kin, and IO#pid, and check each by starting the Ruby " \
           "under test, through RUBY_EXE or ruby_cmd rather than ruby_exe; " \
           "whether such a child that cannot start has ended when an example looks is a race. iOS has no such Ruby, " \
-          "since it lets no app start a program (doc/contributors/design/phone-projects.md, \"Parity on a phone\"), " \
+          "since it lets no app start a program, " \
           "so RbConfig.ruby names a program that is not there. Android runs them, as it runs command_line. The " \
           "examples kept start nothing: each asks whether a method is public or private, raises before any child " \
           "could be, waits with no child, or asks IO#tty? of a file or a closed stream.",
@@ -207,8 +206,8 @@ class RubySpec
         reason: "Each forks a child that goes on running Ruby, and whether an iOS device lets an app fork is " \
           "unchecked: Apple's SDK marks fork prohibited only on watchOS and tvOS (usr/include/unistd.h, line 459, " \
           "iOS 27.2 SDK), and that a device's sandbox denies it is others' report, such as CPython's iOS build's " \
-          "(\"no fork syscall\", configure.ac, line 7732 at v3.14.0), not Apple's " \
-          "(doc/contributors/design/phone-projects.md, \"Parity on a phone\"). The Simulator lets an app fork, as " \
+          "(\"no fork syscall\", configure.ac, line 7732 at v3.14.0), not Apple's. " \
+          "The Simulator lets an app fork, as " \
           "the Mac does, so a pass there would claim for iOS what only the Mac showed. Android lets an app fork, " \
           "and runs these.",
         phones: %w[ios],

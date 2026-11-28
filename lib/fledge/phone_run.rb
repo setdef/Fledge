@@ -12,17 +12,15 @@ module Fledge
   # emulator, prints what its program prints, and answers the program's
   # exit status, for <tt>fledge test</tt>.
   #
-  # A phone app's program writes to the system log, not to a terminal
-  # (doc/contributors/design/phone-runtimes.md, "Output to the system
-  # log"), and the app outlives it, so nothing waits on the program the
-  # way a shell waits on <tt>ruby test.rb</tt>. What does tell a reader
-  # the program has ended is the line every host Fledge writes logs once
-  # it has: <tt>NAME exited with status N</tt>, which the host logs where
-  # the program's output is not (iOS's category +app+, Android's tag of the
-  # identifier and +.host+), so that no output can pass for it. Briefcase's
-  # <tt>briefcase run iOS --test</tt> reads a test suite's result the same
-  # way, from a line its app logs at the end, and fails a run that
-  # logged none ("Test suite didn't report a result").
+  # A phone app's program writes to the system log, not to a terminal, and the
+  # app outlives it, so nothing waits on the program the way a shell waits on
+  # <tt>ruby test.rb</tt>. What does tell a reader the program has ended is the
+  # line every host Fledge writes logs once it has: <tt>NAME exited with status
+  # N</tt>, which the host logs where the program's output is not (iOS's
+  # category +app+, Android's tag of the identifier and +.host+), so that no
+  # output can pass for it. Briefcase's <tt>briefcase run iOS --test</tt> reads
+  # a test suite's result the same way, from a line its app logs at the end, and
+  # fails a run that logged none ("Test suite didn't report a result").
   #
   # This class reads the app's log over and over, through a device
   # (PhoneRun::IOS or PhoneRun::Android) that knows the system's log, and

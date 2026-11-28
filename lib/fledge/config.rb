@@ -19,7 +19,7 @@ module Fledge
   # What it cannot know is how the app presents
   # itself to the person who runs it: whether it opens windows or runs in
   # a terminal, the identifier the operating system knows it by, its
-  # icon, and its copyright (decision 18). A project that needs none of
+  # icon, and its copyright. A project that needs none of
   # it needs no file. Nor can it know which of a project's programs ship
   # together: list them under +programs+ (Config::Program), each with its
   # own path, name, kind, identifier, and icon, and they ship as one
@@ -28,8 +28,7 @@ module Fledge
   # that no gem supplies, such as SDL3's host for a game whose SDL owns
   # the main loop: name a folder of them under +ios+ or +android+
   # (Config::Phone), and <tt>fledge build ios</tt> or <tt>fledge build
-  # android</tt> copies them over the project it writes
-  # (doc/contributors/design/phone-projects.md, "Host files"). Nor
+  # android</tt> copies them over the project it writes. Nor
   # can it know which libraries a project's gems may load from a Linux
   # distribution, such as a webview's WebKitGTK: list them under +linux+
   # (Config::Linux), and the build accepts them, and a <tt>.deb</tt>
@@ -51,7 +50,7 @@ module Fledge
   #
   # An editor can check the file as you type, before a build does.
   # <tt>config.schema.json</tt>, beside this file, is a JSON Schema of
-  # these keys and rules (doc/contributors/design/public-interface.md). Name it on the file's first line, at
+  # these keys and rules. Name it on the file's first line, at
   # the tag your Gemfile installs Fledge from, and an editor that runs
   # Red Hat's YAML language server, such as VS Code with Red Hat's YAML
   # extension, completes each key and value, shows what each means, and

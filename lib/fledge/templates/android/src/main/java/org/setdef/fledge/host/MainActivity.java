@@ -10,19 +10,19 @@ import java.util.function.IntConsumer;
 import org.setdef.fledge.FledgeRuby;
 
 /**
- * The app's activity, written by fledge build
- * (doc/contributors/design/phone-projects.md): it runs the app's Ruby
- * program, as fledge.cfg in the asset fledge.zip names it, with
- * FledgeRuby, on the main thread, the thread the process started on, as
- * ruby main.rb runs a program on a computer, with no arguments, since a
- * phone has no command line. What the program prints goes to logcat
- * under the app's identifier, and its exit status under the identifier
- * and ".host". Ruby runs once per process, so an Activity Android
- * creates again does not start it again. The activity shows nothing of its own: a program that shows
- * a screen draws it with Android's views on this activity, and hands the
- * main thread back to Android by running its loop of messages
- * (doc/contributors/design/phone-widgets.md, "Threads"). Change this
- * file as your app needs; FledgeRuby's call is what it must keep.
+ * The app's activity, written by fledge build: it runs the app's
+ * Ruby program, as fledge.cfg in the asset fledge.zip names it,
+ * with FledgeRuby, on the main thread, the thread the process
+ * started on, as ruby main.rb runs a program on a computer, with
+ * no arguments, since a phone has no command line. What the
+ * program prints goes to logcat under the app's identifier, and
+ * its exit status under the identifier and ".host". Ruby runs
+ * once per process, so an Activity Android creates again does
+ * not start it again. The activity shows nothing of its own: a
+ * program that shows a screen draws it with Android's views on
+ * this activity, and hands the main thread back to Android by
+ * running its loop of messages. Change this file as your app
+ * needs; FledgeRuby's call is what it must keep.
  */
 public class MainActivity extends Activity {
     private static boolean started;

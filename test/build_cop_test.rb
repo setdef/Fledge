@@ -11,10 +11,9 @@ require_relative "../tasks/build_cop"
 require "json"
 require "uri"
 
-# How the build cop finds the commit that turned trunk's full run red
-# (doc/contributors/design/releases.md, "The build cop"): it bisects the
-# batch between the last green run and the first red one with runs of
-# single commits, judges each by the jobs that failed in the red run,
+# How the build cop finds the commit that turned trunk's full run red: it
+# bisects the batch between the last green run and the first red one with runs
+# of single commits, judges each by the jobs that failed in the red run,
 # runs the first bad commit's failed jobs again, and names it to revert
 # only when they fail twice. Each case is a trunk of six commits, A the
 # oldest and F the newest, whose runs a loopback server serves at

@@ -9,12 +9,12 @@ import android.util.Log;
 import org.setdef.fledge.FledgeRuby;
 
 /**
- * A host of the kind a framework that owns startup ships (fledge.yml's
- * android: host:): Fledge's own MainActivity, but loading the native
- * libraries a host may name, fledgeruby and fledgeext, in a fixed list,
- * as SDL's SDLActivity loads the ones getLibraries() returns, whatever
- * Fledge put inside them. It shows that such a host starts the app
- * (doc/contributors/design/public-interface.md, "Phones").
+ * A host of the kind a framework that owns startup ships
+ * (fledge.yml's android: host:): Fledge's own MainActivity,
+ * but loading the native libraries a host may name, fledgeruby
+ * and fledgeext, in a fixed list, as SDL's SDLActivity loads
+ * the ones getLibraries() returns, whatever Fledge put inside
+ * them. It shows that such a host starts the app.
  */
 public class MainActivity extends Activity {
     private static final String[] LIBRARIES = {"fledgeruby", "fledgeext"};

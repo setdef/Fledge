@@ -5,23 +5,23 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# The app that shows a framework's host at work
-# (doc/contributors/design/phone-projects.md, "A host that owns the main
-# loop"), on iOS, iPadOS, and Android: Ruby drives
-# a frame loop that SDL3 runs, from a gem's C extension. Each frame, Ruby
-# picks the background's color, which cycles, and the place of a white
-# square, which follows the last touch. It prints the thread it runs on,
-# how deep its stack is, the frames it has drawn, and each touch, which
-# the Mobile apps jobs read from the system log. It stops a moment after
-# the first touch, or after a minute.
+# The app that shows a framework's host at work, on iOS,
+# iPadOS, and Android: Ruby drives a frame loop that
+# SDL3 runs, from a gem's C extension. Each frame, Ruby
+# picks the background's color, which cycles, and the
+# place of a white square, which follows the last touch.
+# It prints the thread it runs on, how deep its stack
+# is, the frames it has drawn, and each touch, which the
+# Mobile apps jobs read from the system log. It stops a
+# moment after the first touch, or after a minute.
 require "sdl_demo"
 
-# Each line reaches the log as it is printed, not when the game ends:
-# standard output is a pipe on a phone, which Ruby otherwise buffers.
-# The runtimes after Fledge 0.5.0 write each line through themselves
-# (doc/contributors/design/phone-runtimes.md,
-# "Output to the system log"); this line keeps the game's lines prompt
-# with 0.5.0's and earlier.
+# Each line reaches the log as it is printed,
+# not when the game ends: standard output is a
+# pipe on a phone, which Ruby otherwise buffers.
+# The runtimes after Fledge 0.5.0 write each
+# line through themselves; this line keeps the
+# game's lines prompt with 0.5.0's and earlier.
 $stdout.sync = true
 
 # How deep Ruby recurses here before SystemStackError, through a C

@@ -12,8 +12,7 @@
  * ('odoc'), sent once the app has checked in with it. Windows and Linux
  * give the path in argv, and so does ruby main.rb FILE, so the launcher
  * takes that one event before Ruby starts and gives the program its
- * paths as arguments after any it was given
- * (doc/contributors/design/launcher.md, "Documents opened on macOS").
+ * paths as arguments after any it was given.
  *
  * It does so only for a bundle that declares document types
  * (CFBundleDocumentTypes, written from fledge.yml's file_associations)

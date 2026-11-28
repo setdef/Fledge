@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# The recipes in doc/package_managers.md, installed by each manager's own
-# tool on a fresh runner: Fledge installs from a tag with Bundler, as the
+# The recipes in test/fixtures/package_managers, installed by each manager's
+# own tool on a fresh runner: Fledge installs from a tag with Bundler, as the
 # README says, and builds examples/hello with that version's published
-# runtime; then, on a runner that set up no Ruby, the recipes, taken from
-# the guide itself, install that build from a local server that stands in
-# for a release, and the app runs by its command with no Ruby on PATH,
-# and uninstalls. installed.yml calls this after a release.
+# runtime; then, on a runner that set up no Ruby, the recipes install that
+# build from a local server that stands in for a release, and the app
+# runs by its command with no Ruby on PATH, and uninstalls. installed.yml
+# calls this after a release.
 
 name: Package managers
 
@@ -44,8 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-26, the macOS floor (doc/contributors/design/
-          # releases.md, "Which macOS each job runs on").
+          # macos-26, the macOS floor.
           - { os: macos-26, platform: arm64-darwin }
           - { os: ubuntu-24.04, platform: x86_64-linux }
           - { os: ubuntu-24.04-arm, platform: aarch64-linux }
@@ -133,7 +132,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             .github/scripts
-            doc/package_managers.md
+            test/fixtures/package_managers
             runtime/licenses.yml
             runtime/sources.yml
           sparse-checkout-cone-mode: false
@@ -157,10 +156,10 @@ jobs:
         shell: pwsh
         run: Start-Process -FilePath python -ArgumentList '-m', 'http.server', '8765', '--bind', '127.0.0.1', '--directory', "$env:RUNNER_TEMP\dist" -WindowStyle Hidden
 
-      - name: Write the recipes from the guide
+      - name: Write the recipes from the fixtures
         run: |
           .github/scripts/package-manager-serve.sh "$BASE_URL"
-          .github/scripts/package-manager-recipes.sh doc/package_managers.md "$RUNNER_TEMP/dist" "$BASE_URL" "$RUNNER_TEMP/recipes"
+          .github/scripts/package-manager-recipes.sh test/fixtures/package_managers "$RUNNER_TEMP/dist" "$BASE_URL" "$RUNNER_TEMP/recipes"
           find "$RUNNER_TEMP/recipes" -type f
 
       - name: Install with Scoop, run, and uninstall

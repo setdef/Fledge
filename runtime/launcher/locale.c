@@ -7,8 +7,7 @@
  * The locale an app's Ruby starts in, on macOS and Linux, and in the
  * mobile runtimes (runtime/mobile/fledge_ruby.c), whose apps the system
  * starts with no LANG at all. The runtime's bin/ruby (ruby_main.c) calls
- * it too, so a Ruby the app starts is in the app's locale
- * (doc/contributors/design/launcher.md, "The locale").
+ * it too, so a Ruby the app starts is in the app's locale.
  */
 
 #include "launcher.h"

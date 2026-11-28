@@ -27,8 +27,7 @@ module Fledge
   # follows redirects, as GitHub's release downloads need, but never
   # from HTTPS to plain HTTP. A host that fails for a moment, with a
   # 408, a 429, a 5xx, or a connection that fails or breaks off, is
-  # asked again a few times, as Bundler asks again for a gem
-  # (doc/contributors/design/runtimes.md, "Download retries"); a missing
+  # asked again a few times, as Bundler asks again for a gem; a missing
   # file, a refusal, or a mismatch fails at once.
   #
   # Use it to fetch anything Fledge pins by SHA-256.
@@ -106,8 +105,7 @@ module Fledge
     # asked for a floor, and Cargo's floor is 10 bytes a second over 30;
     # Fledge's files are tens to hundreds of megabytes, where 10 kB a
     # second already means hours, and a new connection usually reaches a
-    # faster server (doc/contributors/design/runtimes.md, "Download
-    # retries").
+    # faster server.
     PACE = Pace.new(bytes: 10_000, seconds: 30, report: 15)
 
     # A download whose SHA-256 is not the one it was pinned to.

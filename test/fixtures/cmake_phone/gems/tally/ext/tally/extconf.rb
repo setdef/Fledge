@@ -5,13 +5,13 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# Builds the C++ library in lib/ with CMake, and then, with mkmf, the C
-# extension that links it, as a gem over a native engine does. Nothing
-# here names a phone: on one, fledge build runs this once for each
-# target and puts that target's toolchain file in CMAKE_TOOLCHAIN_FILE,
-# which CMake reads when a build folder is new
-# (doc/contributors/design/phone-projects.md, "CMake toolchain files"); on a
-# desktop CMake builds for the desktop.
+# Builds the C++ library in lib/ with CMake, and then, with
+# mkmf, the C extension that links it, as a gem over a
+# native engine does. Nothing here names a phone: on one,
+# fledge build runs this once for each target and puts that
+# target's toolchain file in CMAKE_TOOLCHAIN_FILE, which
+# CMake reads when a build folder is new; on a desktop
+# CMake builds for the desktop.
 require "mkmf"
 
 source = File.expand_path("lib", __dir__)

@@ -15,8 +15,7 @@ class MobileParity
   # Play takes, and each APK checked for Play's 16 KB pages and target
   # API; each release bundle signed as a developer signs it for upload,
   # validated, and made into the split APKs Play would serve, which are
-  # checked the same way and against Play's download limit
-  # (doc/contributors/design/phone-projects.md, "The Android App Bundle check");
+  # checked the same way and against Play's download limit;
   # then, on the emulator CI's android-emulator-runner boots,
   # each app installed and started twice, from its debug APK with adb and
   # from its bundle's APKs with bundletool, its logcat read back each time.
@@ -97,9 +96,8 @@ class MobileParity
     # ("Resource missing", as #gradle_failure reads it). Some CI runners
     # were answered 404 for modules Maven Central holds, which Gradle
     # reports at once and does not cache, so the second build, in the
-    # same Gradle home with what the first fetched, asks again and passes
-    # (doc/contributors/design/phone-projects.md, "Gradle's downloads in
-    # CI"). Any other failure is final, and so is a second 404.
+    # same Gradle home with what the first fetched, asks again and passes. Any
+    # other failure is final, and so is a second 404.
     #
     # A second try that passes leaves nothing else in a job's log, since
     # the --info output goes to +log+, so one line goes to +out+ before
@@ -145,8 +143,7 @@ class MobileParity
     # their native libraries, which the package installer then does not
     # extract: the plugin asks for it when useLegacyPackaging is false.
     # The template compresses them, so that Android extracts the ruby
-    # program where an app may run it (doc/contributors/design/phone-projects.md,
-    # "The Gradle project").
+    # program where an app may run it.
     UNCOMPRESSED_NATIVE_LIBRARIES = /"uncompressNativeLibraries":\s*\{[^}]*"enabled":\s*true/
 
     # Checks the release bundle +aab+ as Play would take it, in +work+:
@@ -350,9 +347,7 @@ class MobileParity
     # entries it could not send to logd: liblog drops an entry when logd's
     # socket is full and tells the app nothing (logd_writer.cpp,
     # LogdWrite, at android-16.0.0_r1), and logs the count to the events
-    # buffer, under the tag liblog, with the process's next entry
-    # (doc/contributors/design/phone-runtimes.md, "Output to the system
-    # log").
+    # buffer, under the tag liblog, with the process's next entry.
     #
     # So when the probe's report comes back cut short (CutShort), and
     # only then, the launch's log is kept as logcat-IDENTIFIER-N.txt,
@@ -414,9 +409,7 @@ class MobileParity
     # and standard output as information, as the host logs its own lines
     # (runtime/mobile/android.c, fledge_log_write), each stream read by a
     # thread of its own, so logcat holds each stream's lines in order but
-    # the two interleaved as those threads happen to run
-    # (doc/contributors/design/phone-runtimes.md, "Output to the system
-    # log").
+    # the two interleaved as those threads happen to run.
     def self.messages(log, tag, standard_error: true)
       entry = %r{\A([VDIWEF])/#{Regexp.escape(tag)}(?:\.host)? *: ?(.*)\z}
       log.b.each_line(chomp: true).filter_map do |line|

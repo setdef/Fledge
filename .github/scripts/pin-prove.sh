@@ -2,15 +2,14 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# pin-watch.yml's proof of a move (doc/contributors/design/runtimes.md,
-# "The proof"). Moves every pin the watch's REPORT found behind, or only
-# NAME, with tasks/pin_move.rb, regenerates doc/licensing.md, commits
-# the move on top of the checkout, and pushes it to the branch pin-move,
-# which only this script writes. It then starts a full run of ci.yml on
-# that branch, waits for it, and deletes the branch. Green, it puts the
-# move on trunk: as it is when trunk has not moved, and rebased onto
-# trunk otherwise, when that rebases cleanly, with a run of ci.yml
-# started on trunk to judge the two together, since a push made with
+# pin-watch.yml's proof of a move. Moves every pin the watch's REPORT found
+# behind, or only NAME, with tasks/pin_move.rb, regenerates
+# docs/reference/licensing.md, commits the move on top of the checkout, and
+# pushes it to the branch pin-move, which only this script writes. It then
+# starts a full run of ci.yml on that branch, waits for it, and deletes the
+# branch. Green, it puts the move on trunk: as it is when trunk has not moved,
+# and rebased onto trunk otherwise, when that rebases cleanly, with a run of
+# ci.yml started on trunk to judge the two together, since a push made with
 # the workflow's token starts none.
 #
 #   .github/scripts/pin-prove.sh REPORT [NAME]
@@ -203,18 +202,18 @@ prove || proof=$?
 # Before the move lands, a proof with no run is the proof's failure.
 if [ "$proof" -eq "$no_run" ]; then exit 1; fi
 # A move that changes what a runtime holds (a new rv-ruby's gems, say)
-# leaves doc/licensing.md and runtime/audited.yml behind the runtimes
+# leaves docs/reference/licensing.md and runtime/audited.yml behind the runtimes
 # CI built; when that is all that failed, CI's Licensing page job has
 # uploaded both as they should be, and the move takes them and is
-# proved once more (license-audit.md, "The licensing page").
+# proved once more.
 if [ "$proof" -ne 0 ] &&
   [ "$(gh run view "$run" --json jobs --jq '[.jobs[] | select(.conclusion == "failure") | .name] | join(",")')" = "Licensing page is current" ]; then
   gh run download "$run" --name licensing-page --dir tmp/licensing-page
-  cp tmp/licensing-page/licensing.md doc/licensing.md
+  cp tmp/licensing-page/licensing.md docs/reference/licensing.md
   cp tmp/licensing-page/audited.yml runtime/audited.yml
-  git add doc/licensing.md runtime/audited.yml
+  git add docs/reference/licensing.md runtime/audited.yml
   git "${bot[@]}" commit --quiet --amend --no-edit
-  echo "Took doc/licensing.md and runtime/audited.yml from $url, and proving again." | tee -a "$summary"
+  echo "Took docs/reference/licensing.md and runtime/audited.yml from $url, and proving again." | tee -a "$summary"
   proof=0
   prove || proof=$?
   if [ "$proof" -eq "$no_run" ]; then exit 1; fi

@@ -12,8 +12,7 @@ require "stringio"
 require_relative "../support/android"
 require_relative "../support/ios"
 
-# Native gems on phones (doc/contributors/design/phone-projects.md,
-# "Gems with extensions"), compiled for real: a gem's extension for
+# Native gems on phones, compiled for real: a gem's extension for
 # every target of a phone, with the real mobile runtimes and tools
 # where this computer has them. test/mobile_extensions_test.rb covers
 # which extensions Fledge compiles and how it writes what links them.
@@ -291,8 +290,7 @@ class MobileExtensionsBuildTest < Minitest::Test
   end
 
   # test/fixtures/cmake_phone's extconf.rb runs CMake, which builds its C++
-  # library from CMAKE_TOOLCHAIN_FILE for each slice (doc/contributors/design/phone-projects.md,
-  # "CMake toolchain files"): the
+  # library from CMAKE_TOOLCHAIN_FILE for each slice: the
   # device's objects are for iOS and the Simulator's for the Simulator,
   # as each slice's extension is.
   def test_a_cmake_library_an_extconf_builds_is_built_for_each_ios_slice

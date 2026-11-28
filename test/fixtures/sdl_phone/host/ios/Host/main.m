@@ -1,19 +1,19 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT-0
 //
-// The app's entry point when SDL3 owns the screen
-// (doc/contributors/design/phone-projects.md, "A host that owns the
-// main loop"), in place of the Host/main.m fledge build writes.
-// SDL_RunApp starts UIKit with SDL's own delegates
-// (src/video/uikit/SDL_uikitappdelegate.m at release-3.4.18, lines 43
-// to 64), and once the scene connects calls run_ruby on the main
-// thread, inside the run loop (lines 354 to 420 and 481 to 489), where
-// SDL's video must run. run_ruby runs the app's Ruby program there,
-// with FledgeRuby's fledge_ruby_run_app, as Fledge's host does from
-// main, so Ruby can call SDL directly. The main thread's
-// stack is the one the executable asks for, with -Wl,-stack_size in
-// OTHER_LDFLAGS. Info.plist names SDLUIKitSceneDelegate as the scene's
-// delegate.
+// The app's entry point when SDL3 owns the screen, in place
+// of the Host/main.m fledge build writes. SDL_RunApp starts
+// UIKit with SDL's own delegates
+// (src/video/uikit/SDL_uikitappdelegate.m at
+// release-3.4.18, lines 43 to 64), and once the scene
+// connects calls run_ruby on the main thread, inside the
+// run loop (lines 354 to 420 and 481 to 489), where SDL's
+// video must run. run_ruby runs the app's Ruby program
+// there, with FledgeRuby's fledge_ruby_run_app, as Fledge's
+// host does from main, so Ruby can call SDL directly. The
+// main thread's stack is the one the executable asks for,
+// with -Wl,-stack_size in OTHER_LDFLAGS. Info.plist names
+// SDLUIKitSceneDelegate as the scene's delegate.
 @import FledgeRuby;
 @import Foundation;
 

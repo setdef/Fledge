@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>hello</id>
+    <version>1.0.0</version>
+    <title>Hello</title>
+    <authors>Example</authors>
+    <projectUrl>https://github.com/example/hello</projectUrl>
+    <description>Says hello</description>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

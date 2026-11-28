@@ -11,22 +11,22 @@
 #   sdl3/build.sh ios OUT        # on a Mac, with Xcode
 #   sdl3/build.sh android OUT    # with ANDROID_NDK_ROOT set
 #
-# It writes OUT/TARGET/include and OUT/TARGET/lib for each target, the
-# names the gem's extconf.rb looks for: ios-arm64 and
-# ios-arm64-simulator, static libraries, which link into the app's
-# executable as Fledge links extensions on iOS
-# (doc/contributors/design/phone-projects.md, "Linking extensions on
-# iOS"); and arm64-v8a
-# and x86_64, shared libraries, since SDL's Java side loads libSDL3.so
-# by name (SDLActivity.getLibraries) and SDL registers its Java methods
-# from that library's JNI_OnLoad (src/core/android/SDL_android.c, lines
-# 578 to 606). For Android it also copies SDL's Java classes, which the
-# Gradle project compiles, into the example's Android host, at
-# host/android/src/main/java/org/libsdl/app, where SDL's own
-# android-project holds them (docs/README-android.md, line 124), so that
-# fledge build android copies them into the project with the host's
-# MainActivity (doc/contributors/design/phone-projects.md, "A host that owns
-# the main loop"). Git ignores them there.
+# It writes OUT/TARGET/include and OUT/TARGET/lib for
+# each target, the names the gem's extconf.rb looks for:
+# ios-arm64 and ios-arm64-simulator, static libraries,
+# which link into the app's executable as Fledge links
+# extensions on iOS; and arm64-v8a and x86_64, shared
+# libraries, since SDL's Java side loads libSDL3.so by
+# name (SDLActivity.getLibraries) and SDL registers its
+# Java methods from that library's JNI_OnLoad
+# (src/core/android/SDL_android.c, lines 578 to 606). For
+# Android it also copies SDL's Java classes, which the
+# Gradle project compiles, into the example's Android
+# host, at host/android/src/main/java/org/libsdl/app,
+# where SDL's own android-project holds them
+# (docs/README-android.md, line 124), so that fledge
+# build android copies them into the project with the
+# host's MainActivity. Git ignores them there.
 #
 # Point the gem at OUT with Bundler: bundle config build.sdl_demo
 # --with-sdl3-builds=OUT, or BUNDLE_BUILD__SDL_DEMO in the environment.

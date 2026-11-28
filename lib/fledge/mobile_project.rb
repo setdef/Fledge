@@ -25,7 +25,7 @@ module Fledge
   # Briefcase's <tt>create iOS</tt> and <tt>create android</tt>, Flutter's
   # and React Native's templates, and Tauri's <tt>ios init</tt> and
   # <tt>android init</tt> write one, around the runtime's XCFramework or
-  # AAR (doc/contributors/design/phone-projects.md). The app inside it is what the desktop's built app holds
+  # AAR. The app inside it is what the desktop's built app holds
   # beside its launcher, in a folder named ROOT: Assembly::CONFIG, the
   # project in +app+, and the app's gems in Ruby's gem folder, which the
   # build puts beside the runtime's Ruby and the embedding API's
@@ -110,8 +110,7 @@ module Fledge
     # [extensions] The Fledge::MobileExtensions that compiles the gems'
     #              extensions against the runtime, which the project links
     #              into the app or carries as files, or +nil+ for an app
-    #              with none (doc/contributors/design/phone-projects.md,
-    #              "Gems with extensions").
+    #              with none.
     # [bundler] The version of the Bundler the app runs with in place of
     #           the runtime's own, which +files+ install
     #           (Fledge::AppGems#bundler), or +nil+ for the runtime's.
@@ -212,8 +211,7 @@ module Fledge
 
     # The folder of the project's own files for this system's project,
     # relative to the project's root, which <tt>fledge.yml</tt> names
-    # under +ios+ or +android+ (doc/contributors/design/phone-projects.md,
-    # "Host files"), or +nil+ for none. Raises
+    # under +ios+ or +android+, or +nil+ for none. Raises
     # Fledge::Error when it is not a folder, or leads out of the project
     # through a link.
     private def host_folder
@@ -227,8 +225,7 @@ module Fledge
     end
 
     # Copies the files in the project's folder +host+ over +project+,
-    # Generation Gap's hand-written half laid over the generated one
-    # (doc/contributors/design/phone-projects.md, "Host files"): each
+    # Generation Gap's hand-written half laid over the generated one: each
     # replaces Fledge's file at its path, or joins the project, before
     # Fledge fills its marks, so a host's copy of one of #template_files
     # keeps them. Says which of Fledge's files it replaced.
@@ -311,8 +308,7 @@ module Fledge
     # Finishes ROOT, +root+, with what each target's build of a gem left
     # for itself (MobileExtensions::Built#apart), as the system can carry
     # it: nothing, unless the system says otherwise, which leaves such a
-    # file out of an iOS app (doc/contributors/design/phone-projects.md,
-    # "Files a gem's build leaves").
+    # file out of an iOS app.
     private def place_apart(_root); end
 
     # Finishes ROOT, +root+, once the app and its gems are in it, as the

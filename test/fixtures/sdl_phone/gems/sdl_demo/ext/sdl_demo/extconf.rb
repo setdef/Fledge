@@ -5,14 +5,14 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# Links SDL3 into the extension. On a phone, fledge build runs this once
-# for each target, with that target's compiler in RbConfig
-# (doc/contributors/design/phone-projects.md, "Gems with extensions"), and
-# passes it the options of bundle config build.sdl_demo, which name the
-# folder sdl3/build.sh wrote: --with-sdl3-builds=DIR, holding a build of
-# SDL3 for each target, in DIR/TARGET. The flags SDL's own sdl3.pc names
-# are what the app links. On a desktop, pkg-config finds an SDL3 the
-# computer has.
+# Links SDL3 into the extension. On a phone, fledge build
+# runs this once for each target, with that target's
+# compiler in RbConfig, and passes it the options of
+# bundle config build.sdl_demo, which name the folder
+# sdl3/build.sh wrote: --with-sdl3-builds=DIR, holding a
+# build of SDL3 for each target, in DIR/TARGET. The flags
+# SDL's own sdl3.pc names are what the app links. On a
+# desktop, pkg-config finds an SDL3 the computer has.
 require "mkmf"
 
 # The phone's target this extconf.rb compiles for, from the compiler

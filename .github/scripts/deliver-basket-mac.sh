@@ -32,8 +32,8 @@
 # launcher removes RUBYOPT and every other variable that could put a Ruby
 # file into the program it starts, so nothing outside can ask the
 # launched program to drive itself. Key events that a process sent to
-# its own NSApplication did not press the default button when the
-# research tried them, so the driver presses Add and Delete as AppKit
+# its own NSApplication did not press the default button, so the
+# driver presses Add and Delete as AppKit
 # does when they are clicked.
 #
 # A run that has not ended after 90 seconds fails. The first run ends

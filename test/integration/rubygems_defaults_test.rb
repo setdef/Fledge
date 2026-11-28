@@ -100,9 +100,7 @@ class RubygemsDefaultsTest < Minitest::Test
   # RubyInstaller::Runtime.enable_dll_search_paths, which loads these
   # files, adds Ruby's archdir to the DLL search, converting it to
   # UTF-16LE for Windows, and then MSYS2's bin folder; the defaults load
-  # the same files and the same encoding, and add the archdir alone
-  # (doc/contributors/design/runtimes.md, "The DLLs a compiled gem finds
-  # on Windows").
+  # the same files and the same encoding, and add the archdir alone.
   def test_on_windows_rubyinstallers_start_up_files_are_loaded_and_only_the_archdir_is_searched
     files, ruby_installer, win32, utf16le, folders = ruby_installer_after_boot(windows: true)
 

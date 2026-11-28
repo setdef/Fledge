@@ -13,9 +13,7 @@ require_relative "ruby_spec/listing"
 
 # The ruby/spec comparison: ruby/spec, run by MSpec, on stock Ruby and in
 # a built app, with every example that fails on one side only either
-# justified in JUSTIFIED or failing the check
-# (doc/contributors/design/parity.md, "ruby/spec"; architecture.md,
-# "What the design answers to").
+# justified in JUSTIFIED or failing the check.
 #
 # It downloads ruby/spec and MSpec at their pinned commits (SOURCES),
 # each checked against its SHA-256, and writes a project of
@@ -178,11 +176,10 @@ class RubySpec
       reason: "Each example sets RLIMIT_STACK to the limits Process.getrlimit gave (core/process/setrlimit_spec.rb, " \
         "lines 73 and 153), and Darwin refuses that with EINVAL in a process whose executable asks for its main " \
         "thread's stack with ld's -stack_size, which Fledge's iOS project does for the 64 MB Ruby runs with on the " \
-        "main thread (doc/contributors/design/phone-widgets.md, \"Threads\"): on a Mac, a C program that calls " \
+        "main thread: on a Mac, a C program that calls " \
         "setrlimit with what getrlimit returned (cur 8372224, max 67092480) succeeds, and the same program linked " \
         "with -Wl,-stack_size,0x4000000 gets EINVAL with the same limits. Without the flag Apple documents 1 MB for " \
-        "an iPhone's main thread, where Ruby recurses about a fifth as deep (doc/contributors/device-test.md, " \
-        "\"The stack\").",
+        "an iPhone's main thread, where Ruby recurses about a fifth as deep.",
     ),
     Justification.new(
       examples: [
@@ -190,8 +187,7 @@ class RubySpec
       ],
       side: :app, platforms: %w[arm64-ios-simulator],
       reason: "The example's one expectation for a login name compares it with what logname or id -un prints, and an " \
-        "iOS app can start neither, so MSpec finds no expectation in it (doc/contributors/design/phone-projects.md, " \
-        "\"Parity on a phone\").",
+        "iOS app can start neither, so MSpec finds no expectation in it.",
     ),
     Justification.new(
       examples: [
@@ -201,7 +197,7 @@ class RubySpec
       side: :app, platforms: ANDROID,
       reason: "RbConfig names the NDK's archiver and strip the runtime was built with, on the computer that built " \
         "it; a phone has no toolchain, and an app needs one only to compile, which Fledge does on the developer's " \
-        "computer (doc/contributors/design/phone-projects.md, \"Gems with extensions\").",
+        "computer.",
     ),
     Justification.new(
       examples: [
@@ -270,8 +266,7 @@ class RubySpec
       side: :stock, platforms: ANDROID, outcome: :runs,
       reason: "ruby/spec runs these only where RbConfig::CONFIG['CROSS_COMPILING'] is not \"yes\" " \
         "(command_line/rubyopt_spec.rb, line 25), and the Android runtime's Ruby is compiled with the NDK on the " \
-        "computer that builds it, a cross build (doc/contributors/design/" \
-        "phone-runtimes.md, \"Building Ruby for a phone\").",
+        "computer that builds it, a cross build.",
     ),
     Justification.new(
       examples: [

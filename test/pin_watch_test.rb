@@ -10,8 +10,7 @@ require_relative "support/loopback_server"
 require_relative "../tasks/pin_watch"
 require "stringio"
 
-# The watch that finds a pin upstream has released a newer version of
-# (doc/contributors/design/runtimes.md, "Keeping the pins current"),
+# The watch that finds a pin upstream has released a newer version of,
 # against what each upstream answered on 2026-11-22, saved in
 # test/fixtures/pin_watch with each answer cut down to what the watch
 # reads: the tags and flags of GitHub's releases, and the lines of each

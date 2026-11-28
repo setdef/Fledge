@@ -48,7 +48,7 @@ module Fledge
     # The servers that answer 403 for a gem file they do not have, and need
     # no login for any file they have: RubyGems.org, whose files come from
     # a storage bucket that answers 403 (AccessDenied) for a name it does
-    # not hold (doc/contributors/design/gems.md, "Fetching a gem's file").
+    # not hold.
     PUBLIC_SERVERS = ["rubygems.org"].freeze
 
     # The hosts whose 403 to a request without a login means they have no

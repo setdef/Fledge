@@ -20,8 +20,7 @@ module Fledge
     # next. Fledge derives both from the app's +version+ (Fledge::MacBundle),
     # so two builds of one version cannot differ; +build+ sets the second,
     # as Tauri's <tt>bundleVersion</tt> and Briefcase's +build+ do; the
-    # reserved <tt>ios: build</tt> takes the same shape
-    # (doc/contributors/design/public-interface.md, "Reserved names").
+    # reserved <tt>ios: build</tt> takes the same shape.
     #
     # A gem's compiled file may link a library the developer installed
     # with a package manager, such as Homebrew's SDL, which no Mac has
@@ -29,8 +28,7 @@ module Fledge
     # carry from this computer, by the file name the compiled files give
     # it, as <tt>linux: system_libraries</tt> names the distribution's:
     # the developer chooses every library the app distributes, and its
-    # license is the developer's to honor (the decision of
-    # 2026-11-22; Fledge::CarriedLibraries).
+    # license is the developer's to honor (Fledge::CarriedLibraries).
     #
     # This class reads the mapping: its +build+, one to three whole
     # numbers between periods, Apple's rule for +CFBundleVersion+, and

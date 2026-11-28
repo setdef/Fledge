@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
+# Example.Hello.locale.en-US.yaml
+PackageIdentifier: Example.Hello
+PackageVersion: 1.0.0
+PackageLocale: en-US
+Publisher: Example
+PackageName: Hello
+License: MIT
+ShortDescription: Says hello
+ManifestType: defaultLocale
+ManifestVersion: 1.12.0

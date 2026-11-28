@@ -9,8 +9,7 @@ require_relative "../test_helper"
 require "open3"
 require_relative "../support/ios"
 
-# Whether a Fiddle::Closure works on an iPhone
-# (doc/contributors/research/2026-11-25-pure-ruby-uikit.md, section 1).
+# Whether a Fiddle::Closure works on an iPhone.
 # fiddle makes a closure with libffi's +ffi_closure_alloc+ when its
 # extconf.rb finds that function, which on Apple's arm64 takes an entry
 # of a trampoline table compiled into the signed binary; without it,

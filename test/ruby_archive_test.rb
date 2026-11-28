@@ -134,10 +134,9 @@ class RubyArchiveTest < Minitest::Test
     end
   end
 
-  # What the archive carries is what a runtime carries (doc/contributors/
-  # design/license-audit.md): NOTICES.txt and the SBOM in notices/, and
-  # the source of its LGPL library in notices/sources/, made by the
-  # license audit, which refuses an archive holding a file nothing
+  # What the archive carries is what a runtime carries: NOTICES.txt and the SBOM
+  # in notices/, and the source of its LGPL library in notices/sources/, made by
+  # the license audit, which refuses an archive holding a file nothing
   # accounts for.
   def test_the_archive_carries_notices_an_sbom_and_the_source_of_its_lgpl_library
     TestReaders.need(self, :elf)

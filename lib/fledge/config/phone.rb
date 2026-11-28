@@ -11,10 +11,9 @@ module Fledge
   class Config
     # What a project's <tt>fledge.yml</tt> says under +ios+ or +android+
     # about the project <tt>fledge build ios</tt> or <tt>fledge build
-    # android</tt> writes (doc/contributors/design/phone-projects.md, "Host
-    # files").
+    # android</tt> writes.
     #
-    # Fledge writes each phone's project afresh on every build (doc/contributors/design/phone-projects.md),
+    # Fledge writes each phone's project afresh on every build,
     # so a change made to it by hand lasts until the next build. Some apps
     # need one all the same: a game whose SDL3 owns the main loop needs
     # SDL's <tt>main.m</tt> on iOS and SDL's Activity on Android, which no

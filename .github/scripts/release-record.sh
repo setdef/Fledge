@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# cut.yml's record on trunk of a release made off it
-# (doc/contributors/design/releases.md, "How a release is made").
+# cut.yml's record on trunk of a release made off it.
 #
 #   .github/scripts/release-record.sh VERSION COMMIT PIN
 #
@@ -11,7 +10,7 @@
 # it stands, it writes VERSION wherever a release names it, moves the
 # entries that were unreleased at COMMIT under VERSION in CHANGELOG.md,
 # leaving those that landed since, takes PIN's lib/fledge/SHA256SUMS,
-# regenerates doc/licensing.md, and pushes that one commit to trunk,
+# regenerates docs/reference/licensing.md, and pushes that one commit to trunk,
 # with a run of ci.yml started there, since a push made with the
 # workflow's token starts none. A push another push beat is tried again
 # on the new trunk.

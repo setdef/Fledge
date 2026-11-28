@@ -4,8 +4,7 @@
 # The fast tier's macOS leg: the unit tests (bundle exec rake test,
 # CONTRIBUTING.md, "The tests") on a Mac, on every push and pull
 # request, beside fast.yml's lint and its unit tests on Linux and
-# Windows (doc/contributors/design/releases.md, "Runs, batches, and the
-# release commit").
+# Windows.
 #
 # It is a workflow of its own for the reason fast.yml is: GitHub ends a
 # run, and gh run list reports its conclusion, only when its slowest
@@ -19,8 +18,7 @@
 #
 # Any current macOS on Apple silicon will do for the unit tests, so the
 # job runs on macos-26, the label whose runners came sooner, and the one
-# every ci.yml job on a Mac runs on since the macOS floor is 26
-# (doc/contributors/design/releases.md, "Which macOS each job runs on").
+# every ci.yml job on a Mac runs on since the macOS floor is 26.
 
 name: Fast (macOS)
 

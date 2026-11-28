@@ -10,8 +10,7 @@ require "open3"
 require "rbconfig"
 
 # The mobile embedding API's forwarding of standard output and standard
-# error to the system's log (runtime/mobile/output.c; doc/contributors/design/phone-runtimes.md,
-# "Output to the system log"), compiled
+# error to the system's log (runtime/mobile/output.c), compiled
 # with this computer's C compiler beside a log that writes each entry to
 # a file, as os_log and logcat would keep it, and run: what a program
 # prints must reach the log line by line, standard error's marked as

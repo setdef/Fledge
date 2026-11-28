@@ -18,8 +18,7 @@ module Fledge
   # that computer has (nokogiri's vendored libxml2, built from source on a
   # Mac with Homebrew, linked Homebrew's liblzma), and the app would then
   # fail to start everywhere else, with a loader's error that names a gem,
-  # which a person who runs the app must never meet (doc/contributors/design/architecture.md,
-  # "What the design answers to").
+  # which a person who runs the app must never meet.
   #
   # This class reads each compiled file of a gem in the format of the
   # target's own loader, ELF, Mach-O, or PE, since a loader loads no other
@@ -39,7 +38,7 @@ module Fledge
   # would find it there (Fledge::Linkage::Dyld), so a run path into
   # Homebrew's folder does not count, however the copy is named. It judges
   # nothing else: what a gem compiles in, and under what license, is the
-  # app's developer's to decide (decisions of 2026-10-28).
+  # app's developer's to decide.
   #
   # Use it for each gem an app ships, through Fledge::AppGems.
   #

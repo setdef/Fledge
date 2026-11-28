@@ -135,8 +135,7 @@ if ((Get-Item -LiteralPath $err).Length -ne 0) { Get-Content -LiteralPath $err; 
 if ((Text $out) -cne (Text $Expected)) { Fail "md2html printed other HTML than bundle exec: $(Text $out)" }
 Write-Host 'ok: md2html prints what bundle exec prints'
 
-# The ProgID the app has for an extension, as
-# doc/contributors/design/desktop-apps.md, "The ProgID", specifies: the
+# The ProgID the app has for an extension: the
 # identifier with every character but letters, digits, and periods
 # removed, periods squeezed, leading digits and periods removed, cut to
 # 28 characters with no trailing period, then a period and the first ten

@@ -10,15 +10,13 @@ require "open3"
 require_relative "../support/android"
 require_relative "../support/ios"
 
-# How each phone's tools read the names an extension's object defines
-# (doc/contributors/design/phone-projects.md, "Each linked extension's
-# symbols"), from an object that also carries LLVM bitcode in a section
-# LLVM's nm reads names from in place of the symbol table: on iOS
-# __LLVM,__bitcode, which Rust's standard library carries, and where an
-# nm older than Rust's LLVM stops; on Android .llvm.lto, a fat LTO
-# object's, since that nm reads no other ELF section, Rust's .llvmbc
-# among them. Each test's object carries bitcode no LLVM reads in that
-# section, and shows first that its nm, reading it as it would by
+# How each phone's tools read the names an extension's object defines, from an
+# object that also carries LLVM bitcode in a section LLVM's nm reads names from
+# in place of the symbol table: on iOS __LLVM,__bitcode, which Rust's standard
+# library carries, and where an nm older than Rust's LLVM stops; on Android
+# .llvm.lto, a fat LTO object's, since that nm reads no other ELF section,
+# Rust's .llvmbc among them. Each test's object carries bitcode no LLVM reads in
+# that section, and shows first that its nm, reading it as it would by
 # default, stops; the iOS tests also read an object of Rust's own
 # standard library. Without
 # Xcode, the NDK, or Rust's iOS targets they skip, and fail instead

@@ -52,16 +52,16 @@ module Basket
   #   stack.edgeInsets = [20.0, 20.0, 20.0, 20.0]
   #   window.setContentSize([480.0, 360.0])
   #
-  # On 64-bit ARM, which is every Mac and iPhone Fledge builds for, a
-  # struct of up to four doubles travels as that many doubles, so it is
-  # passed as that many arguments. A struct a method returns cannot come
-  # back: Fiddle returns one register. Plain Fiddle reaches what this
-  # module leaves out, since Basket needs none of it: a struct result
-  # comes back whole through NSInvocation, an NSRange is two integers,
-  # and a block is a structure in memory Ruby owns, whose class is
-  # _NSConcreteGlobalBlock and whose function is a Fiddle::Closure
-  # (Fledge's doc/contributors/research/2026-11-25-pure-ruby-uikit.md,
-  # section 3).
+  # On 64-bit ARM, which is every Mac and iPhone Fledge
+  # builds for, a struct of up to four doubles travels as
+  # that many doubles, so it is passed as that many
+  # arguments. A struct a method returns cannot come back:
+  # Fiddle returns one register. Plain Fiddle reaches what
+  # this module leaves out, since Basket needs none of it: a
+  # struct result comes back whole through NSInvocation, an
+  # NSRange is two integers, and a block is a structure in
+  # memory Ruby owns, whose class is _NSConcreteGlobalBlock
+  # and whose function is a Fiddle::Closure.
   module ObjC
     # libobjc, which every process of Apple's systems links through
     # Foundation.

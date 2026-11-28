@@ -17,7 +17,7 @@ module Fledge
   # The name in a Dock, a taskbar, Task Manager, and a Start menu, the
   # icon beside it, the version and publisher in a Properties dialog, and
   # the identifier macOS and Windows check before they let an app send a
-  # notification are all the developer's to decide (decision 18), and
+  # notification are all the developer's to decide, and
   # whether the app opens windows or runs in a terminal decides which of
   # them each operating system asks for.
   #

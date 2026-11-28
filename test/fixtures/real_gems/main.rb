@@ -5,12 +5,12 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# What fledge build delivers of the gems real apps lock
-# (doc/contributors/design/gems.md, "Examples that exercise these
-# rules"). Each
-# part comes from a different kind of gem; the last runs a gem's
-# executable the way a program finds one, in Gem.bindir, with no Ruby on
-# the PATH.
+# What fledge build delivers of the
+# gems real apps lock. Each part comes
+# from a different kind of gem; the
+# last runs a gem's executable the way
+# a program finds one, in Gem.bindir,
+# with no Ruby on the PATH.
 require "wisper"
 require "shared"
 require "greeter"

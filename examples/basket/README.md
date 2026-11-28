@@ -85,7 +85,7 @@ The setup program and the `.zip` ask Windows for nothing, so Basket draws the sc
 - [`lib/basket/list.rb`](lib/basket/list.rb) and [`lib/basket/data_folder.rb`](lib/basket/data_folder.rb): the list every screen shares, and where it keeps its file.
 - [`lib/basket/objc.rb`](lib/basket/objc.rb), [`gtk.rb`](lib/basket/gtk.rb), [`winrt.rb`](lib/basket/winrt.rb), [`win32.rb`](lib/basket/win32.rb), and [`android/`](lib/basket/android): Basket's calls into each system's libraries over Fiddle, which each screen builds on.
 - [`fledge.yml`](fledge.yml): Basket's name, icon, and installers, and why its `.msix` depends on the Windows App Runtime and its `.deb` on the packages GTK needs.
-- [Desktop apps](../../doc/desktop_apps.md#draw-the-window-with-each-systems-widgets) and [iPhone, iPad, and Android](../../doc/phones.md#your-apps-screen) say how each screen works, and what differs from a program in C or Objective-C.
+- [iPhone, iPad, and Android](../../doc/phones.md#your-apps-screen) says how a phone's screen works, and what differs from a program in C or Objective-C.
 
 ## Use this example if you need to
 

@@ -12,8 +12,7 @@ require "open3"
 class RuntimeBuilder
   # What a runtime is built from, as a digest per input, so that a runtime
   # left in tmp/runtime is reused only when nothing it is built from has
-  # changed (doc/contributors/design/runtimes.md, "A runtime left in
-  # tmp/runtime"). The inputs are the pins (runtime/sources.yml), the rest
+  # changed. The inputs are the pins (runtime/sources.yml), the rest
   # of runtime/ (the launcher's C, the notices, the license records but
   # runtime/audited.yml, which CI's runs write), the build tasks and the
   # parts of lib/ they use, the platform, the computer that builds, Fledge's

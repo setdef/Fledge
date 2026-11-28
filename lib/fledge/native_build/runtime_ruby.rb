@@ -101,13 +101,11 @@ module Fledge
       # environment").
       #
       # A runtime that holds the headers, static libraries, and
-      # pkg-config files of the libraries its Ruby was built with
-      # (doc/contributors/design/runtimes.md, "What a runtime keeps for
-      # compiling gems") puts its pkg-config folder first in
-      # PKG_CONFIG_PATH and its include folder first in CPATH, which gcc
-      # and clang search before the system's headers, so that a gem finds
-      # those before the computer's; mkmf already links against the
-      # runtime's lib/ first.
+      # pkg-config files of the libraries its Ruby was built with puts its
+      # pkg-config folder first in PKG_CONFIG_PATH and its include folder first
+      # in CPATH, which gcc and clang search before the system's headers, so
+      # that a gem finds those before the computer's; mkmf already links against
+      # the runtime's lib/ first.
       def env
         env = @env.to_h.keys.grep(SCRUBBED).to_h { |name| [name, nil] } # : Hash[String, String?]
         given = @env.to_h["PKG_CONFIG_PATH"]

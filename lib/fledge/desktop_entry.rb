@@ -15,7 +15,7 @@ module Fledge
   # Linux desktops (GNOME, KDE, and the rest) show an app's name and icon
   # in their menus, docks, and window switchers from a desktop entry, a
   # <tt>.desktop</tt> file, and from icons in the hicolor icon theme's
-  # folders (decision 18). A folder with only a program in it shows a
+  # folders. A folder with only a program in it shows a
   # generic icon and a file name.
   #
   # This class writes them into the built app's folder, as the

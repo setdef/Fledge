@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# Pop is a windowed app, whose window Lota opens, so fledge build writes
-# a double-clickable app for each desktop. The identifier is what iOS and
-# Android know it by (doc/contributors/design/phone-projects.md). Lota draws with SDL3, which owns a
-# phone's screen, so each phone names Lota's host: the startup files
-# that run Ruby inside SDL. They are Lota's, in its gem, and
-# README.md says how they get here (doc/contributors/design/phone-projects.md,
-# "Host files").
+# Pop is a windowed app, whose window Lota opens, so
+# fledge build writes a double-clickable app for each
+# desktop. The identifier is what iOS and Android know
+# it by. Lota draws with SDL3, which owns a phone's
+# screen, so each phone names Lota's host: the startup
+# files that run Ruby inside SDL. They are Lota's, in
+# its gem, and README.md says how they get here.
 name: Pop
 kind: windowed
 identifier: com.setdef.fledge.Pop

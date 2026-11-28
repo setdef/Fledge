@@ -12,8 +12,7 @@
 # --from, and the licensing page's test, in about a quarter of an hour,
 # so a commit that breaks a runtime is judged alone, as the fast tier
 # judges each push's lint and unit tests, and not only in the batch
-# ci.yml's full run covers an hour later (doc/contributors/design/
-# releases.md, "The runtime's commit stage").
+# ci.yml's full run covers an hour later.
 #
 # It adds to the full run and takes nothing from it: ci.yml still
 # builds, tests, and delivers every runtime on every platform. The paths
@@ -39,7 +38,7 @@ on:
       - "Gemfile.lock"
       - "Rakefile"
       - "bin/**"
-      - "doc/licensing.md"
+      - "docs/reference/licensing.md"
       - "examples/**"
       - "exe/**"
       - "fledge.gemspec"

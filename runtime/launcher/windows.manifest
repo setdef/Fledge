@@ -19,7 +19,7 @@ process's ANSI code page (GetACP), from Windows 10 version 1903, so a
 Windows function that takes a narrow string reads Ruby's UTF-8 paths as
 UTF-8: ffi opens a gem's DLL with LoadLibraryExA, which under code page
 1252 finds no DLL under a folder named outside ASCII. ruby.exe declares
-no activeCodePage; doc/differences_from_ruby.md says what differs.
+no activeCodePage, so this is a difference from ruby.exe.
 -->
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">

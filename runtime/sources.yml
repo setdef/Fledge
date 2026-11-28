@@ -2,13 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 # Everything a runtime is built from that comes from outside this
-# repository, pinned by version and SHA-256 (doc/contributors/design/runtimes.md,
-# "Sources and pins"). rake runtime reads this file; a download whose
-# SHA-256 differs fails the build. Change a pin on purpose, and run
-# Delivery (ci.yml) before trusting it.
+# repository, pinned by version and SHA-256. rake runtime reads this file; a
+# download whose SHA-256 differs fails the build. Change a pin on purpose, and
+# run Delivery (ci.yml) before trusting it.
 
-# Ruby 4.1.0-preview1 for each target (doc/contributors/design/runtimes.md,
-# "Where each platform's Ruby comes from" and "Sources and pins"), but Windows,
+# Ruby 4.1.0-preview1 for each target, but Windows,
 # whose Ruby is a snapshot of Ruby's master of a month later, below.
 #
 # macOS and glibc Linux: jdx/ruby's relocatable CRuby builds
@@ -18,13 +16,11 @@
 # more than its last build of that Ruby, which it never publishes again,
 # and beside it a release VERSION, which it deletes and publishes again
 # with each build (its .github/workflows/release.yml), so a pin of
-# VERSION's files would change under its SHA-256 at the next build
-# (doc/contributors/design/runtimes.md, "Sources and pins"). The asset
+# VERSION's files would change under its SHA-256 at the next build. The asset
 # names carry the Ruby's version and not N. The Linux ones are built in
 # manylinux2014 containers against glibc 2.17, where rv-ruby's builds on
-# Ubuntu 24.04 need glibc 2.38 (doc/contributors/design/runtimes.md,
-# "The glibc floor"), and the Mac one on GitHub's macos-26 runner, whose
-# files declare macOS 26.0 ("The
+# Ubuntu 24.04 need glibc 2.38, and the Mac one on GitHub's macos-26 runner,
+# whose files declare macOS 26.0 ("The
 # Mac's Ruby is jdx/ruby's"). Each carries a static libruby the launcher
 # links, the standard library the runtime ships, and the OpenSSL and
 # libyaml gems compile against ("What a runtime keeps for compiling
@@ -44,14 +40,11 @@
 # against RubyInstaller's package signing key as rubyinstaller2's own
 # repository records it (recipes/unpack/appveyor-repo-key.asc), at a
 # pinned commit and pinned by SHA-256; the signature must be that key's,
-# by fingerprint. The key expires on 2027-06-15; how to move to a renewed
-# key is in doc/contributors/design/runtimes.md, "The RubyInstaller
-# signing key". RubyInstaller published these files at
-# https://github.com/oneclick/rubyinstaller2/releases/tag/rubyinstaller-head,
+# by fingerprint. The key expires on 2027-06-15. RubyInstaller published these
+# files at https://github.com/oneclick/rubyinstaller2/releases/tag/rubyinstaller-head,
 # which serves each day's build in place of the last, so Fledge keeps the
 # exact files, unchanged, as a pre-release of its own repository named
-# for their source and day, inputs-rubyinstaller-head-20261110
-# (doc/contributors/design/runtimes.md, "Rolling upstream inputs"), and
+# for their source and day, inputs-rubyinstaller-head-20261110, and
 # the pins name that copy. RubyInstaller-4.1.0-1 replaces this snapshot
 # once it is released.
 #
@@ -62,8 +55,7 @@
 # which only Windows builds; RubyInstaller all but syslog, which needs a
 # Unix), and prunes any other gem its Ruby adds (rv-ruby and jdx/ruby
 # add bootsnap and msgpack), so that an app finds exactly what a
-# standard Ruby 4.1 has (doc/contributors/design/runtimes.md, "What a
-# runtime keeps").
+# standard Ruby 4.1 has.
 ruby:
   version: 4.1.0-preview1
   jdx_release: 4.1.0-preview1-1
@@ -95,7 +87,7 @@ ruby:
           sha256: 3a649e22e1341e528ce07d52f036cc0e35683f22e1cf5311872f2069b2350afe
           fingerprint: 79D1D4E12FF93365DEAA8DCEF98B8484BE8BF1C5
           expires: "2027-06-15"
-    # RubyInstaller's build for Windows on ARM64 (doc/contributors/design/runtimes.md, "Windows on ARM64"), of the same
+    # RubyInstaller's build for Windows on ARM64, of the same
     # day and commit, signed with the same key.
     aarch64-mingw-ucrt:
       url: https://github.com/setdef/Fledge/releases/download/inputs-rubyinstaller-head-20261110/rubyinstaller-head-arm.7z
@@ -139,8 +131,7 @@ llvm-mingw:
 # runtime builds it as a shared library, from the release rv-ruby's
 # formula rv-portable-libxcrypt.rb named at the commit that built its
 # release 20261023, and the launcher loads it from the runtime's lib/
-# folder, where whoever receives an app can replace it
-# (doc/contributors/design/runtimes.md, "libxcrypt on glibc Linux").
+# folder, where whoever receives an app can replace it.
 libxcrypt:
   version: 4.5.2
   url: https://github.com/besser82/libxcrypt/releases/download/v4.5.2/libxcrypt-4.5.2.tar.xz
@@ -149,8 +140,7 @@ libxcrypt:
 # The image the glibc Linux runtimes are built in
 # (.github/scripts/glibc-runtime.sh): PyPA's manylinux_2_28, AlmaLinux 8
 # with glibc 2.28 and a newer GCC, one image a week, by the digest of each
-# processor's image of the release (version), each from quay.io's API
-# (doc/contributors/design/runtimes.md, "The glibc floor").
+# processor's image of the release (version), each from quay.io's API.
 manylinux:
   version: 2026.11.21-1
   images:
@@ -199,8 +189,7 @@ almalinux-perl:
 # A tag that names a release (alpine:X.Y.Z) moves to the next release
 # in its line; one that names no release (debian:trixie-slim) is moved by
 # Docker under the same name, so its version is the day Docker Hub says
-# the tag was last pushed, and its move is the digest alone
-# (doc/contributors/design/runtimes.md, "Container images").
+# the tag was last pushed, and its move is the digest alone.
 images:
   alpine-ruby:
     version: "2026-11-12"
@@ -239,8 +228,7 @@ images:
 # says which each job takes, and reads their versions here, where the
 # move can rewrite them. An Alpine branch keeps only each package's
 # newest build, so a pin whose upstream version the branch no longer
-# serves stops every musl job until it moves (doc/contributors/design/
-# runtimes.md, "Alpine's packages").
+# serves stops every musl job until it moves.
 alpine-packages:
   binutils: 2.45.1-r1
   build-base: 0.5-r4
@@ -286,7 +274,7 @@ gmp:
   dll_sha256: c2567ccf3f410c3411ba7cd4b7ba14f393a0e70a1d0c0593297df6706b5fba96
   # The same source's build for Windows on ARM64, in MSYS2's CLANGARM64
   # environment, whose libgmp-10.dll RubyInstaller's ARM64 Ruby ships
-  # byte for byte (doc/contributors/design/runtimes.md, "Windows on ARM64").
+  # byte for byte.
   arm64:
     package:
       url: https://repo.msys2.org/mingw/clangarm64/mingw-w64-clang-aarch64-gmp-6.3.0-2-any.pkg.tar.zst
@@ -369,7 +357,7 @@ replaceability:
     mirrors:
       - https://mirrors.kernel.org/gnu/gmp/gmp-6.2.1.tar.xz
 
-# What fledge build runs or copies (decisions, 2026-10-28), which a
+# What fledge build runs or copies, which a
 # runtime keeps in its tools/ folder and no app holds.
 #
 # Windows: rcedit, Electron's editor of a Windows program's resources
@@ -462,7 +450,7 @@ nsis:
 # The mobile runtimes (ADR 099): CRuby built from its own source for
 # iOS and iPadOS and for Android, interpreter only, as a shared library
 # with its extensions as files, which no prebuilt Ruby offers. Each builds on its
-# own system (decisions, 2026-10-28): iOS on a Mac with the Xcode below, Android on
+# own system: iOS on a Mac with the Xcode below, Android on
 # Linux with the NDK below. Their sources are Ruby's release tarball, the
 # same 4.1.0-preview1 the macOS and Linux runtimes carry; OpenSSL 3.6.5, the release
 # RubyInstaller's Windows Ruby links; libyaml 0.2.5, as every desktop
@@ -473,11 +461,10 @@ nsis:
 # Android Gradle plugin at agp, by its distribution's SHA-256. Xcode is
 # chosen by version on the runner (ci.yml), since Apple publishes no
 # download to pin; XcodeGen, which fledge build ios runs to write an
-# app's Xcode project (doc/contributors/design/phone-projects.md), is pinned for CI's Mobile apps jobs, and
+# app's Xcode project, is pinned for CI's Mobile apps jobs, and
 # no runtime holds it; so is bundletool, Google's jar that makes the APKs
 # Google Play would serve from an app's bundle, which those jobs check
-# and install, as Google publishes it on GitHub
-# (doc/contributors/design/phone-projects.md, "The Android App Bundle check").
+# and install, as Google publishes it on GitHub.
 mobile:
   ruby:
     version: 4.1.0-preview1
@@ -528,9 +515,8 @@ mobile:
     url: https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar
     sha256: a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
 
-# The musl Linux runtimes (x86_64-linux-musl, aarch64-linux-musl;
-# doc/contributors/design/runtimes.md, "musl Linux's Ruby, built in
-# Alpine"): CRuby built from its release tarball on a computer of each, in
+# The musl Linux runtimes (x86_64-linux-musl, aarch64-linux-musl):
+# CRuby built from its release tarball on a computer of each, in
 # Alpine, because rv-ruby's musl builds link the standard library's
 # extensions into their own bin/ruby, where Fledge's launcher cannot
 # reach them. Configured as rv-ruby's glibc builds are (a static libruby,
@@ -570,8 +556,7 @@ musl-ruby:
     sha256: b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171
 
 # The relocatable CRuby Fledge builds for glibc Linux and macOS
-# (tasks/ruby_archive.rb; doc/contributors/design/runtimes.md, "Fledge's
-# own Ruby builds"), in rv-ruby's archives' shape, for a runtime's ruby
+# (tasks/ruby_archive.rb), in rv-ruby's archives' shape, for a runtime's ruby
 # pin to name in place of rv-ruby's and for a developer to install as
 # their Ruby. No runtime builds from these pins: ruby names the source
 # it builds from, with musl-ruby's OpenSSL, libyaml, libffi, zlib, and
@@ -610,5 +595,4 @@ ruby-build:
 
 # What each runtime ships, under which license, and with which notice,
 # is runtime/licenses.yml's: the license audit derives it from each built
-# runtime and writes its notices/NOTICES.txt and SBOM
-# (doc/contributors/design/license-audit.md).
+# runtime and writes its notices/NOTICES.txt and SBOM.

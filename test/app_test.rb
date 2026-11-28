@@ -205,9 +205,7 @@ class AppTest < Minitest::Test
   end
 
   # A folder a build went to holds a cache directory tag, and stays out
-  # of every later build, wherever that one goes
-  # (doc/contributors/design/desktop-apps.md, "The project and its
-  # name").
+  # of every later build, wherever that one goes.
   def test_entries_leave_out_each_folder_a_cache_directory_tag_marks
     write("app/main.rb")
     write("app/dist/index.html", "the app's own")
@@ -257,8 +255,7 @@ class AppTest < Minitest::Test
 
   # A windowed program is what a person sees in the Dock, the Start
   # menu, and the window list, so with no name of its own it takes the
-  # project's (decision 5's camelized folder or gemspec name, or
-  # fledge.yml's), as an app of one program does, not its file's: a
+  # project's, as an app of one program does, not its file's: a
   # gui/main.rb is not "main". A console program keeps its file's name,
   # the command someone types.
   def test_a_windowed_program_with_no_name_takes_the_projects

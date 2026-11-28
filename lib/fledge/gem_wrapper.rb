@@ -20,10 +20,8 @@ module Fledge
   # Ruby the runtimes carry, for a wrapper written as Fledge has its
   # runtime's RubyGems write one: with <tt>/usr/bin/env ruby</tt> for
   # Ruby's path, which a relocatable Ruby cannot know, and no
-  # <tt>custom_shebang</tt> of anyone's <tt>.gemrc</tt>
-  # (doc/contributors/design/phone-runtimes.md, "Gem commands on
-  # Android"). test/gem_wrapper_test.rb holds it to the text RubyGems
-  # itself writes.
+  # <tt>custom_shebang</tt> of anyone's <tt>.gemrc</tt>.
+  # test/gem_wrapper_test.rb holds it to the text RubyGems itself writes.
   #
   # [gem] The gem's name.
   # [program] The command's name, a file in the gem's bin folder.

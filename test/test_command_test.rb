@@ -11,8 +11,7 @@ require "tmpdir"
 require "fledge/cli"
 
 # fledge test's arguments, and what it does with the project fledge build
-# writes and the status the app's program ends with
-# (doc/contributors/design/phone-projects.md, "Tests in the app").
+# writes and the status the app's program ends with.
 # test/integration/phone_test_command_test.rb runs it on a Simulator and
 # an emulator.
 class TestCommandTest < Minitest::Test

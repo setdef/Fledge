@@ -11,8 +11,7 @@ require_relative "../../lib/fledge/binary"
 class RuntimeBuilder
   # The protections against memory-safety attacks that each platform's
   # launcher and bin/ruby are compiled with, the flags that ask for them,
-  # and the check that a built program has them
-  # (doc/contributors/design/launcher.md, "Hardening").
+  # and the check that a built program has them.
   #
   # A program that lacks one is refused before the runtime is archived,
   # whatever the compiler's own defaults were: Fledge asks for each

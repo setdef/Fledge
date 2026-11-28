@@ -88,8 +88,7 @@ class MobileParity
     # lines as default messages (runtime/mobile/apple.c,
     # fledge_log_write), each stream read by a thread of its own, so the
     # log holds each stream's lines in order but the two interleaved as
-    # those threads happen to run (doc/contributors/design/phone-runtimes.md,
-    # "Output to the system log").
+    # those threads happen to run.
     def self.messages(ndjson, pid, standard_error: true)
       ndjson.each_line.filter_map do |line|
         entry = JSON.parse(line)

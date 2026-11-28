@@ -13,8 +13,7 @@ require_relative "../tasks/ruby_snapshot"
 
 # The nightly run against Ruby's master moves the pins of the Rubies
 # Fledge builds from source, and the license audit's evidence of Ruby's
-# revision, to the day's snapshot, and leaves everything else as it is
-# (doc/contributors/design/runtimes.md, "Testing against Ruby's master").
+# revision, to the day's snapshot, and leaves everything else as it is.
 class RubySnapshotTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   SHA = "7b1d8b0094e8258360200ff6cdbd4ab3e181882fa4c5b02aba1bee2289a431f1"

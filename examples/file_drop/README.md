@@ -10,7 +10,7 @@ Moving a file from a phone to the computer beside it, or between two computers t
 
 ## What it shows
 
-- **A server as a console app.** `kind: console` gives Drop a terminal window on every system, which shows the address and the password, and closing it stops Drop ([Serve the computers on your network](../../doc/desktop_apps.md#serve-the-computers-on-your-network)).
+- **A server as a console app.** `kind: console` gives Drop a terminal window on every system, which shows the address and the password, and closing it stops Drop.
 - **Gems with compiled extensions.** Puma and its nio4r are C extensions, published only as source, so `fledge build` compiles them for the app's Ruby, and building Drop needs a compiler ([Gems with compiled extensions](../../doc/gems.md#gems-with-compiled-extensions)).
 - **Every desktop.** The `Gemfile.lock` locks every platform Fledge builds for, so the same project builds on macOS, on Linux with glibc or musl, and on Windows on x64 or ARM64.
 - **What a server on a network needs.** Drop listens on every address, prints this computer's private IPv4 addresses, asks for a password it makes as it starts, refuses forms that other web pages send, writes uploads into the person's home folder and never into the app's own, and sets `$stdout.sync` so what it prints reaches a pipe or a log at once.

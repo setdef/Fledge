@@ -20,8 +20,7 @@ require_relative "assembly"
 
 module Fledge
   # An app <tt>fledge build</tt> wrote, which <tt>fledge build --from</tt>
-  # builds another app from
-  # (doc/contributors/design/desktop-apps.md, "Building from a built app").
+  # builds another app from.
   #
   # A built app already holds a runtime and the gems its Gemfile.lock
   # locks, each built for its platform. A project that needs no other

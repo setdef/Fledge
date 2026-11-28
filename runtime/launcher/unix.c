@@ -51,21 +51,18 @@
  *   3. It turns a bare C locale into a UTF-8 one (locale.c).
  *   4. It runs the app with arguments equivalent to
  *        NAME --disable=rubyopt -- ROOT/app/ENTRY ARGS
- *      which is what ruby ROOT/app/ENTRY ARGS does with no RUBYOPT
- *      (doc/contributors/design/launcher.md, "The program runs as
- *      ruby runs it"): no -I, so the app loads its own files with
- *      require_relative, and no --yjit, so RubyVM::YJIT.enabled? is
- *      false until the app enables it, as under ruby. ROOT/app is named
- *      by its real path, which in a macOS .app is Contents/Resources/app
- *      (find_app_folder). On macOS, when Launch Services started the
- *      app's bundle with documents, their paths follow ARGS, since they
- *      came in an Apple event rather than in argv
+ *      which is what ruby ROOT/app/ENTRY ARGS does with no RUBYOPT: no -I, so
+ * the app loads its own files with      require_relative, and no --yjit, so
+ * RubyVM::YJIT.enabled? is      false until the app enables it, as under ruby.
+ * ROOT/app is named      by its real path, which in a macOS .app is
+ * Contents/Resources/app      (find_app_folder). On macOS, when Launch Services
+ * started the      app's bundle with documents, their paths follow ARGS, since
+ * they      came in an Apple event rather than in argv
  *      (find_launch_documents, documents.c).
  *   5. Once Ruby has booted and before ENTRY runs, it names Ruby's own
  *      $LOAD_PATH by real paths on macOS (name_load_path_by_real_paths),
  *      fixes RubyGems' paths, and for an app with a Gemfile has Bundler
- *      set up the app's gems, as bundle exec would (setup_bundler;
- *      doc/contributors/design/launcher.md, "The Bundler environment").
+ *      set up the app's gems, as bundle exec would (setup_bundler).
  *   6. Then it puts the variables of step 2 back, so ENV and the app's
  *      child processes see what they would see without Fledge: as they
  *      were (restore_environment), or for an app with a Gemfile beneath
@@ -309,8 +306,7 @@ pin_rubygems(void)
  * replaces an entry itself (lines 2553 to 2568). An entry that does not
  * exist, such as a site_ruby folder, takes the real path of the nearest
  * folder above it that does. Outside a bundle ROOT is real and lib a
- * real folder, so nothing changes (doc/contributors/design/launcher.md,
- * "The app folder in a macOS bundle").
+ * real folder, so nothing changes.
  */
 static void
 name_load_path_by_real_paths(void)
@@ -498,8 +494,7 @@ find_system_typelibs(void)
  * Contents/Resources/app (Fledge::MacBundle), where Ruby's prefix is
  * too. Ruby resolves links for __dir__ but not for $0 or __FILE__, so
  * an entry run through the link would put File.dirname(__FILE__) in
- * one folder and __dir__ in another (doc/contributors/design/launcher.md,
- * "The app folder in a macOS bundle"). Everywhere
+ * one folder and __dir__ in another. Everywhere
  * else ROOT is already a real path and app a real folder, so this
  * changes nothing. A missing app folder stays ROOT/app, for
  * build_ruby_arguments to name.

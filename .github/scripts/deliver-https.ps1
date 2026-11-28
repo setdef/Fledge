@@ -7,8 +7,7 @@
 # runs Https.exe with Windows' own folders on PATH and nothing else,
 # asking the server .github/scripts/https-server.sh runs (through Git's
 # bash and openssl, which every Windows runner has), and checks that it
-# trusts the server, or refuses it, as RubyInstaller's ruby.exe does
-# (doc/contributors/design/runtimes.md, "Certificates"):
+# trusts the server, or refuses it, as RubyInstaller's ruby.exe does:
 #
 #   none      the test authority nowhere: refused.
 #   variable  in the file SSL_CERT_FILE names: trusted.

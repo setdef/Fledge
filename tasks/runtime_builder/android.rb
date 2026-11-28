@@ -18,8 +18,7 @@ class RuntimeBuilder
   # each of Ruby's extensions, encodings, and bundled gems' extensions a
   # file of its own beside it (#extension_files), and packed by Gradle
   # and the Android Gradle plugin as an AAR, FledgeRuby.aar, with the
-  # embedding API's Java class (doc/contributors/design/phone-runtimes.md,
-  # "What a phone runtime holds").
+  # embedding API's Java class.
   #
   # Beside the AAR the runtime holds the Ruby both ABIs run: one lib/ruby
   # (Ruby names each ABI's folder for its own platform, so both fit in
@@ -82,15 +81,12 @@ class RuntimeBuilder
     PAGE = 16_384
 
     # The runtime's ruby program in each ABI's folder of native
-    # libraries, named as the package installer extracts only lib*.so
-    # (doc/contributors/design/phone-runtimes.md, "The ruby program on Android";
-    # runtime/mobile/android.c, FLEDGE_RUBY_PROGRAM).
+    # libraries, named as the package installer extracts only lib*.so.
     PROGRAM = "libfledgerubyexe.so"
 
     # Ruby's JITs for +target+, with the NDK's tools in +tools+: YJIT and
     # ZJIT, as a desktop Ruby has them, each off until the app enables
-    # it (the phone parity audit, doc/contributors/research/
-    # 2026-11-12-phone-parity-audit.md, item 3). Android lets an app
+    # it (item 3 of the phone parity audit). Android lets an app
     # write code and run it ("WebView and other application-specific JIT
     # compilers", AOSP system/sepolicy, private/app.te, lines 188 and 189
     # at 4571ddd), and both JITs read the page size, 4 KB or 16 KB, from
@@ -361,9 +357,7 @@ class RuntimeBuilder
     # other file must be the same for both. bin/ holds the wrappers
     # RubyGems wrote for the gems' commands, as a desktop runtime's does,
     # without the ruby program make install put there: the runtime's is
-    # PROGRAM, in the AAR, and an app's Ruby links bin/ruby to it
-    # (doc/contributors/design/phone-runtimes.md, "Gem commands on
-    # Android").
+    # PROGRAM, in the AAR, and an app's Ruby links bin/ruby to it.
     private def merge_trees(stage)
       @roots.each_value do |root|
         %w[lib/ruby include bin].each do |folder|

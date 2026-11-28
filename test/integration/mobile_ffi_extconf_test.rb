@@ -13,8 +13,7 @@ require_relative "../support/ios"
 require_relative "../../tasks/mobile_parity"
 
 # A gem whose extconf.rb builds a library for Ruby's ffi with no Init
-# function, as sassc's builds libsass, on a phone
-# (doc/contributors/design/phone-projects.md, "Gems with extensions"):
+# function, as sassc's builds libsass, on a phone:
 # test/fixtures/ffi_extconf, whose gem's Ruby opens the library by the
 # path where RubyGems copies it into the gem's lib/, and calls it. fledge
 # build writes the app's Xcode or Gradle project, Xcode or Gradle builds

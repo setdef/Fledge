@@ -28,9 +28,7 @@ module Fledge
     # This class reads the last <tt>useLegacyPackaging</tt> the file sets
     # for native libraries, its comments and its setting for dex files
     # left out, and refuses the file, naming the extensions and the line
-    # to set, unless it sets +true+
-    # (doc/contributors/design/phone-projects.md, "A host's copy after an
-    # upgrade").
+    # to set, unless it sets +true+.
     #
     # Use it from MobileProject::Android, once the host's files are in
     # place.

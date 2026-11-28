@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# The app Plan 001's walking skeleton ships: it greets you and exits.
+# The walking skeleton's app: it greets you and exits.
 #
 # It prints one line, <tt>Hello from Ruby VERSION on PLATFORM</tt>,
 # where PLATFORM is +RUBY_PLATFORM+: on a Mac <tt>arm64-darwin</tt> and

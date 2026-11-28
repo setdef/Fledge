@@ -47,7 +47,15 @@ path = 'lib/fledge/templates/ios/Host/Assets.xcassets/**'
 SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT"
 
-# The JSON Schema of fledge.yml (doc/contributors/design/public-interface.md), which editors read as JSON,
+# The recipes the package-manager proof installs, each in the format its
+# package manager reads, under the file names that manager expects, which
+# leave no place for a header.
+[[annotations]]
+path = 'test/fixtures/package_managers/**'
+SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
+SPDX-License-Identifier = "MIT-0"
+
+# The JSON Schema of fledge.yml, which editors read as JSON,
 # which has no comments.
 [[annotations]]
 path = 'lib/fledge/config.schema.json'
@@ -55,7 +63,7 @@ SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
 SPDX-License-Identifier = "MIT"
 
 # Gradle's wrapper, as Gradle's gradle wrapper task writes it, in
-# every Android project fledge build writes (doc/contributors/design/phone-projects.md); the jar is the one
+# every Android project fledge build writes; the jar is the one
 # Gradle publishes, whose SHA-256 runtime/sources.yml pins.
 [[annotations]]
 path = ['lib/fledge/templates/android/gradlew', 'lib/fledge/templates/android/gradlew.bat',
@@ -63,11 +71,6 @@ path = ['lib/fledge/templates/android/gradlew', 'lib/fledge/templates/android/gr
 precedence = "override"
 SPDX-FileCopyrightText = "2015 the original authors"
 SPDX-License-Identifier = "Apache-2.0"
-
-[[annotations]]
-path = 'README.rdoc'
-SPDX-FileCopyrightText = "2026 setdef <kerrick@setdef.com>"
-SPDX-License-Identifier = "CC-BY-SA-4.0"
 
 # Third-party license texts the runtimes ship in their notices/ folder,
 # copied unchanged from each project at the version runtime/sources.yml

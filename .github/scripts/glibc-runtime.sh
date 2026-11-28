@@ -6,8 +6,7 @@
 # manylinux_2_28, whose glibc 2.28 is the runtime's floor, so that the
 # launcher, bin/ruby, and libxcrypt, which the builder compiles, need no
 # newer glibc than that. The Ruby they link, jdx/ruby's, is built in
-# manylinux2014 and needs only glibc 2.17
-# (doc/contributors/design/runtimes.md, "The glibc floor").
+# manylinux2014 and needs only glibc 2.17.
 #
 #   .github/scripts/glibc-runtime.sh PLATFORM
 #

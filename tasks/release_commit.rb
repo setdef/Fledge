@@ -6,12 +6,12 @@
 #++
 
 # Writes a release commit's changes, for a release made with nobody in
-# it (doc/contributors/design/releases.md, "How a release is made"):
+# it:
 # the next version, chosen from what CHANGELOG.md has under
-# [Unreleased] by releases.md's rule, written wherever a release names
+# [Unreleased], written wherever a release names
 # it, and the CHANGELOG's unreleased entries moved under the release.
-# doc/licensing.md, which names the version too, is regenerated after it
-# by rake licensing.
+# docs/reference/licensing.md, which names the version too, is regenerated after
+# it by rake licensing.
 #
 # The same change, given what was released, records the release on a
 # trunk that has moved on since the commit it was made from: the
@@ -34,8 +34,8 @@ class ReleaseCommit
 
   # The files that name the version, as the release commits of every
   # release so far changed them, besides CHANGELOG.md and
-  # doc/licensing.md.
-  FILES = %w[lib/fledge/version.rb Gemfile.lock README.md README.rdoc lib/fledge/config.rb lib/fledge/config.schema.json].freeze
+  # docs/reference/licensing.md.
+  FILES = %w[lib/fledge/version.rb Gemfile.lock lib/fledge/config.rb lib/fledge/config.schema.json].freeze
 
   # The CHANGELOG's unreleased section, between its heading and the
   # next, of +text+.

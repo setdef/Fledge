@@ -18,13 +18,11 @@
 # DISPLAY names, or on an Xvfb of its own when none is named, with the
 # distribution's GTK 3; with without-gtk, on a computer that has no GTK
 # 3 yet, its program must instead name a library it lacks and exit with
-# 72, naming no gem, as fledge.yml's linux: system_libraries makes it
-# (doc/gems.md, "A gem that links a library from the Linux
-# distribution"). On Windows the app must carry the three DLLs of
-# Microsoft's Visual C++ runtime that its fledge.yml asks for, in
-# ruby\bin\ruby_builtin_dlls; it runs with System32 alone on its PATH,
-# since Windows needs some of its environment to start a program. A run
-# that has not ended after 90 seconds fails.
+# 72, naming no gem, as fledge.yml's linux: system_libraries makes it. On
+# Windows the app must carry the three DLLs of Microsoft's Visual C++ runtime
+# that its fledge.yml asks for, in ruby\bin\ruby_builtin_dlls; it runs with
+# System32 alone on its PATH, since Windows needs some of its environment to
+# start a program. A run that has not ended after 90 seconds fails.
 #
 # This is POSIX sh on purpose: nothing here may need Ruby.
 
@@ -146,8 +144,7 @@ if [ "$os" = Darwin ]; then
   # Opened with a document, as a double-click on one in Finder opens it:
   # the launcher takes the Open Documents Apple event before Ruby starts
   # and gives the program the document's path, over which the probe
-  # writes its report, and LibUI must still show its window
-  # (doc/contributors/design/launcher.md, "Documents opened on macOS").
+  # writes its report, and LibUI must still show its window.
   document="$work/Geöffnet.libuiprobe"
   : >"$document"
   limit open -n -W -a "$bundle" "$document" || fail "open -a with a document exited with $?"

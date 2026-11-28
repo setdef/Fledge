@@ -16,9 +16,8 @@ module Fledge
   # macOS shows an app's name and icon in the Dock, Cmd-Tab, the menu bar,
   # and Finder only for a bundle, and knows it by the CFBundleIdentifier
   # in the bundle's <tt>Info.plist</tt>, which it checks before it
-  # delivers the app's notifications (decision 18; Plan 002, "App
-  # identity"). A bare program has none of that, and a double-click on it
-  # opens Terminal. Apple Silicon runs only signed code, and
+  # delivers the app's notifications. A bare program has none of that, and a
+  # double-click on it opens Terminal. Apple Silicon runs only signed code, and
   # <tt>codesign --verify --strict --deep</tt> calls a bundle broken
   # unless its program's signature seals <tt>Info.plist</tt> and every
   # resource.
@@ -33,17 +32,16 @@ module Fledge
   #   NAME.app/Contents/_CodeSignature/CodeResources
   #
   # Ruby finds its standard library beside the program that holds it
-  # (ADR 001; doc/contributors/design/launcher.md, "Finding itself"),
+  # (ADR 001),
   # and the launcher finds <tt>fledge.cfg</tt> and
   # <tt>app/</tt> there too, but Apple's tools expect only code in
   # <tt>Contents/MacOS</tt>. So the launcher's neighbors live in
   # +Resources+, and LINKED names symbolic links in +MacOS+ that point at
   # them. The launcher runs the app by its real path, in +Resources+, so
   # <tt>$0</tt>, <tt>__FILE__</tt>, and <tt>__dir__</tt> name the folder
-  # Ruby's prefix is in (doc/contributors/design/launcher.md, "The app
-  # folder in a macOS bundle"). Then it writes <tt>Info.plist</tt> with
+  # Ruby's prefix is in. Then it writes <tt>Info.plist</tt> with
   # +plutil+ and signs the bundle ad hoc with +codesign+, which seals every file; both come with
-  # macOS (decisions, 2026-10-28).
+  # macOS.
   #
   # Use it through Fledge::Assembly.
   #

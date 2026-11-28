@@ -19,8 +19,7 @@ module Fledge
   # RubyGems install of the gem holds, and every file under its require
   # paths, which Ruby loads whether the gemspec lists it or not. A gemspec
   # that lists no files, or a require path of the folder itself, leaves
-  # the whole folder to judge (doc/contributors/design/gems.md, "The
-  # linkage check").
+  # the whole folder to judge.
   #
   # Use it for Fledge::GitPackage#gem_files and Fledge::PathPackage#gem_files.
   #

@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# build-cop.yml's one step (doc/contributors/design/releases.md, "The
-# build cop"). Asks tasks/build_cop.rb what to do next about the oldest
-# red full run on trunk after its newest green one, and does it:
+# build-cop.yml's one step. Asks tasks/build_cop.rb what to do next about the
+# oldest red full run on trunk after its newest green one, and does it:
 #
 #   none    nothing is red: deletes the bisect/* branches left over
 #   wait    a run it needs has not finished
@@ -147,8 +146,7 @@ revert: ${subject}
 
 This reverts commit $commit.
 
-The build cop found that it turned trunk's full run red: $reason
-(doc/contributors/design/releases.md, "The build cop"). Land it again
+The build cop found that it turned trunk's full run red: $reason. Land it again
 with the fix.
 
 Provenance: requested

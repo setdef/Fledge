@@ -10,8 +10,7 @@ require "open3"
 require "rbconfig"
 
 # Which file an Android app's Ruby reads in place of the one it is asked
-# for (runtime/mobile/commands.c, fledge_ruby_read_commands;
-# doc/contributors/design/phone-runtimes.md, "Gem commands on Android"),
+# for (runtime/mobile/commands.c, fledge_ruby_read_commands),
 # compiled with this computer's C compiler: RubyGems' wrapper of a gem's
 # command, kept in ROOT/libexec/commands, for ROOT/bin/NAME, however the
 # path names that folder, and the path itself for every other file Ruby

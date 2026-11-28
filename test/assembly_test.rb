@@ -10,7 +10,7 @@ require_relative "support/assembly"
 require_relative "support/gems"
 
 # Fledge::Assembly with fake runtimes, on the computer the tests run on:
-# each platform's app is built on that platform (decisions, 2026-10-28), so a test of
+# each platform's app is built on that platform, so a test of
 # what only one platform's tools make runs only there, and CI runs the
 # tests on every platform. test/integration/assembly_tools_test.rb has
 # those tools make what only they make.
@@ -445,9 +445,7 @@ class AssemblyTest < Minitest::Test
   end
 
   # A build into dist, and then one into out, a folder of its own, ships
-  # the project, not the first build
-  # (doc/contributors/design/desktop-apps.md, "The project and its
-  # name").
+  # the project, not the first build.
   def test_a_build_into_another_folder_leaves_out_the_earlier_builds
     unix!
     Dir.mktmpdir do |dir|

@@ -7,7 +7,7 @@
  * The runtime's ruby program on Android, libfledgerubyexe.so in each
  * ABI's folder of the AAR, which an app's package installer extracts
  * beside libfledgeruby.so, and to which ROOT/bin/ruby, RbConfig.ruby,
- * links (doc/contributors/design/phone-runtimes.md, "The ruby program on Android").
+ * links.
  * It is linked against libfledgeruby.so, which it finds
  * beside itself through its run path, $ORIGIN, so it carries no second
  * copy of Ruby: its work is fledge_ruby_program_main's (android.c), and

@@ -12,7 +12,7 @@ require_relative "../support/loopback_server"
 require_relative "../../tasks/runnerless_runs"
 
 # What .github/scripts/pin-prove.sh reports once a proven move is on
-# trunk (doc/contributors/design/runtimes.md, "The proof"), run as the
+# trunk, run as the
 # workflow runs it, with real git and a real bare origin, and only the
 # two things that need GitHub or the pins' upstreams standing in: gh,
 # which answers each run of ci.yml with the conclusion the test gives

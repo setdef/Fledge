@@ -16,7 +16,7 @@ module Fledge
   #
   # A Mac app is downloaded as a disk image more than any other way, and
   # notarization staples its ticket to a disk image as it cannot to a
-  # <tt>.zip</tt> (Plan 002, "Signing and notarization"). Tauri's bundler
+  # <tt>.zip</tt>. Tauri's bundler
   # makes one with create-dmg, which runs +hdiutil+, and so do
   # electron-builder and Briefcase; every Mac has it.
   #
@@ -27,7 +27,7 @@ module Fledge
   # bundle with +ditto+, which keeps its signature, links, and modes, into
   # a folder beside the link, and has <tt>hdiutil create</tt> make a
   # read-only, zlib-compressed image of it (UDZO) on a Mac OS Extended
-  # volume, as create-dmg makes one (decisions, 2026-10-28).
+  # volume, as create-dmg makes one.
   #
   # <tt>hdiutil create</tt> makes the image from a scratch volume it
   # mounts and detaches, and fails with "Resource busy" when another

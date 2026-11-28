@@ -18,8 +18,7 @@
 #                               none for 4.1, and linux-headers, the
 #                               kernel's headers, which build-base leaves
 #                               out and the libffi ffi 1.17.4 carries
-#                               includes, as doc/gems.md tells a
-#                               developer on Alpine
+#                               includes
 #   alpine-packages.sh deliver  what Delivery checks a built app with, on
 #                               a computer with no Ruby: script(1) and
 #                               pgrep for the console,
@@ -37,7 +36,7 @@
 # matches any build of that upstream version. An Alpine branch keeps
 # only each package's newest build, so a rebuild of the pinned version
 # installs and a new upstream version fails the job until the pin watch
-# moves it (doc/contributors/design/runtimes.md, "Alpine's packages").
+# moves it.
 # The versions are read with awk, since Delivery's Alpine has no Ruby.
 
 set -eu

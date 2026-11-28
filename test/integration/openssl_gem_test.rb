@@ -13,11 +13,10 @@ require "stringio"
 # gem links OpenSSL as Puma's does, against the real runtime, and the
 # built app saying which OpenSSL the gem was compiled against and runs
 # with: the OpenSSL the runtime's own Ruby has, the same headers as
-# library, whatever the computer that builds has installed
-# (doc/contributors/design/runtimes.md, "What a runtime keeps for
-# compiling gems"). The build would refuse the gem if it linked the
-# computer's own shared OpenSSL, so a build that passes linked the
-# runtime's statically, or none, which the gem's extconf.rb refuses.
+# library, whatever the computer that builds has installed. The build would
+# refuse the gem if it linked the computer's own shared OpenSSL, so a build that
+# passes linked the runtime's statically, or none, which the gem's extconf.rb
+# refuses.
 #
 # It needs the runtime, as test/integration/native_build_test.rb finds
 # it, and runs on macOS and Linux. Windows' runtime holds OpenSSL as

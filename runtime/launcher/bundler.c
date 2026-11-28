@@ -5,8 +5,7 @@
 
 /*
  * The Bundler that sets up an app with a Gemfile, and the environment
- * the app runs in, on every operating system
- * (doc/contributors/design/launcher.md, "The Bundler environment").
+ * the app runs in, on every operating system.
  *
  * Under bundle exec, a program's ENV is the person's, with Bundler's
  * own settings over it: BUNDLE_GEMFILE, GEM_HOME, PATH with the bundle's
@@ -66,7 +65,7 @@
  * (bundler.rb, configure_custom_gemfile), so with the person's spelling
  * a Ruby the app starts with bundler/setup in RUBYOPT would set up the
  * Gemfile the person's own .bundle/config names: the person's Ruby
- * reaching the app (architecture.md, "What the design answers to").
+ * reaching the app.
  *
  * The variables travel as hexadecimal inside the code itself, so the
  * launcher needs no Ruby function but rb_eval_string_protect, and the
@@ -81,8 +80,7 @@
 #include <string.h>
 
 /*
- * The app's Ruby first on PATH (doc/contributors/design/launcher.md,
- * "The app's Ruby on PATH"). A developer runs ruby main.rb, or bundle
+ * The app's Ruby first on PATH. A developer runs ruby main.rb, or bundle
  * exec, from a shell whose PATH found that ruby, in its bin folder,
  * beside the commands gem install writes for its gems; bundle exec puts
  * the bundle's bin folder before it (shared_helpers.rb, set_path, at

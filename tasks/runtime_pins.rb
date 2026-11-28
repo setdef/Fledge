@@ -9,10 +9,9 @@ require "digest"
 require "fileutils"
 require_relative "runtime_builder"
 
-# Pins a release's runtimes in the gem before the release is tagged
-# (doc/contributors/design/releases.md, "The pins"), as Homebrew's brew
-# pr-upload writes a formula's bottle hashes from the bottles CI built
-# and then uploads those same bottles,
+# Pins a release's runtimes in the gem before the release is tagged, as
+# Homebrew's brew pr-upload writes a formula's bottle hashes from the bottles CI
+# built and then uploads those same bottles,
 # and as uv commits the SHA-256 of every python-build-standalone build it
 # downloads. Runtime builds are not reproducible, so the hashes can only
 # come from the very files the release publishes: CI builds them on the

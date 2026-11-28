@@ -13,11 +13,10 @@ require_relative "support/loopback_server"
 require "stringio"
 require "yaml"
 
-# fledge build ios and fledge build android (doc/contributors/design/phone-projects.md), through real
+# fledge build ios and fledge build android, through real
 # streams, with fake mobile runtimes shaped as
-# doc/contributors/design/phone-runtimes.md, "What a phone runtime holds",
-# describes them, real .gem files served at the lockfile's remote, and,
-# for iOS, the real XcodeGen where this computer has it.
+# a phone's runtime holds them, real .gem files served at the lockfile's remote,
+# and, for iOS, the real XcodeGen where this computer has it.
 class MobileBuildTest < Minitest::Test
   # The lines of fledge.links that link the fake Android runtime's one
   # gem's command, bin/rake, to the ruby program for each ABI.
@@ -50,8 +49,7 @@ class MobileBuildTest < Minitest::Test
     [out.string, err.string, status]
   end
 
-  # A phone's Ruby is the minor version that runs fledge build too
-  # (doc/contributors/design/releases.md, "Ruby minors and runtimes");
+  # A phone's Ruby is the minor version that runs fledge build too;
   # the fake runtimes are Ruby 4.1.0.
   def test_a_phone_project_on_another_ruby_minor_than_the_runtimes_fails
     script_app("identifier: com.example.Hello\n")
@@ -130,8 +128,7 @@ class MobileBuildTest < Minitest::Test
   # command, bin/NAME, is a link to the runtime's ruby program, which
   # fledge.links makes as the app starts, and RubyGems' wrapper is kept
   # in libexec/commands, where the app's Ruby reads it in that link's
-  # place (doc/contributors/design/phone-runtimes.md, "Gem commands on
-  # Android").
+  # place.
   def test_an_android_apps_gem_commands_are_links_to_its_ruby_program
     root = script_app("identifier: com.example.hello\n")
 
@@ -253,8 +250,7 @@ class MobileBuildTest < Minitest::Test
 
   # Every app's Ruby runs on the main thread, whatever its kind, as under
   # ruby main.rb, so every app's main thread has the 64 MB stack Ruby
-  # had on a thread of its own (doc/contributors/design/phone-widgets.md,
-  # "Threads"), and the project switches nothing by kind.
+  # had on a thread of its own, and the project switches nothing by kind.
   def test_every_ios_apps_main_thread_has_rubys_stack_whatever_its_kind
     skip "this computer has no XcodeGen" unless xcodegen?
     settings = %w[console windowed].map do |kind|
@@ -368,9 +364,8 @@ class MobileBuildTest < Minitest::Test
     end
   end
 
-  # doc/contributors/design/phone-projects.md, "Host files": the files in
-  # android's host replace Fledge's at the same paths, or join them,
-  # before Fledge fills its marks, and the build says which of Fledge's
+  # The files in android's host replace Fledge's at the same paths, or join
+  # them, before Fledge fills its marks, and the build says which of Fledge's
   # it replaced. ios's host is not android's to check.
   def test_an_android_hosts_files_replace_fledges_and_join_them
     root = script_app("identifier: com.example.Hello\nandroid:\n  host: host/android\nios:\n  host: missing\n")
@@ -394,8 +389,7 @@ class MobileBuildTest < Minitest::Test
   end
 
   # Every app's Ruby runs on Android's main thread, whatever its kind, as
-  # under ruby main.rb (doc/contributors/design/phone-widgets.md,
-  # "Threads"), and the activity shows nothing of its own.
+  # under ruby main.rb, and the activity shows nothing of its own.
   def test_every_android_apps_ruby_starts_on_the_main_thread_whatever_its_kind
     activities = %w[console windowed].map do |kind|
       root = script_app("identifier: com.example.Hello\nkind: #{kind}\n")

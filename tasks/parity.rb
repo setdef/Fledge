@@ -19,7 +19,7 @@ require_relative "parity/reports"
 require_relative "parity/mobile"
 require_relative "parity/windowed"
 
-# The parity check (doc/contributors/design/parity.md): an app's Ruby code must see the
+# The parity check: an app's Ruby code must see the
 # same Ruby under Fledge as it does run as its developer runs it.
 #
 # It builds the probe app in test/fixtures/parity with fledge build, from
@@ -58,8 +58,7 @@ class Parity
   GEM_APP = File.join(ROOT, "test", "fixtures", "my_cool_app")
   # Platforms on which GEM_APP's sqlite3 cannot be installed: it
   # publishes no aarch64-mingw-ucrt build, and its source build fails
-  # there, SQLite's own configure not knowing aarch64-w64-windows-gnu
-  # (doc/contributors/design/parity.md, "The gem-shaped run").
+  # there, SQLite's own configure not knowing aarch64-w64-windows-gnu.
   WITHOUT_SQLITE3 = %w[aarch64-mingw-ucrt].freeze
   # GEM_APP without sqlite3, which stands in for it on WITHOUT_SQLITE3.
   GEM_APP_WITHOUT_SQLITE3 = File.join(ROOT, "test", "fixtures", "my_cool_app_without_sqlite3")
@@ -114,7 +113,7 @@ class Parity
     Justification.new(fact: "$LOAD_PATH", reference: [%r{\A"#{PERSON_GEMS}/(?<gem>(?:gems|extensions)/.*)\z}],
       app: [%r{\A"#{APP_GEMS}/(?<gem>(?:gems|extensions)/.*)\z}], checks: %i[bundle],
       reason: "bundle install put the gems in the person's GEM_HOME; fledge build put the same gems in the runtime's gem " \
-        "folder, beside Ruby's own (doc/contributors/design/gems.md, \"Installing into the runtime's gem folder\"). " \
+        "folder, beside Ruby's own. " \
         "Bundler sets up the same gems, in the same order, from each, and a gem compiled as it installs, as sqlite3 " \
         "is on a Ruby its prebuilt gems do not yet support, adds its extensions folder from each."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"#{PERSON_GEMS}/gems/(?<file>bundler-(?!.*/bundler/feature_flag\.rb"\z).*)\z}],
@@ -151,7 +150,7 @@ class Parity
         reason: "As for GEM_HOME and PATH: Bundler puts the bundle's gems first in PATH, which Windows spells Path, the " \
           "person's GEM_HOME on their computer and the runtime's gem folder in the app. Bundler's EnvironmentPreserver " \
           "looks PATH up by its own spelling, so under bundle exec, as in the app, Bundler.original_env keeps that Path " \
-          "rather than the person's (doc/contributors/design/launcher.md, \"Bundler's variables spelled otherwise\").")
+          "rather than the person's.")
     end,
     *["ENV", "child ENV"].map do |fact|
       Justification.new(fact:, reference: [/\A"bundle_gemfile"=(?<gemfile>.*)\z/], app: [/\A"BUNDLE_GEMFILE"=(?<gemfile>.*)\z/],
@@ -160,8 +159,7 @@ class Parity
           "since Ruby's ENV writes keep a variable's name. But Bundler's settings read ENV by Bundler's spelling alone " \
           "(bundler/settings.rb, Settings#initialize), and Bundler.setup takes the Gemfile from them (bundler.rb, " \
           "configure_custom_gemfile), so with the person's spelling a Ruby the app starts with bundler/setup sets up " \
-          "the Gemfile the person's own .bundle/config names (doc/contributors/design/architecture.md, \"What the design answers to\"; " \
-          "doc/contributors/design/launcher.md, \"Bundler's variables spelled otherwise\").")
+          "the Gemfile the person's own .bundle/config names.")
     end,
     *["Bundler.original_env", "Bundler.unbundled_env", "original child ENV", "unbundled child ENV"].map do |fact|
       Justification.new(fact:, reference: [/\A"bundle_gemfile"=/], platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
@@ -170,10 +168,10 @@ class Parity
           "person's spelling (bundler/environment_preserver.rb, restore), and Bundler.unbundled_env keeps it, since it " \
           "removes BUNDLE_ variables by Bundler's spelling. The app's ENV spells it BUNDLE_GEMFILE, as the difference in " \
           "ENV says why, and a restart inherits only ENV, so the app's Bundler.original_env holds no bundle_gemfile, " \
-          "before a restart or after it (doc/contributors/design/launcher.md, \"Bundler's variables spelled otherwise\").")
+          "before a restart or after it.")
     end,
     Justification.new(fact: "$VERBOSE", reference: [/\Anull\z/], app: [/\Afalse\z/],
-      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot (doc/contributors/design/architecture.md, \"What the design answers to\"), " \
+      reason: "The person's RUBYOPT (-W0 here) is hidden from the app's boot, " \
         "so it cannot change how the app runs; it still reaches the app's ENV and every program the app starts."),
     Justification.new(fact: "$LOADED_FEATURES", reference: [%r{\A"(?:<prefix>/lib/ruby/#{ABI}|#{PERSON_GEMS}/gems/bundler-[^/"]+/lib)/bundler/feature_flag\.rb"\z}o],
       checks: %i[bundle],
@@ -191,8 +189,7 @@ class Parity
     Justification.new(fact: "requireable", reference: [RV_RUBY_EXTRAS], reason: "As for gems."),
     Justification.new(fact: "$LOADED_FEATURES", app: [%r{\A"<prefix>/lib/ruby/#{ABI}/rubygems/defaults/operating_system\.rb"\z}o],
       platforms: ["arm64-darwin", "x86_64-linux", "aarch64-linux", "x86_64-linux-musl", "aarch64-linux-musl", *MOBILE],
-      reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems " \
-        "(doc/contributors/design/runtimes.md, \"Fledge's RubyGems defaults\"); " \
+      reason: "Fledge's RubyGems defaults keep RubyGems to the runtime's gems; " \
         "rv-ruby and jdx/ruby ship no such file, nor does the Ruby a musl runtime is built from."),
     Justification.new(fact: "Windows", platforms: %w[x64-mingw-ucrt aarch64-mingw-ucrt],
       reference: [/\A"code page"=\d+\z/, /\A"narrow DLL load"="no DLL"\z/],
@@ -206,7 +203,7 @@ class Parity
       reference: [/\A"[\w-]+"\z/], app: [/\A"UTF-8"\z/],
       reason: "The launcher's manifest makes UTF-8 the process's ANSI code page (activeCodePage), so that a gem's " \
         "narrow Windows calls, such as ffi's LoadLibraryExA, read Ruby's UTF-8 paths under a folder named outside " \
-        "ASCII (doc/contributors/design/launcher.md, \"The locale\"). With no console, as a windowed app starts, Ruby " \
+        "ASCII. With no console, as a windowed app starts, Ruby " \
         "takes its locale from the ANSI code page (localeinit.c, GetConsoleCP, then GetACP), and a process has one " \
         "ANSI code page, so it cannot have both; RubyInstaller's rubyw.exe keeps the system's, such as Windows-1252. " \
         "The runtime's rubyw.exe declares UTF-8 too (launcher.md, \"bin/ruby and restarts\"). With a console both " \
@@ -222,8 +219,7 @@ class Parity
           "runtime's bin/ruby take a UTF-8 locale instead, as Python does under PEP 538. launchd gives a " \
           "double-clicked app no locale at all, and Ruby still boots in the C locale, but it gives a folder " \
           "named outside ASCII in the app's path, or the person's home, three encodings, so Bundler's setup " \
-          "and the app's own code fail for a person who never meets Ruby (doc/contributors/design/architecture.md, \"What the design answers to\"; " \
-          "doc/contributors/research/2026-11-13-c-locale.md, Verdict). An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
+          "and the app's own code fail for a person who never meets Ruby. An explicit LC_ALL or LC_CTYPE, C included, is kept as ruby keeps it, and " \
           "nothing is exported: ENV and every program the app starts see the person's own locale.")
     end,
     *MOBILE_JUSTIFIED,
@@ -297,10 +293,8 @@ class Parity
   # bundle_gemfile, naming the reference's Gemfile, and Path, as Windows
   # itself spells it. Bundler's EnvironmentPreserver looks its keys up
   # case-sensitively, so bundle exec keeps both in ENV as spelled, and
-  # Bundler.original_env takes their values from ENV
-  # (doc/contributors/design/launcher.md, "Bundler's variables spelled
-  # otherwise"). Then each restarts through RbConfig.ruby, and the app's
-  # restart must say what bundle exec's says.
+  # Bundler.original_env takes their values from ENV. Then each restarts through
+  # RbConfig.ruby, and the app's restart must say what bundle exec's says.
   private def check_spelled_otherwise(env, stock, reference, launcher)
     path = env.keys.find { |name| name.casecmp?("PATH") }
     env = env.except(path).merge("Path" => env.fetch(path), "bundle_gemfile" => File.join(reference, "Gemfile"))

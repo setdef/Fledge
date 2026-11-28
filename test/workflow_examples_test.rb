@@ -14,8 +14,8 @@ require "yaml"
 # and examples/sdl_phone were built by no job for weeks, and
 # rooibos_console stopped building when the runtimes moved to Ruby 4.1's
 # preview, with nothing red to say so (issues 44, 56, and 57). An
-# example that cannot be built is removed until it can (issue 67): rooibos_console is restored from git history
-# (plan 003, the story "A framework wrapper ships an app through Fledge").
+# example that cannot be built is removed until it can (issue 67):
+# rooibos_console is restored from git history.
 #
 # This test reads what a job runs, the +run+ text of every step of every
 # workflow, and the scripts and tasks those steps start (every file under

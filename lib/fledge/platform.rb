@@ -14,7 +14,7 @@ module Fledge
   # You already meet RubyGems' platform names in a Gemfile.lock and in
   # precompiled gems: +arm64-darwin+, +x86_64-linux+. The same names say
   # which precompiled gem fits a runtime, so Fledge names its targets
-  # with them (doc/contributors/design/runtimes.md). But RubyGems also knows platforms
+  # with them. But RubyGems also knows platforms
   # Fledge has no runtime for, and names the computer you are on in more
   # detail (<tt>arm64-darwin-25</tt>) than a target needs.
   #
@@ -52,16 +52,13 @@ module Fledge
 
     # The oldest macOS an arm64-darwin app runs on: the launcher and
     # bin/ruby are built for it, a Mac app's Info.plist names it, and no
-    # file in the runtime may need a newer one (jdx/ruby's need macOS 26)
-    # (doc/contributors/design/releases.md, "Platform floors").
+    # file in the runtime may need a newer one (jdx/ruby's need macOS 26).
     MACOS_MINIMUM = "26.0"
 
     # The oldest glibc a Linux runtime runs on: manylinux_2_28's, the
     # image Fledge's own compiled parts are built in, as low as a
-    # maintained upstream gives it (decisions, 2026-11-22;
-    # doc/contributors/design/releases.md, "Platform floors"). A
-    # runtime's build fails if any of its files needs a newer one
-    # (doc/contributors/design/runtimes.md, "The glibc floor"). An app
+    # maintained upstream gives it. A
+    # runtime's build fails if any of its files needs a newer one. An app
     # whose gems need a newer one needs that (Fledge::Deb).
     GLIBC_MINIMUM = "2.28"
 

@@ -5,13 +5,13 @@
 # SPDX-License-Identifier: MIT
 #++
 
-# An Android app runs the command of a gem its Gemfile locks, thor, which
-# no runtime has, by its name, as a program under bundle exec runs it:
-# by name, from a shell, and with ruby -S, each a child Ruby with the
-# app's bundle (doc/contributors/design/phone-runtimes.md, "Gem commands
-# on Android"). tasks/mobile_parity.rb builds it with fledge build
-# android, runs it on the emulator, and checks the line; iOS lets no app
-# run a program.
+# An Android app runs the command of a gem its Gemfile
+# locks, thor, which no runtime has, by its name, as a
+# program under bundle exec runs it: by name, from a
+# shell, and with ruby -S, each a child Ruby with the
+# app's bundle. tasks/mobile_parity.rb builds it with
+# fledge build android, runs it on the emulator, and
+# checks the line; iOS lets no app run a program.
 require "rbconfig"
 
 by_name = IO.popen(["thor", "version"], &:read).chomp

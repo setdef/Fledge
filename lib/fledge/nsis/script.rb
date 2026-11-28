@@ -65,8 +65,7 @@ module Fledge
       # plug-in, runs it, which asks for an administrator itself, and looks
       # again. If one is still missing, the person chooses to abort, to
       # retry, or to install the app without it, whose launcher then names
-      # it; a silent install aborts (doc/contributors/design/desktop-apps.md,
-      # "The Visual C++ Redistributable"). Nothing for any other app.
+      # it; a silent install aborts. Nothing for any other app.
       private def visual_c_section
         return [] if @visual_c_runtime.empty?
 
@@ -214,8 +213,7 @@ module Fledge
       # and then on the installer, failing unless it exits 0. The
       # command goes in the first of NSIS's three quote characters it
       # does not hold, since NSIS has no escape for a quote of the same
-      # kind inside a string (doc/contributors/design/signing.md,
-      # "Signing on Windows").
+      # kind inside a string.
       private def finalize
         signing = @signing
         return [] unless signing
@@ -423,8 +421,7 @@ module Fledge
       # ProgID rules forbid (more than PROG_ID_MAX characters, punctuation
       # but periods, a digit first), then a hash of the identifier and the
       # extension. It depends on nothing that can move or be reworded, so
-      # a reordered list or a renamed entry keeps it
-      # (doc/contributors/design/desktop-apps.md, "Files an app opens");
+      # a reordered list or a renamed entry keeps it;
       # the hash keeps two identifiers the rest would make alike apart.
       private def prog_id(extension)
         hash = Digest::SHA256.hexdigest("#{@identity.identifier}\n#{extension}")[0, PROG_ID_HASH].to_s

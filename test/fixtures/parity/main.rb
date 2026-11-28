@@ -9,7 +9,7 @@
 # inside it.
 #
 # An app's Ruby code should run under Fledge exactly as it runs under
-# ruby main.rb (doc/contributors/design/parity.md). tasks/parity.rb builds this app with fledge
+# ruby main.rb. tasks/parity.rb builds this app with fledge
 # build, runs it, runs the same file with the Ruby the runtime came from
 # as ruby main.rb, and compares the two reports.
 #
@@ -119,12 +119,12 @@ rescue LoadError, StandardError, SystemExit => e
   "#{e.class}: #{e.message.lines.first.to_s.chomp}"
 end
 
-# A gem's extension required before its gem is active: racc/cparse, which
-# a desktop's RubyGems finds among racc's files and activates racc for.
-# Whether the require loaded it, and whether racc is then active, or the
-# class of what it raised. A phone's Ruby has the extension as a file
-# among racc's, as a desktop's does (doc/contributors/design/phone-runtimes.md,
-# "Bundled gems' extensions").
+# A gem's extension required before its gem is active:
+# racc/cparse, which a desktop's RubyGems finds among
+# racc's files and activates racc for. Whether the
+# require loaded it, and whether racc is then active, or
+# the class of what it raised. A phone's Ruby has the
+# extension as a file among racc's, as a desktop's does.
 def extension_before_its_gem
   [require("racc/cparse"), Gem.loaded_specs.key?("racc")]
 rescue LoadError => e
@@ -224,13 +224,13 @@ ensure
   [reader, writer].each { |io| io&.close unless io&.closed? }
 end
 
-# A gem's command run as programs run one (doc/contributors/design/gems.md,
-# "Gem executables"): by its name, which PATH finds, through system,
-# backquotes, Open3, and a child Ruby; through ruby -S, which searches
-# PATH itself; and by the file Gem.bin_path names. Each says which Ruby
-# ran it and which rake that Ruby loaded. And ruby by its name, which a
-# gem's command runs when no ruby is beside it. Under bundle exec PATH
-# finds the bundle's commands, and the Ruby they run is the program's own.
+# A gem's command run as programs run one: by its name, which PATH
+# finds, through system, backquotes, Open3, and a child Ruby;
+# through ruby -S, which searches PATH itself; and by the file
+# Gem.bin_path names. Each says which Ruby ran it and which rake
+# that Ruby loaded. And ruby by its name, which a gem's command
+# runs when no ruby is beside it. Under bundle exec PATH finds the
+# bundle's commands, and the Ruby they run is the program's own.
 def gem_commands
   require "open3"
   {
@@ -341,7 +341,7 @@ def kernel32(name, arguments, result)
 end
 
 # The process's ANSI code page (GetACP), which its program's manifest
-# decides (doc/contributors/design/launcher.md, "The locale").
+# decides.
 def code_page
   require "fiddle"
   kernel32("GetACP", [], Fiddle::TYPE_INT).call

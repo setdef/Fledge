@@ -11,8 +11,7 @@ require_relative "../test_helper"
 require_relative "../../tasks/runtime_builder"
 
 # The edits that mend Ruby 4.1.0-preview1 where a phone's C library meets
-# a bug of CRuby's that a desktop's does not (doc/contributors/design/phone-runtimes.md,
-# "Scripted edits to Ruby's source"), each against the lines of Ruby's
+# a bug of CRuby's that a desktop's does not, each against the lines of Ruby's
 # own files it changes, and each failing loudly when a new Ruby no longer
 # has them. Where the bug can be shown on this computer, the edited C is
 # compiled with mkmf against this Ruby and run, beside the C as Ruby has

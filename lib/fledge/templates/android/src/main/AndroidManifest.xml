@@ -3,7 +3,7 @@
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT
 
-  Written by fledge build (doc/contributors/design/phone-projects.md). The app may reach the network, as a
+  Written by fledge build. The app may reach the network, as a
   Ruby program may on a desktop.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">

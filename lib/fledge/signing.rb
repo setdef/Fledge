@@ -18,7 +18,7 @@ module Fledge
   # app downloaded from the internet that no one they trust has signed.
   # A developer who has done Apple's or Microsoft's ceremony has an
   # identity to sign with; one who has not still ships an app that works,
-  # unsigned (decision 17). Signing has to come after Fledge has written
+  # unsigned. Signing has to come after Fledge has written
   # everything into the app, since a signature seals what it covers, and
   # before the archive and installers, which carry the signed files.
   #

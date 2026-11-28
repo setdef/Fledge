@@ -28,10 +28,8 @@ module Fledge
     # <tt>rbconfig.rb</tt> (TOOLS, through <tt>RUBYOPT</tt>), as crossenv
     # and cibuildwheel give a Python build the target's sysconfig. Each
     # <tt>create_makefile</tt> the build calls is mkmf's, aimed at the
-    # phone as an <tt>extconf.rb</tt> is
-    # (doc/contributors/design/phone-projects.md, "Gems with
-    # extensions"), with its Init function renamed and a line in a
-    # report (HOOK). Once the build is done, it
+    # phone as an <tt>extconf.rb</tt> is, with its Init function renamed and a
+    # line in a report (HOOK). Once the build is done, it
     # runs mkmf's <tt>make static</tt> in each folder the report names, and
     # names each extension by its folder's place in the gem's require
     # paths. A Rakefile that builds nothing gives no extension. The gems
@@ -125,14 +123,12 @@ module Fledge
       # <tt>-bundle</tt>, as ffi-compiler does on every Apple system
       # (<tt>lib/ffi-compiler/compile_task.rb</tt>, line 115 at 1.4.3), so
       # that a library the build links for Ruby's ffi is a dynamic library,
-      # the only kind of binary an iOS framework holds
-      # (doc/contributors/design/phone-projects.md, "Libraries for ffi on
-      # iOS"). A command that links, one with none of <tt>-c</tt>,
-      # <tt>-S</tt>, <tt>-E</tt>, <tt>-M</tt>, or <tt>-MM</tt>, also gets
-      # <tt>-Wl,-headerpad_max_install_names</tt>, so that the library's
-      # header has room for the install name its framework gives it:
-      # without it <tt>install_name_tool</tt> refused llhttp-ffi's, since
-      # "larger updated load commands do not fit (the program must be
+      # the only kind of binary an iOS framework holds. A command that links,
+      # one with none of <tt>-c</tt>, <tt>-S</tt>, <tt>-E</tt>, <tt>-M</tt>, or
+      # <tt>-MM</tt>, also gets <tt>-Wl,-headerpad_max_install_names</tt>, so
+      # that the library's header has room for the install name its framework
+      # gives it: without it <tt>install_name_tool</tt> refused llhttp-ffi's,
+      # since "larger updated load commands do not fit (the program must be
       # relinked, and you may need to use -headerpad or
       # -headerpad_max_install_names)". Every other argument passes as it
       # is.

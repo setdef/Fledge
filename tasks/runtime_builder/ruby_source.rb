@@ -9,8 +9,7 @@ require "fileutils"
 
 class RuntimeBuilder
   # The edits a mobile runtime makes to Ruby's own source before it builds
-  # it (doc/contributors/design/phone-runtimes.md, "Scripted edits to
-  # Ruby's source"), and the one a musl runtime makes (Musl::EDITS). Each
+  # it, and the one a musl runtime makes (Musl::EDITS). Each
   # replaces lines of Ruby 4.1.0-preview1's files
   # that it names, and raises when they are not there, so that a new Ruby
   # whose files moved on fails the build at the edit to look at again,
@@ -150,12 +149,10 @@ class RuntimeBuilder
     # take, or with no function, is read as before. On Android a gem's
     # command in the app's bin folder is a link to the ruby program,
     # which Android lets an app run, and the runtime reads RubyGems'
-    # wrapper kept apart in its place (runtime/mobile/commands.c;
-    # doc/contributors/design/phone-runtimes.md, "Gem commands on
-    # Android"). The lines it adds are compiled for Android alone
-    # (<tt>__ANDROID__</tt>), so a Ruby built for another system with the
-    # edit is the Ruby it would be without. 4096 bytes is PATH_MAX on
-    # Linux and Android.
+    # wrapper kept apart in its place (runtime/mobile/commands.c). The lines it
+    # adds are compiled for Android alone (<tt>__ANDROID__</tt>), so a Ruby
+    # built for another system with the edit is the Ruby it would be without.
+    # 4096 bytes is PATH_MAX on Linux and Android.
     def self.prism_compile_c(text)
       declared = "#ifdef __ANDROID__\n#include <stddef.h>\nint (*ruby_embed_source_path)(const char *, char *, size_t);\n#endif\n"
       read = "    const char *source_path = RSTRING_PTR(filepath);\n#ifdef __ANDROID__\n    char embed_source[4096];\n" \

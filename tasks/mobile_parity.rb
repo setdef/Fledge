@@ -12,8 +12,7 @@ require "open3"
 require "rbconfig"
 require_relative "parity"
 
-# The mobile check (doc/contributors/design/parity.md, "The mobile
-# parity"): apps built as a developer builds them, with fledge build ios
+# The mobile check: apps built as a developer builds them, with fledge build ios
 # and fledge build android, their projects built with xcodebuild and
 # Gradle, and run in the iOS Simulator, on an iPhone and an iPad, and on
 # Android emulators, each app's output read back the way an app's
@@ -22,41 +21,37 @@ require_relative "parity"
 #
 # The apps (APPS) are examples/hello; examples/basket, a shopping list
 # whose Ruby draws it with each phone's own widgets, through its own
-# bridge to UIKit on iOS and its own calls to Java on Android
-# (doc/contributors/design/phone-widgets.md),
+# bridge to UIKit on iOS and its own calls to Java on Android,
 # and which stays open, as a real app does; test/fixtures/mobile_app, whose pure-Ruby
 # gems Bundler sets up; test/fixtures/native_phone, whose gem has a C and C++
-# extension compiled for the phone
-# (doc/contributors/design/phone-projects.md, "Gems with extensions"),
+# extension compiled for the phone,
 # linked into the app on iOS and a file Ruby loads on Android;
 # test/fixtures/cmake_phone, whose gem's
 # extconf.rb builds a C++ library with CMake for each of the phone's
-# targets (doc/contributors/design/phone-projects.md, "CMake toolchain
-# files"), and whose Android host loads the native libraries a host may
+# targets, and whose Android host loads the native libraries a host may
 # name in a fixed list; test/fixtures/rake_phone,
 # whose gem from rubygems.org, digest-crc, builds its C extensions from a
 # Rakefile, with mkmf, and prints whether they ran; test/fixtures/rust_phone,
 # whose gem's Rust extension (rb-sys and magnus) Cargo builds for each of
-# the phone's targets (doc/contributors/design/phone-projects.md, "Gems
-# with extensions"); test/fixtures/ffi_phone, whose ffi gem from
+# the phone's targets; test/fixtures/ffi_phone, whose ffi gem from
 # rubygems.org builds the libffi it bundles and calls C by name, with a
 # Ruby block as a callback; test/fixtures/ffi_library_phone, whose gems from
 # rubygems.org, llhttp-ffi and scrypt, each build a library for ffi to
 # open from a Rakefile, which the app carries as a framework of its own
 # on iOS and a native library of its own on Android; a script that requires json and csv, a bundled
 # gem, parses with prism, a bundled gem whose extension compiles its own
-# libprism (doc/contributors/design/phone-runtimes.md, "Bundled gems' extensions"), and
+# libprism, and
 # reaches a server of the check's own over HTTPS
 # (test/fixtures/mobile_hello); on Android, an app that runs the command
 # of a gem its lockfile locks, and no runtime has, by its name
 # (test/fixtures/mobile_commands); test/fixtures/sdl_phone, a game whose
-# host is SDL3's, as a Lota game's is (doc/contributors/design/phone-projects.md, "A host
-# that owns the main loop"), which the check builds SDL3 for and touches; and the parity probe (test/fixtures/parity), whose report is compared
-# with the same main.rb under the desktop Ruby of the computer that runs
-# the simulator (rv-ruby's, as the desktop parity check runs it). The
-# report is one long line, which the log holds as several entries in a
-# row (MobileParity.report). Every difference from the desktop Ruby is
-# justified in Parity::JUSTIFIED for the mobile targets, or fails.
+# host is SDL3's, as a Lota game's is, which the check builds SDL3 for and
+# touches; and the parity probe (test/fixtures/parity), whose report is compared
+# with the same main.rb under the desktop Ruby of the computer that runs the
+# simulator (rv-ruby's, as the desktop parity check runs it). The report is one
+# long line, which the log holds as several entries in a row
+# (MobileParity.report). Every difference from the desktop Ruby is justified in
+# Parity::JUSTIFIED for the mobile targets, or fails.
 #
 #   ruby tasks/mobile_parity.rb ios RUNTIMES_DIR
 #   ruby tasks/mobile_parity.rb android-build RUNTIMES_DIR
@@ -166,9 +161,8 @@ class MobileParity
       touches: /\ASdlDemo drew 60 frames\z/, touched: SDL_TOUCH,
       also: [/\ASdlDemo recurses [1-9]\d{3} levels deep\z/, SDL_TOUCH, /\ASdlDemo drew \d+ frames in all, after a touch\z/]),
     # Not on iOS yet: Lota 0.8.0's host there is for the iOS runtime of Fledge
-    # v0.16.0, whose Ruby is not a framework, and fledge build refuses it
-    # (doc/contributors/design/phone-projects.md, "A host that owns the main
-    # loop"). Pop joins the iOS job when Lota has a host for this runtime.
+    # v0.16.0, whose Ruby is not a framework, and fledge build refuses it. Pop
+    # joins the iOS job when Lota has a host for this runtime.
     App.new(path: "examples/lota_pop", name: "Pop", identifier: "com.setdef.fledge.Pop", prepare: [".github/scripts/lota-pop.sh", "examples/lota_pop"],
       build_options: { "lota" => "--with-rice-dir=%<app>s/vendor/cache/rice-4.12.0" },
       prints: /\APop: 3 dots, \d+ popped\z/, stays_open: true, fullscreen: true, phones: %w[android]),
@@ -228,8 +222,7 @@ class MobileParity
   SDL3_STAMP = "build.sh.sha256"
 
   # Builds SDL3 for +phone+ into +into+ with the app's own script, as a
-  # developer does (doc/contributors/design/phone-projects.md, "A host
-  # that owns the main loop"), and returns +into+, which the app's gem
+  # developer does, and returns +into+, which the app's gem
   # finds through Bundler's build options. On Android the script needs
   # ANDROID_NDK_ROOT, which the jobs that build for Android set.
   #
@@ -386,9 +379,7 @@ class MobileParity
   # taken from +environment+, the one the phone gave the app
   # (Environment), in place of the reference's. On Android that
   # environment's PATH has the app's Ruby's bin folder first, where the
-  # runtime puts it as a developer's shell has the Ruby they run
-  # (doc/contributors/design/phone-runtimes.md, "Gem commands on
-  # Android").
+  # runtime puts it as a developer's shell has the Ruby they run.
   def self.differences(reference, report, environment, platform:, work:)
     paths = report.fetch("paths")
     if Parity::ANDROID.include?(platform)
@@ -401,8 +392,7 @@ class MobileParity
   end
 
   # Facts of the probe's that iOS does not yet compare. "gem commands"
-  # runs ruby and a gem's command by name, which iOS lets no app do
-  # (doc/contributors/design/parity.md, "The probe").
+  # runs ruby and a gem's command by name, which iOS lets no app do.
   NOT_YET = ["gem commands"].freeze
 
   def initialize(target:, work: File.join(ROOT, "tmp", "mobile-parity"), out: $stdout)

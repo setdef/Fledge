@@ -24,8 +24,7 @@ class CIRunsTest < Minitest::Test
     end
   end
 
-  # A pin-only commit's CI skips the jobs a pin cannot change
-  # (doc/contributors/design/releases.md, "A pin commit's short CI"), so
+  # A pin-only commit's CI skips the jobs a pin cannot change, so
   # a skipped job counts unless every job has to have run.
   def test_skipped_jobs_count_only_when_every_job_need_not_have_run
     with_api(runs: [a_run(7)], jobs: { 7 => [a_job("Gate"), a_job("Build (arm64-darwin)", "skipped")] }) do |_, runs|
@@ -66,8 +65,7 @@ class CIRunsTest < Minitest::Test
 
   # A run started by hand or by a workflow (workflow_dispatch) checks
   # out the very commit, on whatever branch it was started, as a push's
-  # run does, and runs the same jobs (doc/contributors/design/releases.md,
-  # "Which runs are a commit's"), so it is the commit's run as a push's is.
+  # run does, and runs the same jobs, so it is the commit's run as a push's is.
   def test_takes_a_dispatched_run_on_any_branch
     with_api(runs: [a_run(7, event: "workflow_dispatch", branch: "release-next")], jobs: { 7 => [a_job("Gate")] }) do |_, runs|
       assert_equal 7, runs.green(SHA)

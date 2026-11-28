@@ -3,7 +3,7 @@
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT
 
-  Written by fledge build (doc/contributors/design/phone-projects.md): the APIs Apple requires a reason
+  Written by fledge build: the APIs Apple requires a reason
   for that Fledge's Ruby calls. Ruby stats files (stat, fstat, fstatat,
   lstat, getattrlist, fgetattrlist), which Apple lists among the file
   timestamp APIs, and reads its monotonic clock with mach_absolute_time,

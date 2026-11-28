@@ -12,8 +12,7 @@ require "yaml"
 # bundle's compiled extensions target the Ruby, the system, and the
 # runner image they were compiled on, so its key names all three, and a
 # bundle compiled on one image (ubuntu-latest's, macos-26's) is never
-# restored on another (doc/contributors/design/releases.md, "Installed
-# gems in CI"). A set of pinned downloads is keyed by the files it
+# restored on another. A set of pinned downloads is keyed by the files it
 # holds, and a Gradle set falls back no further than the plugin's pin.
 class WorkflowCachesTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
@@ -80,8 +79,7 @@ class WorkflowCachesTest < Minitest::Test
 
   # A set of pinned downloads is restored by its job's prefix, the newest
   # set saved under it, and saved under that prefix and the digest of the
-  # files it holds, only when that is not the key restored
-  # (doc/contributors/design/runtimes.md, "Pinned downloads in CI").
+  # files it holds, only when that is not the key restored.
   def test_pinned_downloads_are_restored_by_prefix_and_saved_under_what_they_hold
     jobs = download_cache_jobs
 
@@ -111,9 +109,7 @@ class WorkflowCachesTest < Minitest::Test
   end
 
   # A Gradle set whose exact key the cache lacks falls back to the newest
-  # set for the same system and plugin, never past the plugin's pin
-  # (doc/contributors/design/phone-projects.md, "Gradle's downloads in
-  # CI").
+  # set for the same system and plugin, never past the plugin's pin.
   def test_a_gradle_restore_falls_back_to_its_key_up_to_the_plugins_pin
     restores = workflows.flat_map do |name, workflow|
       workflow.fetch("jobs").flat_map do |id, job|
@@ -133,8 +129,7 @@ class WorkflowCachesTest < Minitest::Test
   # A Gradle build that failed on a refused download has still fetched
   # most of the set, and Gradle keeps what it fetched, so the job saves
   # it, under a key of its own run that restore-keys reaches, and never
-  # under the exact key, which a complete set takes (doc/contributors/
-  # design/phone-projects.md, "Gradle's downloads in CI"). A save that
+  # under the exact key, which a complete set takes. A save that
   # waited for success left a trunk run after a pin move to fetch the
   # whole classpath again, run after run, while Maven Central refused it
   # (issue 88).
@@ -160,8 +155,7 @@ class WorkflowCachesTest < Minitest::Test
   # A run restores only what its own branch or trunk saved, so what the
   # proof of a pin move on pin-move, a release's runs on release-next, or
   # a pull request saves is read by no run of trunk and only fills the
-  # repository's 10 GB (doc/contributors/design/runtimes.md, "Caches only
-  # trunk saves"; issue 90).
+  # repository's 10 GB.
   ON_TRUNK = "github.ref == 'refs/heads/trunk'"
 
   def test_a_step_that_saves_a_cache_runs_only_on_trunk
@@ -209,8 +203,7 @@ class WorkflowCachesTest < Minitest::Test
 
   # The nightly run against Ruby's master restores trunk's downloads and
   # saves none: its snapshot is a new file every night, so every set it
-  # saved would be a new entry of the whole set (doc/contributors/design/
-  # runtimes.md, "Testing against Ruby's master").
+  # saved would be a new entry of the whole set.
   RESTORE_ONLY = "ruby-master.yml"
 
   def test_the_run_against_rubys_master_restores_trunks_downloads_and_saves_none

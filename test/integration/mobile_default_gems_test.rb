@@ -27,8 +27,7 @@ class MobileDefaultGemsTest < Minitest::Test
 
   # A phone's Ruby is built in its source folder, as rv-ruby builds a
   # desktop's, so that its default gems' specifications list the files a
-  # desktop's do (doc/contributors/design/phone-runtimes.md, "Building
-  # Ruby for a phone"). Built beside its source, tool/rbinstall.rb put
+  # desktop's do. Built beside its source, tool/rbinstall.rb put
   # lib/ before each extconf.rb a gemspec lists, and RubyGems'
   # register_default_spec then took io-nonblock for a gem whose files sit
   # under lib/ and left out io/nonblock.bundle, so require "io/nonblock"
@@ -39,9 +38,8 @@ class MobileDefaultGemsTest < Minitest::Test
     assert_default_gems_list_their_files_as_a_desktops_do("ios", rubies: mobile("ios").targets.size)
   end
 
-  # An Android runtime holds one lib/ruby, which both ABIs share
-  # (doc/contributors/design/phone-runtimes.md, "What a phone runtime
-  # holds"), where an iOS one holds a Ruby for each slice.
+  # An Android runtime holds one lib/ruby, which both ABIs share, where an iOS
+  # one holds a Ruby for each slice.
   def test_an_android_runtimes_default_gems_list_their_files_as_a_desktops_do
     assert_default_gems_list_their_files_as_a_desktops_do("android", rubies: 1)
   end
@@ -52,9 +50,7 @@ class MobileDefaultGemsTest < Minitest::Test
   # package installer extracted, so the runtime's fledge.links names, for
   # each ABI, a link there from the path the ABI's rbconfig.rb gives, and
   # Ruby's install, which gives that library no other name
-  # (RubySource.configure_soname), had nothing else beside it
-  # (doc/contributors/design/phone-runtimes.md, "Ruby's extensions on
-  # Android").
+  # (RubySource.configure_soname), had nothing else beside it.
   def test_an_android_runtime_links_its_ruby_library_from_where_rbconfig_says_it_is
     archive = runtime_archive("android")
     names = Fledge::Archive.names(archive)

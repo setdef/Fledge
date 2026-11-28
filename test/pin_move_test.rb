@@ -10,8 +10,7 @@ require_relative "test_helper"
 require_relative "support/loopback_server"
 require_relative "../tasks/pin_move"
 
-# The move of a pin the watch found behind (doc/contributors/design/
-# runtimes.md, "Keeping the pins current"), on small checkouts written
+# The move of a pin the watch found behind, on small checkouts written
 # here, with upstreams' answers given by each test: the assets and
 # digests are what GitHub listed for libffi and llvm-mingw on
 # 2026-11-22.
@@ -964,17 +963,13 @@ class PinMoveTest < Minitest::Test
   end
 
   # Where a line may name a pin's version beside the input's name: the
-  # pins and the license map, which the move rewrites; the record of what
-  # changed; and the documents kept as they were on their day.
+  # pins and the license map, which the move rewrites; and the record of what
+  # changed.
   RECORDS = %w[
     CHANGELOG.md
     runtime/sources.yml
     runtime/licenses.yml
-    doc/licensing.md
-    doc/contributors/decisions.md
-    doc/contributors/research
-    doc/contributors/plan
-    doc/contributors/drafts
+    docs/reference/licensing.md
     test/fixtures/pin_watch
     test/pin_watch_test.rb
     test/pin_move_test.rb

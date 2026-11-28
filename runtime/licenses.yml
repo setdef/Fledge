@@ -20,21 +20,16 @@
 #   - every text file whose words name a copyleft license is one a person
 #     has reviewed (reviewed);
 #   - and every component's license meets the policy, which
-#     lib/fledge/license_policy.rb holds (Fledge::LicensePolicy;
-#     doc/contributors/design/license-audit.md, "The policy and its
-#     categories").
+#     lib/fledge/license_policy.rb holds (Fledge::LicensePolicy).
 #
-# The rule (decisions 8 and 24, and the entries of
-# 2026-10-26, later, in doc/contributors/decisions.md; design/license-audit.md): an
+# The rule: an
 # app's developer must owe nothing beyond notices for what Fledge copies
-# into the app, Fledge's own MIT files among them (decisions,
-# 2026-11-07), except for LGPL libraries, which may ship only as
-# separate shared libraries the app's recipient can replace, with their
-# source (never the app's) in each runtime's notices/sources/, so in
-# every app, and published beside each runtime.
+# into the app, Fledge's own MIT files among them, except for LGPL libraries,
+# which may ship only as separate shared libraries the app's recipient can
+# replace, with their source (never the app's) in each runtime's
+# notices/sources/, so in every app, and published beside each runtime.
 # RuntimeBuilder runs the audit on every runtime it builds and
-# refuses to archive one that fails
-# (doc/contributors/design/license-audit.md).
+# refuses to archive one that fails.
 #
 # Patterns are File.fnmatch globs relative to the tree (** crosses
 # folders, {a,b} alternates). {prefix} is where Ruby's own tree starts
@@ -81,8 +76,7 @@ platforms:
   x64-mingw-ucrt: {os: windows, arch: x64-mingw-ucrt, gem_arch: x64-mingw-ucrt, so: so}
   aarch64-mingw-ucrt: {os: windows, arch: aarch64-mingw-ucrt, gem_arch: aarch64-mingw-ucrt, so: so}
   # iOS's Ruby reports arm64-darwin on devices and in the Simulator, and
-  # each XCFramework slice carries its own
-  # (doc/contributors/design/phone-runtimes.md, "What a phone runtime holds");
+  # each XCFramework slice carries its own;
   # Android's one tree holds each ABI's arch folder, named for its
   # platform.
   ios:
@@ -121,9 +115,9 @@ signatures:
 #   embedded:  files the component is compiled into, each with a string
 #              that proves its version is still the one named here
 #   source:    the runtime/sources.yml pin of its source, for LGPL code
-#   first_party: Fledge's own work, which NOTICES.txt and doc/licensing.md
-#              name as Fledge's, and into which no LGPL library may be
-#              linked
+#   first_party: Fledge's own work, which NOTICES.txt and
+# docs/reference/licensing.md              name as Fledge's, and into which no
+# LGPL library may be              linked
 #   archive:   false for an entry that describes only what a runtime
 #              holds and Fledge's own Ruby archive (tasks/ruby_archive.rb)
 #              does not: the launcher, AppImage, Fledge's extensions
@@ -162,7 +156,7 @@ components:
         evidence: "ruby: could not run "
 
   # A phone's app has no Fledge launcher: the host app the project
-  # fledge build writes starts Ruby through the embedding API (doc/contributors/design/phone-projects.md),
+  # fledge build writes starts Ruby through the embedding API,
   # so of this component a phone's runtime holds only the RubyGems
   # defaults, in each Ruby it carries.
   - id: fledge-mobile
@@ -185,11 +179,10 @@ components:
   # the framework's Info.plist and module map, and into
   # libfledgeruby.so for each ABI in the Android AAR, beside the AAR's
   # Java class and its packaging, and the Android runtime's ruby program,
-  # libfledgerubyexe.so, which links libfledgeruby.so (doc/contributors/design/phone-runtimes.md,
-  # "The ruby program on Android"); each runtime's fledge.links, the
-  # Android runtime's at its root and the iOS runtime's in each slice,
-  # with the iOS runtime's index of each extension's XCFramework, which
-  # Xcode's build tool wrote (same document, "Ruby's extensions on
+  # libfledgerubyexe.so, which links libfledgeruby.so; each runtime's
+  # fledge.links, the Android runtime's at its root and the iOS runtime's in
+  # each slice, with the iOS runtime's index of each extension's XCFramework,
+  # which Xcode's build tool wrote (same document, "Ruby's extensions on
   # iOS"), and the Android
   # runtime's openssl_certificates.c, compiled into Ruby's openssl
   # extension (same document, "Certificates").
@@ -1073,8 +1066,7 @@ components:
 
   # jdx/ruby's builds carry the extract its recipes/dependencies.yml pins,
   # which a glibc Linux app reads only on a computer with no CA
-  # certificates of its own (doc/contributors/design/runtimes.md,
-  # "Certificates on glibc Linux").
+  # certificates of its own.
   - id: ca-certificates-jdx
     name: Mozilla's CA certificates, as curl publishes them
     version: cacert-2025-07-15

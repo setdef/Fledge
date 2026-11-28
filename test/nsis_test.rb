@@ -147,8 +147,7 @@ class NsisTest < Minitest::Test
   end
 
   # The Start menu shortcut, with its System.AppUserModel.ID set to the
-  # identifier the launcher gives the process
-  # (doc/contributors/design/launcher.md, "Windows").
+  # identifier the launcher gives the process.
   def test_the_start_menu_shortcut_carries_the_app_user_model_id
     text = script
 

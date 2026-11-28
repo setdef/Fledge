@@ -42,8 +42,7 @@ module Fledge
       # the app shares one C++ runtime, and with its run path
       # <tt>$ORIGIN</tt>, so that the runtime's ruby program, which loads
       # it outside the app's own library namespace, finds the shared
-      # libraries it needs beside it (doc/contributors/design/phone-runtimes.md,
-      # "The ruby program on Android"). Returns +into+.
+      # libraries it needs beside it. Returns +into+.
       def call(built, build, registration:, into:)
         ndk = built.ndk or raise Error, "only an Android app links a shared library"
         target = build.target

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # Installs hello with winget from the manifests in
-# doc/package_managers.md, runs it by its command with no Ruby on PATH,
+# test/fixtures/package_managers, runs it by its command with no Ruby on PATH,
 # and uninstalls it.
 #
 #   deliver-winget.ps1 -Recipes DIR -Platform RUBY_PLATFORM

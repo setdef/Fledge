@@ -10,8 +10,8 @@
 # as an ordinary gem: fledge build --from, run through the executable
 # RubyGems wrote into Gem.bindir, whose exit status becomes this app's.
 # The person's own RUBYOPT and RUBYLIB stay out of the child, as
-# doc/contributors/design/desktop-apps.md, "Building from a built app",
-# says a framework does.
+# a framework building from a built app must keep them out of its
+# own.
 from = ARGV.fetch(2) { File.dirname(__dir__) }
 fledge = File.join(Gem.bindir, Gem.win_platform? ? "fledge.bat" : "fledge")
 child = { "RUBYOPT" => "-rbundler/setup", "RUBYLIB" => nil }

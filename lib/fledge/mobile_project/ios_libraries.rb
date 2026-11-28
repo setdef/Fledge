@@ -27,8 +27,7 @@ module Fledge
     # library by a path where no code may sit is a symbolic link there to
     # where the code is ("Embedding nonstandard code structures in a
     # bundle", developer.apple.com, "Use symlinks for gnarly edge
-    # cases"; doc/contributors/design/phone-projects.md, "Libraries for
-    # ffi on iOS").
+    # cases").
     #
     # This class makes, for each library, a framework for each slice,
     # its binary the library with the install name
@@ -159,8 +158,7 @@ module Fledge
       # built, it puts each slice's framework at the path that index
       # names, and the index beside them, as that command copies them, so
       # an app with a hundred of Ruby's extensions does not start Xcode's
-      # build tool a hundred times (doc/contributors/design/phone-runtimes.md,
-      # "Ruby's extensions on iOS").
+      # build tool a hundred times.
       def self.xcframework(project, name, slices, identifier:, version:, manifests: {}, index: nil)
         output = File.join(project, FOLDER, "#{name}.xcframework")
         Dir.mktmpdir("fledge-framework") do |work|

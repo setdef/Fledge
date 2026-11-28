@@ -9,11 +9,8 @@ require_relative "test_helper"
 require "open3"
 
 # Every citation of an ADR names one that doc/contributors/adr/ still
-# holds. An ADR that no longer passes is deleted and its reasons move
-# into the design document for its subject, so a citation left behind
-# sends its reader to nothing; this test is what notices one
-# (doc/contributors/design/architecture.md, "Architecture Decision
-# Records").
+# holds. An ADR that no longer passes is deleted, so a citation left
+# behind sends its reader to nothing; this test is what notices one.
 class AdrCitationsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
 
@@ -24,15 +21,8 @@ class AdrCitationsTest < Minitest::Test
   CITATION = /\bADRs?#{GAP}(\d{3}(?:(?:,#{GAP}(?:and#{GAP})?|#{GAP}(?:and|to)#{GAP})\d{3})*)\b/
   LINK = %r{\badr/(\d{3})\.md\b}
 
-  # Files kept as they stood on their dates, which cite ADRs as they
-  # were then and are never edited (architecture.md, "Architecture
-  # Decision Records"); and one test whose fixtures are ADRs of its own.
+  # A test whose fixtures are ADRs of its own.
   EXEMPT = {
-    "doc/contributors/research/" => "dated research",
-    "doc/contributors/plan/001.md" => "a finished plan",
-    "doc/contributors/plan/002.md" => "a finished plan",
-    "doc/contributors/drafts/tokra.md" => "a dated draft to Tokra, never sent",
-    "doc/contributors/decisions.md" => "the decision log, frozen, whose Applied-in pointers name ADRs as they stood",
     "test/adr_digest_test.rb" => "its fixtures are ADRs numbered past any real one",
   }.freeze
 

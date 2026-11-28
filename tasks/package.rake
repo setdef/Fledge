@@ -9,8 +9,7 @@ require "fileutils"
 require "open3"
 require "rbconfig"
 
-# Fledge is installed from its git tags and GitHub Releases
-# (doc/contributors/design/releases.md, "Where releases are"), and
+# Fledge is installed from its git tags and GitHub Releases, and
 # publishing to RubyGems.org is done by a person, never by a rake task
 # or an agent. Bundler's gem tasks define release, which
 # pushes the branch and a tag to git and the gem to RubyGems.org; this
@@ -19,9 +18,9 @@ require "rbconfig"
 %w[release release:guard_clean release:source_control_push release:rubygem_push].each do |name|
   Rake::Task[name].clear if Rake::Task.task_defined?(name)
 end
-desc 'Refuse: publishing to RubyGems.org is done by hand (doc/contributors/design/releases.md, "Where releases are")'
+desc "Refuse: publishing to RubyGems.org is done by hand"
 task :release do
-  abort "❌ rake release is disabled: a person publishes to RubyGems.org by hand. Releases are git tags and GitHub Releases (doc/contributors/design/releases.md, \"Where releases are\")."
+  abort "❌ rake release is disabled: a person publishes to RubyGems.org by hand. Releases are git tags and GitHub Releases."
 end
 
 namespace :package do
@@ -37,7 +36,7 @@ namespace :package do
     FileUtils.mkdir_p(work)
 
     spec = Gem::Specification.load(File.join(root, "fledge.gemspec"))
-    stray = spec.files.grep(%r{\A(?:test|tasks|doc|examples|\.github)/})
+    stray = spec.files.grep(%r{\A(?:test|tasks|docs?|examples|\.github)/})
     abort "❌ The gem packs development files: #{stray.join(', ')}" if stray.any?
 
     # gem build runs in the empty GEM_HOME too. Every gem command loads

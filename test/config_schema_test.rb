@@ -10,7 +10,7 @@ require "json"
 require "json_schemer"
 
 # lib/fledge/config.schema.json is written by hand, and Fledge::Config
-# is what fledge build obeys (doc/contributors/design/public-interface.md). These tests hold the two
+# is what fledge build obeys. These tests hold the two
 # together: the schema's keys, kinds, installers, and identifier rule
 # are compared with Config's constants, and each document below must be
 # accepted by both or refused by both.
@@ -282,8 +282,7 @@ class ConfigSchemaTest < Minitest::Test
 
   # Documents Config refuses and no draft-07 schema can: draft-07 has no
   # way to say that at most one item of a list matches, or that items
-  # differ in one property (doc/contributors/design/desktop-apps.md,
-  # "Several programs"). An editor takes them; the build refuses them,
+  # differ in one property. An editor takes them; the build refuses them,
   # naming what to change.
   CONFIG_ONLY = [
     "programs:\n  - path: a\n    kind: windowed\n    identifier: com.example.A\n  - path: b\n    kind: windowed\n    identifier: com.example.B\n",
@@ -324,7 +323,7 @@ class ConfigSchemaTest < Minitest::Test
   def test_is_a_draft_07_schema
     assert_equal "http://json-schema.org/draft-07/schema#", schema.fetch("$schema")
     assert_equal URL, schema.fetch("$id")
-    %w[lib/fledge/config.rb README.md].each do |file|
+    %w[lib/fledge/config.rb].each do |file|
       assert_includes File.read(File.join(ROOT, file)), "$schema=#{URL}", "#{file} gives developers a modeline of another release"
     end
     assert_empty JSONSchemer.draft7.validate(schema).to_a

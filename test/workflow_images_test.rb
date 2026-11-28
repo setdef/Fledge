@@ -12,8 +12,7 @@ require "yaml"
 # runtime/sources.yml's images, by .github/scripts/pinned-images.sh, and
 # never from a tag or digest written in a workflow, which the pin move
 # could not change, since a workflow's own token cannot push a commit
-# that changes a workflow file (doc/contributors/design/runtimes.md,
-# "Container images"). A job container whose expression names a key
+# that changes a workflow file. A job container whose expression names a key
 # sources.yml lacks would be empty, and GitHub would run the job on the
 # runner itself, so every key named is checked here.
 class WorkflowImagesTest < Minitest::Test

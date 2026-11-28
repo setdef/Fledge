@@ -11,7 +11,7 @@ require_relative "../../tasks/runtime_builder"
 
 # RuntimeBuilder::Hardening reads a program this computer's own compiler
 # and linker built, with this computer's own objdump, as the runtime
-# build does (doc/contributors/design/launcher.md, "Hardening"): a
+# build does: a
 # program built with the flags Fledge passes has every protection, and
 # one built without them lacks the ones its platform lets a compiler
 # leave out. Windows' programs are the runtime build's, which

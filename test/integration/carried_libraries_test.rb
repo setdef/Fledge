@@ -10,8 +10,7 @@ require "bundler"
 require "open3"
 
 # A Mac app that carries libraries from the developer's computer
-# (Fledge::CarriedLibraries; doc/contributors/design/gems.md, "Libraries
-# a Mac app carries"). test/fixtures/carried_libraries's gem links
+# (Fledge::CarriedLibraries). test/fixtures/carried_libraries's gem links
 # libgreet, which needs libpunct; the test builds both with Xcode's clang
 # into a folder of their own, as a package manager installs them:
 # libgreet named by its absolute path, as Homebrew names its libraries,

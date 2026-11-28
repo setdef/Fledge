@@ -5,9 +5,9 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# On iOS the extension is linked into the app and registered under the
-# name extconf.rb gave create_makefile, so this require finds it without
-# a file (doc/contributors/design/phone-projects.md, "Registering
-# extensions"). On Android it is a file, as on a desktop, which Ruby
-# loads from where a desktop has it.
+# On iOS the extension is linked into the app and
+# registered under the name extconf.rb gave
+# create_makefile, so this require finds it without
+# a file. On Android it is a file, as on a desktop,
+# which Ruby loads from where a desktop has it.
 require "sdl_demo/sdl_demo"

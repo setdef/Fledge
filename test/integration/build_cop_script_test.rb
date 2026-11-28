@@ -10,9 +10,8 @@ require "fileutils"
 require "open3"
 require "tmpdir"
 
-# .github/scripts/build-cop.sh's revert step (doc/contributors/design/
-# releases.md, "The build cop"), run as a subprocess in a real clone of
-# a real origin, with tasks/build_cop.rb replaced by a file that says
+# .github/scripts/build-cop.sh's revert step, run as a subprocess in a real
+# clone of a real origin, with tasks/build_cop.rb replaced by a file that says
 # what to do and gh by one that writes down what it was asked.
 class BuildCopScriptTest < Minitest::Test
   SCRIPT = File.expand_path("../../.github/scripts/build-cop.sh", __dir__)

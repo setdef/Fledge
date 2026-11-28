@@ -13,9 +13,7 @@ require_relative "../error"
 module Fledge
   class MobileExtensions
     # Keeps to each extension linked into a phone's app the names it
-    # defines that another part of the app also defines
-    # (doc/contributors/design/phone-projects.md, "Each linked
-    # extension's symbols").
+    # defines that another part of the app also defines.
     #
     # On a desktop each extension is a file of its own, and a Mac's Ruby
     # binds each file's calls to its own definitions. An iOS app links

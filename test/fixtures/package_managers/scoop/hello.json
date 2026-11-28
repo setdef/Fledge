@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "description": "Says hello",
+  "homepage": "https://github.com/example/hello",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/example/hello/releases/download/v1.0.0/Hello-x64-mingw-ucrt.zip",
+      "hash": "HASH FROM Hello-x64-mingw-ucrt.zip.sha256",
+      "extract_dir": "Hello-x64-mingw-ucrt"
+    },
+    "arm64": {
+      "url": "https://github.com/example/hello/releases/download/v1.0.0/Hello-aarch64-mingw-ucrt.zip",
+      "hash": "HASH FROM Hello-aarch64-mingw-ucrt.zip.sha256",
+      "extract_dir": "Hello-aarch64-mingw-ucrt"
+    }
+  },
+  "bin": [["Hello.exe", "hello"]],
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/example/hello/releases/download/v$version/Hello-x64-mingw-ucrt.zip",
+        "hash": { "url": "$url.sha256" }
+      },
+      "arm64": {
+        "url": "https://github.com/example/hello/releases/download/v$version/Hello-aarch64-mingw-ucrt.zip",
+        "hash": { "url": "$url.sha256" }
+      }
+    }
+  }
+}

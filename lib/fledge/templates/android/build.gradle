@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 // SPDX-License-Identifier: MIT
 //
-// Written by fledge build (doc/contributors/design/phone-projects.md): the app, with its identity from
+// Written by fledge build: the app, with its identity from
 // fledge.yml, targeting API 36, as Google Play requires of new apps and
 // updates since 2026-08-31, and running on API 26 and later, as Fledge's
-// Android runtime does (doc/contributors/design/phone-runtimes.md, "Targets"). Its Ruby, its program, and its gems
+// Android runtime does. Its Ruby, its program, and its gems
 // are the folder fledge/, which the task fledgeAsset stores, uncompressed,
 // as the asset fledge.zip, which org.setdef.fledge.FledgeRuby, in
 // libs/FledgeRuby.aar, unpacks on the app's first launch. Native

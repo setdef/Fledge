@@ -9,8 +9,7 @@ require "digest"
 
 # Writes lib/fledge/linkage/windows.yml, the DLLs every Windows a Fledge
 # app runs on has in System32, which Fledge::Linkage lets a gem's
-# compiled files need, from delvewheel's own lists
-# (doc/contributors/design/gems.md, "What Windows provides").
+# compiled files need, from delvewheel's own lists.
 #
 # delvewheel, which repairs Python's Windows wheels as auditwheel repairs
 # Linux's, keeps in delvewheel/_dll_list.py the lowercase name of every

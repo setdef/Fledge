@@ -11,8 +11,7 @@ require "open3"
 
 class MobileParity
   # The archive App Store Connect would take, as far as Apple's own tools
-  # show without an account (doc/contributors/design/phone-projects.md,
-  # "The App Store archive check"): an app's Xcode
+  # show without an account: an app's Xcode
   # project archived for devices with xcodebuild, unsigned, and what
   # App Store Connect requires of the archive and the app in it checked
   # in the files, with plutil, vtool, otool, lipo, and assetutil. What
@@ -50,8 +49,7 @@ class MobileParity
 
     # Ruby's framework, which an app embeds when its runtime's Ruby is
     # dynamic, and the install name its extensions' frameworks and the
-    # executable load it by (doc/contributors/design/phone-runtimes.md,
-    # "Ruby's extensions on iOS").
+    # executable load it by.
     RUBY = "FledgeRuby"
     RUBY_INSTALL_NAME = "@rpath/#{RUBY}.framework/#{RUBY}".freeze
 
@@ -116,8 +114,7 @@ class MobileParity
 
     # What +info+ says of export compliance: ITSAppUsesNonExemptEncryption
     # is the developer's declaration to the U.S. export rules, so Fledge
-    # writes none and the check reports it (doc/contributors/design/phone-projects.md,
-    # "Export compliance and the build number").
+    # writes none and the check reports it.
     def self.encryption(info)
       info.key?("ITSAppUsesNonExemptEncryption") ? "declared #{info['ITSAppUsesNonExemptEncryption']}" : "not declared"
     end
@@ -190,8 +187,7 @@ class MobileParity
     # The files under +root+, relative to it, that are Mach-O files, but
     # for the file +except+ and links: an app of Fledge's carries none but
     # its executable and its frameworks' binaries (its extensions link
-    # into the executable: doc/contributors/design/phone-projects.md,
-    # "Linking extensions on iOS"), and App Store Connect would want any
+    # into the executable), and App Store Connect would want any
     # other signed and in a framework.
     def self.mach_o_files(root, except:)
       Dir.glob("**/*", File::FNM_DOTMATCH, base: root).select do |relative|

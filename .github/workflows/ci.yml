@@ -1,18 +1,17 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT
 
-# Plan 001's pipeline, on every push and pull request: the gate, then a
+# The pipeline, on every push and pull request: the gate, then a
 # runtime per platform, then the tests on each platform with its own
 # runtime, then each platform building the examples for itself on a
-# runner of its own (decisions, 2026-10-28), then Delivery: each built app unpacked and
+# runner of its own, then Delivery: each built app unpacked and
 # run on a fresh computer that has never had Ruby.
 #
 # The gate runs once, on Linux: its lints (RuboCop, Steep, RDoc
 # coverage, REUSE, actionlint, clang-format) read the same files on
 # every OS, so one run answers for all three.
 #
-# A pushed pin commit, which changes only lib/fledge/SHA256SUMS
-# (doc/contributors/design/releases.md, "A pin commit's short CI"),
+# A pushed pin commit, which changes only lib/fledge/SHA256SUMS,
 # runs only the gate and a check that its pins match the runtimes of
 # its parent's run; every other job is skipped (the Changes job). Every other commit runs everything below.
 #
@@ -25,8 +24,7 @@
 # platform's apps are built on that platform, as developers build them.
 #
 # Each macOS job names the label whose Xcode or macOS is part of what it
-# proves, never macos-latest, which moves (doc/contributors/design/
-# releases.md, "Which macOS each job runs on"): macos-26, the macOS 26
+# proves, never macos-latest, which moves: macos-26, the macOS 26
 # floor, for every job that builds a Mac's apps or runs them, and for
 # the Xcode 26.5 the arm64-darwin runtime and the iOS jobs build with.
 #
@@ -38,7 +36,7 @@
 #
 # The mobile runtimes (ADR 099) build from Ruby's source, iOS's on a Mac
 # with Xcode and Android's on Linux with the NDK, and their Delivery is
-# apps built with fledge build ios and fledge build android (doc/contributors/design/phone-projects.md),
+# apps built with fledge build ios and fledge build android,
 # whose Xcode and Gradle projects build unsigned, the Gradle ones as APKs
 # and as the app bundles Google Play takes, run in the iOS Simulator on an
 # iPhone and an iPad and on Android emulators with 4 KB and 16 KB pages,
@@ -51,8 +49,8 @@
 # jobs check what it wrote and that it still fails on GPL code; the
 # upstream jobs show it catching what rv-ruby, jdx/ruby, and
 # RubyInstaller ship and runtimes remove; the licensing page job keeps
-# doc/licensing.md true to the runtimes; and the Replace jobs prove that
-# whoever receives an app can replace its LGPL libraries, as that page
+# docs/reference/licensing.md true to the runtimes; and the Replace jobs prove
+# that whoever receives an app can replace its LGPL libraries, as that page
 # tells developers.
 #
 # ruby/spec runs on stock Ruby and in a built app from each runtime,
@@ -63,8 +61,7 @@
 # from the release commit, once it has passed on trunk on the release
 # commit and on the pin commit tagged. It looks those runs up
 # and does not run this again. Nothing here, or ever, publishes to
-# RubyGems.org (doc/contributors/design/releases.md, "Where releases
-# are").
+# RubyGems.org.
 
 name: CI
 
@@ -74,8 +71,7 @@ on:
     # Not on other branches either: a full run asks for about an hour of
     # several macOS and Windows runners, and a branch's run is started on
     # purpose (gh workflow run ci.yml --ref BRANCH), as pin-watch.yml and
-    # cut.yml start theirs (doc/contributors/design/releases.md, "Runs,
-    # batches, and the release commit").
+    # cut.yml start theirs.
     branches: [trunk]
   pull_request:
   # pin-watch.yml starts a run on the branch pin-move to prove a move of
@@ -95,8 +91,7 @@ permissions:
 # inside a batch has no run of its own. A release commit ("chore:
 # release X.Y.Z") and a pin commit ("chore: pin ...") get a group of
 # their own, named for the commit, so their runs start at once and no
-# push replaces them (doc/contributors/design/releases.md, "Runs,
-# batches, and the release commit"). So does, on trunk, a run started
+# push replaces them. So does, on trunk, a run started
 # by hand or by a workflow, and any attempt after a run's first: a
 # failed job run again joins its run's group anew, and in trunk's
 # shared group the next push replaced it while it waited, so a red run
@@ -160,8 +155,7 @@ jobs:
       # Gems with native extensions compile against one Ruby on one
       # runner image, so the key names the system, the image (ImageOS, as
       # mise-action keys its own cache), the Ruby's version, revision, and
-      # platform, and the lockfile, as every installed-gems key does
-      # (doc/contributors/design/releases.md, "Installed gems in CI").
+      # platform, and the lockfile, as every installed-gems key does.
       # Only an exact match restores. ubuntu-latest names whichever image
       # GitHub moves it to, without a commit (Ubuntu 26.04 by 26 October
       # 2026, by this job's logs), so this job keeps its bundle under that
@@ -209,8 +203,7 @@ jobs:
             exit 1
           fi
 
-  # A pin commit (doc/contributors/design/releases.md, "A pin commit's
-  # short CI") changes only lib/fledge/SHA256SUMS
+  # A pin commit changes only lib/fledge/SHA256SUMS
   # from a parent whose run built and delivered every runtime it pins.
   # No runtime, app, or check below reads that file, so a pushed pin
   # commit runs the gate, which does, and this job, and every other job
@@ -324,7 +317,7 @@ jobs:
           - os: ubuntu-24.04-arm
             platform: aarch64-linux
           # Cross-compiled; the runner's 7z unpacks RubyInstaller's archive
-          # and its gpgv checks the signature. Windows on ARM64 too (doc/contributors/design/runtimes.md, "Windows on ARM64").
+          # and its gpgv checks the signature. Windows on ARM64 too.
           - os: ubuntu-24.04
             platform: x64-mingw-ucrt
           - os: ubuntu-24.04
@@ -357,8 +350,7 @@ jobs:
       # rv-ruby, jdx/ruby, RubyInstaller, llvm-mingw, and libxcrypt
       # downloads: the newest set saved for this platform, which the
       # builder takes a file from only when its SHA-256 is the pin's,
-      # downloading the rest (doc/contributors/design/runtimes.md, "Pinned
-      # downloads in CI"). The job's last steps save what it holds.
+      # downloading the rest. The job's last steps save what it holds.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: downloads
         with:
@@ -369,8 +361,7 @@ jobs:
       # commit differ only where the compiler's output does. glibc Linux
       # builds in the pinned manylinux_2_28 image, with its compiler,
       # linker, and patchelf, so that what the builder compiles needs no
-      # newer glibc than the image's 2.28
-      # (doc/contributors/design/runtimes.md, "The glibc floor").
+      # newer glibc than the image's 2.28.
       - name: Build the runtime
         env:
           PLATFORM: ${{ matrix.platform }}
@@ -547,12 +538,10 @@ jobs:
 
       # Gradle's dependency cache for the AAR's own project, which the
       # Android Gradle plugin packs, keyed on what decides its set: that
-      # project's Gradle files and the pinned Gradle and plugin
-      # (doc/contributors/design/phone-projects.md, "Gradle's downloads
-      # in CI"). A key the cache lacks restores the newest set for the
-      # same pins, which is saved again, with what Gradle added, under it,
-      # or, when the build failed, under a key of its run, as the apps'
-      # jobs below do.
+      # project's Gradle files and the pinned Gradle and plugin. A key the cache
+      # lacks restores the newest set for the same pins, which is saved again,
+      # with what Gradle added, under it, or, when the build failed, under a key
+      # of its run, as the apps' jobs below do.
       # Gradle retries what a repository refused, patiently
       # (.github/scripts/gradle-patience.sh says how).
       - name: Make Gradle patient with refused downloads
@@ -611,8 +600,7 @@ jobs:
           path: tmp/runtime/${{ matrix.platform }}/logs
           retention-days: 14
 
-  # Delivery on phones (doc/contributors/design/phone-projects.md, "Parity on a
-  # phone"; doc/contributors/design/phone-projects.md): apps built as a
+  # Delivery on phones: apps built as a
   # developer builds them, with fledge build ios, and their Xcode projects
   # built with xcodebuild for the Simulator and, unsigned, for devices, to
   # show the device slice links and the privacy manifest names every
@@ -623,23 +611,18 @@ jobs:
   # test/fixtures/cmake_phone, and test/fixtures/rust_phone, whose gems' extensions
   # are compiled for the phone, the second's C++ library by CMake from
   # its extconf.rb, with mise.toml's CMake, and the third's Rust by
-  # Cargo, with mise.toml's Rust and its phone targets
-  # (doc/contributors/design/phone-projects.md, "Gems with extensions"
-  # and "CMake toolchain files");
+  # Cargo, with mise.toml's Rust and its phone targets;
   # test/fixtures/rake_phone, whose digest-crc builds its extensions from a
-  # Rakefile (doc/contributors/design/phone-projects.md, "Rakefiles");
+  # Rakefile;
   # test/fixtures/ffi_phone,
   # whose ffi gem builds its own libffi and calls C with a Ruby block as
   # a callback; test/fixtures/ffi_library_phone, whose gems' Rakefiles build
-  # libraries for ffi, each embedded as a framework of its own
-  # (doc/contributors/design/phone-projects.md, "Libraries for ffi on
-  # iOS"); a script that requires json and csv,
-  # a bundled gem, and reaches rubygems.org over HTTPS;
+  # libraries for ffi, each embedded as a framework of its own; a script that
+  # requires json and csv, a bundled gem, and reaches rubygems.org over HTTPS;
   # test/fixtures/sdl_phone, whose host is SDL3's, as a Lota game's is: the
   # check builds SDL3 for iOS with the app's own script, and the app's UI
   # test touches the screen, so a change that breaks an SDL host's app
-  # fails here (doc/contributors/design/phone-projects.md, "A host that
-  # owns the main loop"); and the parity
+  # fails here; and the parity
   # probe, against ruby main.rb on this Mac's desktop Ruby, with every
   # difference justified for a phone (tasks/mobile_parity.rb).
   mobile-apps-ios:
@@ -674,8 +657,7 @@ jobs:
           xcrun simctl list runtimes
           cmake --version
 
-      # The pinned downloads, as the runtime jobs keep theirs
-      # (doc/contributors/design/runtimes.md, "Pinned downloads in CI").
+      # The pinned downloads, as the runtime jobs keep theirs.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: downloads
         with:
@@ -696,8 +678,7 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       # The runtime of this Mac, whose Ruby runs mkmf to compile a gem's
-      # extension for the phone (doc/contributors/design/phone-projects.md,
-      # "Gems with extensions").
+      # extension for the phone.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: runtime-arm64-darwin
@@ -736,8 +717,7 @@ jobs:
 
       # The Xcode projects fledge build ios wrote for the examples, which
       # the step above built, archived, and ran in the Simulator, archived
-      # for a developer's signing team (doc/contributors/design/releases.md,
-      # "The examples a release carries").
+      # for a developer's signing team.
       - name: Stage the examples' Xcode projects for a release
         run: ruby tasks/release_examples.rb stage-ios tmp/mobile-parity/ios/projects release-examples
 
@@ -771,8 +751,7 @@ jobs:
   # The iOS integration tests, in jobs of their own beside the apps', so
   # that the apps and the tests, each about a quarter of an hour or more
   # on the iOS chain that is the full run's longest path, run at once and
-  # not one after the other (doc/contributors/design/releases.md, "The
-  # full run's longest path"), in four legs, so that no step runs near
+  # not one after the other, in four legs, so that no step runs near
   # its limit ("The iOS integration tests' legs", there): the two tests
   # that build an app with Xcode and run it on a Simulator of its own for
   # about six minutes each, one leg apiece, fledge test's, which builds
@@ -831,8 +810,7 @@ jobs:
           xcrun simctl list runtimes
           cmake --version
 
-      # The pinned downloads, as the runtime jobs keep theirs
-      # (doc/contributors/design/runtimes.md, "Pinned downloads in CI").
+      # The pinned downloads, as the runtime jobs keep theirs.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: downloads
         with:
@@ -853,8 +831,7 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       # The runtime of this Mac, whose Ruby runs mkmf to compile a gem's
-      # extension for the phone (doc/contributors/design/phone-projects.md,
-      # "Gems with extensions").
+      # extension for the phone.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: runtime-arm64-darwin
@@ -907,11 +884,9 @@ jobs:
   # KB alignment and target API; each release bundle signed with a
   # throwaway upload key, validated with bundletool, made into the APKs
   # Play would serve, which are checked the same way and against Play's
-  # size limit (doc/contributors/design/phone-projects.md, "The Android App Bundle
-  # check"), and each app run from its debug APK
+  # size limit, and each app run from its debug APK
   # and again from its bundle's APKs, as Play installs them. No GitHub-hosted
-  # runner boots an arm64-v8a emulator with hardware acceleration
-  # (doc/contributors/design/public-interface.md, "Phones"), so the
+  # runner boots an arm64-v8a emulator with hardware acceleration, so the
   # arm64-v8a library is built and checked but run on no
   # emulator here. test/fixtures/rust_phone's Rust is compiled with mise.toml's
   # Rust and its Android targets, and bindgen reads the phone's headers
@@ -920,8 +895,7 @@ jobs:
   # libraries of its own, with ffi-compiler's ffi compiled by the
   # runner's C compiler. test/fixtures/sdl_phone's SDL3 is built with
   # the NDK above and its script, and the check taps the game's screen
-  # on each emulator (doc/contributors/design/phone-projects.md, "A
-  # host that owns the main loop"). examples/lota_pop, a Lota game, is
+  # on each emulator. examples/lota_pop, a Lota game, is
   # laid out from Lota's gem, compiled with the NDK, CMake and Rice, and
   # must log its third dot on each emulator. The Android
   # integration tests run here too, the one job with the Android runtime,
@@ -978,10 +952,8 @@ jobs:
           path: ${{ runner.temp }}/runtimes
 
       # fledge build android compiles a gem's extension with the NDK on the
-      # computer, as a developer's own
-      # (doc/contributors/design/phone-projects.md, "Gems with
-      # extensions"): the very NDK the runtime is built with, pinned by
-      # SHA-256.
+      # computer, as a developer's own: the very NDK the runtime is built with,
+      # pinned by SHA-256.
       - name: Install the pinned NDK
         run: |
           archive=$(ruby .github/scripts/fetch_pin.rb mobile ndk hosts x86_64-linux)
@@ -1000,8 +972,7 @@ jobs:
       # that Gradle asks Maven Central nothing it has already answered.
       # Maven Central refuses some of GitHub's runners' shared addresses,
       # with a 429, or with a 404 for files it has, which Gradle reports
-      # as "Could not find" (doc/contributors/design/phone-projects.md,
-      # "Gradle's downloads in CI"). The key is everything that decides
+      # as "Could not find". The key is everything that decides
       # what Gradle resolves: the template's Gradle files, the plugin's
       # version, and the runner's system; the cache is the folder
       # Gradle's guide says may be copied, without its lock files. A key
@@ -1040,8 +1011,7 @@ jobs:
       # build that failed saves what it fetched under a key of its own run
       # (the key, "-partial-", the run and its attempt), which the next run
       # restores through restore-keys and completes, so a Maven Central
-      # that refuses a runner is asked for less each time
-      # (doc/contributors/design/phone-projects.md, "Gradle's downloads in CI").
+      # that refuses a runner is asked for less each time.
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: ${{ github.ref == 'refs/heads/trunk' && !cancelled() && steps.gradle-cache.outputs.cache-primary-key != '' && steps.gradle-cache.outputs.cache-hit != 'true' }}
         with:
@@ -1122,10 +1092,9 @@ jobs:
           retention-days: 3
 
       # The debug APKs of the examples, which both emulators installed
-      # and ran above, so one target's job keeps them for a release
-      # (doc/contributors/design/releases.md, "The examples a release
-      # carries"). Gradle signs a debug APK with a debug key, which is
-      # what lets a phone install it.
+      # and ran above, so one target's job keeps them for a release. Gradle
+      # signs a debug APK with a debug key, which is what lets a phone install
+      # it.
       - name: Stage the examples' APKs for a release
         if: matrix.target == 'google_apis'
         run: ruby tasks/release_examples.rb stage-android tmp/mobile-parity/android/apks release-examples
@@ -1140,7 +1109,7 @@ jobs:
 
   # An Android app's project is built on macOS and Windows too, as Google
   # supports its SDK there and Briefcase, Flutter, React Native, and Tauri
-  # build Android apps there (doc/contributors/design/phone-projects.md): test/fixtures/mobile_app, written with
+  # build Android apps there: test/fixtures/mobile_app, written with
   # fledge build android and built with its Gradle wrapper and the
   # runner's Android SDK, as an APK and as the release bundle Play takes,
   # which is signed, validated, and made into Play's APKs with bundletool.
@@ -1219,8 +1188,7 @@ jobs:
           echo "BUNDLETOOL=$jar" >> "$GITHUB_ENV"
 
       # Gradle's dependency cache for this system, keyed as the emulator
-      # jobs key theirs (doc/contributors/design/phone-projects.md,
-      # "Gradle's downloads in CI"): the plugin fetches aapt2 for the
+      # jobs key theirs: the plugin fetches aapt2 for the
       # system it runs on, so each system has a set of its own. A key the
       # cache lacks restores the newest set for the same system and
       # plugin, which is saved again, with what Gradle added, under it.
@@ -1264,7 +1232,7 @@ jobs:
   # runtime, so test/integration/built_app_test.rb builds and runs a
   # real app rather than skipping (FLEDGE_REQUIRE_RUNTIME turns a skip
   # into a failure); on Linux with squashfs-tools' mksquashfs, which
-  # writes an AppImage's file system (decisions, 2026-10-28), and with GObject
+  # writes an AppImage's file system, and with GObject
   # introspection, so test/integration/typelib_test.rb builds an app
   # over ruby-gnome's gems. No sqlite3 gem is built for Ruby 4.1 yet, so the
   # builds of test/fixtures/my_cool_app and the gem-shaped probe compile it
@@ -1386,7 +1354,7 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: bundle exec rake parity
 
-      # The console checks (doc/contributors/design/parity.md, "Console checks"):
+      # The console checks:
       # Ctrl-C and a hangup, in a terminal of the probe's own,
       # end ruby main.rb as the console Delivery expects of a built app.
       - name: Interrupt ruby main.rb in a terminal
@@ -1441,7 +1409,7 @@ jobs:
       full: ${{ needs.changes.outputs.release == 'true' }}
 
   # The tests on Windows, with the Windows runtime, on RubyInstaller's
-  # Ruby, which the runtime ships too (doc/contributors/design/runtimes.md, "Where each platform's Ruby comes from"): the very build the
+  # Ruby, which the runtime ships too: the very build the
   # runtime came from, with the DLLs it lacks and the MSYS2 that compiles
   # gems for it, which mise installs at mise.toml's pins, as on a
   # contributor's Windows computer (matrix.mise names those tools).
@@ -1476,7 +1444,7 @@ jobs:
           - platform: x64-mingw-ucrt
             os: windows-latest
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2-libgcc http:msys2
-          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby (doc/contributors/design/runtimes.md, "Windows on ARM64").
+          # Windows 11 on ARM64, with RubyInstaller's ARM64 Ruby.
           - platform: aarch64-mingw-ucrt
             os: windows-11-arm
             mise: http:rubyinstaller-head http:msys2-zlib http:msys2
@@ -1582,7 +1550,7 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: bundle exec rake parity
 
-      # The console checks (doc/contributors/design/parity.md, "Console checks"):
+      # The console checks:
       # Ctrl-C on two code pages and closing the console end
       # ruby.exe main.rb as the console Delivery expects of a built app,
       # and rubyw.exe, typed into a console, gets none.
@@ -1595,17 +1563,16 @@ jobs:
           -WindowedReference @((Get-Command rubyw.exe).Source, 'test/fixtures/windowed_app/main.rb')
 
   # Each platform's apps, built on a runner of that platform from the
-  # runtime the runtime job built for it, with that platform's own tools
-  # (decisions, 2026-10-28), as a developer builds them: examples/hello, the parity
-  # probe (test/fixtures/parity), which Delivery asks what a child Ruby
-  # sees, and the probe as a gem-shaped app's program (Parity.gem_probe),
-  # which Delivery asks what Bundler.with_original_env and
-  # with_unbundled_env give a child; the HTTPS probe (test/fixtures/https),
-  # which asks rubygems.org over HTTPS; test/fixtures/my_cool_app, whose gems come
-  # from RubyGems.org, each checked against its Gemfile.lock's checksum,
-  # precompiled for the platform; test/fixtures/bundled_with,
-  # whose Gemfile.lock names a Bundler no runtime ships;
-  # test/fixtures/windowed_app, a
+  # runtime the runtime job built for it, with that platform's own tools, as a
+  # developer builds them: examples/hello, the parity probe
+  # (test/fixtures/parity), which Delivery asks what a child Ruby sees, and the
+  # probe as a gem-shaped app's program (Parity.gem_probe), which Delivery asks
+  # what Bundler.with_original_env and with_unbundled_env give a child; the
+  # HTTPS probe (test/fixtures/https), which asks rubygems.org over HTTPS;
+  # test/fixtures/my_cool_app, whose gems come from RubyGems.org, each checked
+  # against its Gemfile.lock's checksum, precompiled for the platform;
+  # test/fixtures/bundled_with, whose Gemfile.lock names a Bundler no runtime
+  # ships; test/fixtures/windowed_app, a
   # windowed app with its installer;
   # test/fixtures/programs, a windowed and a console program of one project in
   # one folder; examples/file_drop, Drop, a file drop that Sinatra and
@@ -1626,20 +1593,18 @@ jobs:
   # runtime's Ruby bundles. test/fixtures/rust_lengths, a Rust gem on
   # rb-sys alone, whose line says its bindings agree with Ruby on
   # rb_len_t, Windows on x64 included.
-  # test/fixtures/real_gems (doc/contributors/design/gems.md, "Examples that
-  # exercise these rules"): the gems real apps lock, from a credentialed
+  # test/fixtures/real_gems: the gems real apps lock, from a credentialed
   # mirror, a folder outside the project, a path gem with an extension, git
   # with a submodule, and an optional group. The Mac and Windows build
   # test/fixtures/nokogiri_app too, nokogiri from
   # source: with macOS's own iconv on the Mac, and with GNU libiconv
-  # linked in on Windows, which ships as any gem's compiled code does
-  # (doc/contributors/design/gems.md, "Checks that are not about
-  # licenses"). Each records what bundle exec prints, which the built app must
-  # print too. And the LibUI probe (test/fixtures/libui), a window from
-  # LibUI's precompiled gem, on macOS and glibc Linux for Delivery, and
-  # on x64 Windows, where the app carries Microsoft's Visual C++ runtime,
-  # built and run in this job alone, with nothing of it uploaded; each
-  # Windows upload is first checked to hold none of that runtime.
+  # linked in on Windows, which ships as any gem's compiled code does. Each
+  # records what bundle exec prints, which the built app must print too. And the
+  # LibUI probe (test/fixtures/libui), a window from LibUI's precompiled gem, on
+  # macOS and glibc Linux for Delivery, and on x64 Windows, where the app
+  # carries Microsoft's Visual C++ runtime, built and run in this job alone,
+  # with nothing of it uploaded; each Windows upload is first checked to hold
+  # none of that runtime.
   #
   # Each platform's build is a job of its own, and so is each platform's
   # leg of every job that delivers what a build made, the steps written
@@ -1771,10 +1736,8 @@ jobs:
         run: ruby -I lib exe/fledge build -o dist examples/basket
 
       # examples/basket, Basket, a shopping list whose Ruby draws its window
-      # with AppKit through Basket's bridge to Objective-C
-      # (doc/contributors/design/desktop-apps.md, "An app that draws with
-      # the system's widgets"), built on the Mac alone: Delivery adds an
-      # item and removes it.
+      # with AppKit through Basket's bridge to Objective-C, built on the Mac
+      # alone: Delivery adds an item and removes it.
       - name: Build Basket for ${{ matrix.platform }}
         if: runner.os == 'macOS'
         env:
@@ -1784,12 +1747,10 @@ jobs:
 
       # test/fixtures/rust_lengths, a Rust gem on rb-sys alone, which says
       # how its bindings declare rb_len_t and calls two functions whose
-      # results differ when that is not the runtime's Ruby's
-      # (doc/contributors/design/gems.md, "Rust gems on Windows and
-      # rb_len_t"), on every platform with Rust here. Its Delivery prints
-      # what a person with no Ruby sees, which no bundle exec can: Bundler
-      # compiles no path gem's extension, and on Windows gem install binds
-      # rb_len_t 4 bytes wide.
+      # results differ when that is not the runtime's Ruby's, on every platform
+      # with Rust here. Its Delivery prints what a person with no Ruby sees,
+      # which no bundle exec can: Bundler compiles no path gem's extension, and
+      # on Windows gem install binds rb_len_t 4 bytes wide.
       - name: Build rust_lengths for ${{ matrix.platform }}
         if: matrix.platform != 'aarch64-mingw-ucrt'
         env:
@@ -1865,7 +1826,7 @@ jobs:
           .github/scripts/lota-pop.sh examples/lota_pop "$gem_platform"
           ruby -I lib exe/fledge build -o dist examples/lota_pop
 
-      # Plan 003, "A Linux build takes the icon sizes a developer has":
+      # A Linux build takes the icon sizes a developer has:
       # windowed_app with only three of its PNGs builds, warns, and ships
       # three icons in its .deb and AppImage; with none it fails.
       - name: Build windowed_app with three icon sizes, and with none, for ${{ matrix.platform }}
@@ -1927,11 +1888,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       # Nothing setdef publishes carries Microsoft's Visual C++ runtime,
-      # "not an app that Fledge's CI builds and uploads"
-      # (doc/contributors/decisions.md), and anyone can download a public
-      # repository's artifacts: before each upload from Windows, no file,
-      # and no file in an archive, of what it uploads may be one of its
-      # DLLs.
+      # "not an app that Fledge's CI builds and uploads", and anyone can
+      # download a public repository's artifacts: before each upload from
+      # Windows, no file, and no file in an archive, of what it uploads may be
+      # one of its DLLs.
       - name: Check that nothing signed holds Microsoft's Visual C++ runtime
         if: runner.os == 'Windows'
         run: .github/scripts/check-no-visual-c-runtime.sh dist-signed
@@ -1960,8 +1920,7 @@ jobs:
           FLEDGE_RUNTIME_DIR_UNCHECKED: "1"
         run: ruby -I lib exe/fledge build -o dist test/fixtures/nokogiri_app
 
-      # doc/contributors/design/gems.md, "Examples that exercise these
-      # rules": the gems real apps lock. test/fixtures/real_gems takes RubyGems.org
+      # The gems real apps lock. test/fixtures/real_gems takes RubyGems.org
       # through a mirror that wants a login, as its .bundle/config says in
       # Bundler's own settings, from a loopback server of ours
       # (.github/scripts/gem-mirror.rb); a gem from a folder outside its
@@ -2048,9 +2007,8 @@ jobs:
           bundle exec ruby examples/lectern/main.rb examples/lectern/README.md > dist/lectern.expected
           bundle exec ruby examples/lectern/main.rb --color=always examples/lectern/README.md > dist/lectern-color.expected
 
-      # The builder app Delivery runs fledge build --from inside
-      # (doc/contributors/design/desktop-apps.md, "Building from a built
-      # app"), on one platform of each operating system.
+      # The builder app Delivery runs fledge build --from inside, on one
+      # platform of each operating system.
       - name: Build the app that builds apps, with build_tools and Fledge as a gem
         if: matrix.platform == 'arm64-darwin' || matrix.platform == 'x86_64-linux' || matrix.platform == 'x64-mingw-ucrt'
         env:
@@ -2078,8 +2036,7 @@ jobs:
           retention-days: 3
 
       # The examples among them, as a release carries them, under the
-      # names it gives them (doc/contributors/design/releases.md, "The
-      # examples a release carries"). Delivery runs the apps of the
+      # names it gives them. Delivery runs the apps of the
       # artifact above, the same files, on a fresh runner.
       - name: Stage the examples for a release
         run: ruby tasks/release_examples.rb stage-desktop dist release-examples "${{ matrix.platform }}"
@@ -2169,11 +2126,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows on ARM64 (doc/contributors/design/runtimes.md, "Windows on ARM64") builds no my_cool_app: sqlite3
+          # Windows on ARM64 builds no my_cool_app: sqlite3
           # publishes no aarch64-mingw-ucrt build and its source does not
           # configure there, mini_portile2 passing configure clang's name
-          # for the target (doc/contributors/design/gems.md, "Examples that
-          # exercise these rules"), so the gem-shaped probe is that app
+          # for the target, so the gem-shaped probe is that app
           # without sqlite3 (Parity.gem_app). It builds no native_app
           # either: the job installs no Rust, and ferro-idna's rb-sys would
           # need Rust's aarch64-pc-windows-gnullvm target, which no job of
@@ -2192,8 +2148,7 @@ jobs:
   # compiles from source, windowed_app, with its AppImage, programs, Drop,
   # the server example, markdown_to_html, and ffi_libc, whose ffi
   # compiles from source with the libffi it carries, which needs
-  # linux-headers (doc/contributors/design/gems.md, "Examples that
-  # exercise these rules"). It builds no native_app, whose ferro-idna
+  # linux-headers. It builds no native_app, whose ferro-idna
   # needs Rust, which the apps set leaves out.
   build-musl:
     name: Build (${{ matrix.platform }})
@@ -2405,7 +2360,7 @@ jobs:
             platform: aarch64-mingw-ucrt
     steps: *delivery-native-steps
 
-  # Delivery (Plan 001): each app on a fresh runner of its platform, with
+  # Delivery: each app on a fresh runner of its platform, with
   # nothing of Fledge but the archive and the script that checks it, and
   # no Ruby set up. Runners come with Rubies installed, so the script runs
   # the app with an empty PATH and checks that no ruby is on it, then
@@ -2487,7 +2442,7 @@ jobs:
           .github/scripts/deliver.sh "$RUNNER_TEMP/delivered/BundledWith-${{ matrix.platform }}.tar.gz"
           "$RUNNER_TEMP/delivered/ParityBundle-${{ matrix.platform }}.tar.gz" "$(cat "$RUNNER_TEMP/delivered/bundled_with.expected")"
 
-      # The console checks (doc/contributors/design/parity.md, "Console checks"):
+      # The console checks:
       # the console probe in a terminal of its own, a
       # pseudo-terminal, ended by Ctrl-C typed into it and by a hangup,
       # must end as ruby main.rb does (.github/scripts/deliver-console.sh).
@@ -3224,7 +3179,7 @@ jobs:
           -Archive "$env:RUNNER_TEMP/delivered/Lectern-$env:PLATFORM.zip" -Sample examples/lectern/README.md
           -Plain "$env:RUNNER_TEMP/delivered/lectern.expected" -Colored "$env:RUNNER_TEMP/delivered/lectern-color.expected"
 
-      # The console checks (doc/contributors/design/parity.md, "Console checks"):
+      # The console checks:
       # the console probe in a console of its own, ended by
       # Ctrl-C on code pages 65001 and 437 and by its window closing, and
       # the windowed app typed into a console, which gets none, each as
@@ -3403,8 +3358,7 @@ jobs:
       # Windows on ARM64 WinUI fails to activate its Fluent styles and
       # Basket draws its Win32 screen, which this check fails on, so the
       # step comes back there when WinUI's screen draws on ARM64 (issue
-      # 162; doc/contributors/design/desktop-apps.md, "An app that draws
-      # with the system's widgets").
+      # 162).
       - name: Register the Windows App Runtime, start Basket.exe's WinUI screen, add an item, and remove it
         if: ${{ !cancelled() && matrix.platform != 'aarch64-mingw-ucrt' }}
         shell: pwsh
@@ -3421,7 +3375,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Natively on Windows 11 on ARM64 (doc/contributors/design/runtimes.md, "Windows on ARM64").
+          # Natively on Windows 11 on ARM64.
           - os: windows-11-arm
             platform: aarch64-mingw-ucrt
     env:
@@ -3464,8 +3418,7 @@ jobs:
           path: ${{ runner.temp }}/delivered
 
       # What an AppImage needs that no app may carry: squashfs-tools is
-      # GPL-2.0 (doc/contributors/design/desktop-apps.md,
-      # "Building from a built app"). Pinned to Ubuntu 24.04's build.
+      # GPL-2.0. Pinned to Ubuntu 24.04's build.
       - name: Install mksquashfs
         if: runner.os == 'Linux'
         run: |
@@ -3627,8 +3580,7 @@ jobs:
           version: 2026.10.11
           install_args: ruby
 
-      # The pinned downloads, as the runtime jobs keep theirs
-      # (doc/contributors/design/runtimes.md, "Pinned downloads in CI"),
+      # The pinned downloads, as the runtime jobs keep theirs,
       # saved once the job has downloaded the last of them.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: downloads
@@ -3676,8 +3628,8 @@ jobs:
           ruby tasks/license_audit.rb --platform "${{ matrix.platform }}" --tree "$TREE"
           --expect ".github/license-expectations/${{ matrix.platform }}.yml"
 
-  # doc/licensing.md, the page that tells app developers what ships and
-  # what it asks of them, is generated from the repository and
+  # docs/reference/licensing.md, the page that tells app developers what ships
+  # and what it asks of them, is generated from the repository and
   # runtime/audited.yml, which records what the page reads of every
   # platform's runtime (tasks/licensing_page.rb). A unit test checks the
   # page against that record before a push; this job checks the record
@@ -3716,7 +3668,7 @@ jobs:
           tar -xJf "$archive" -C "$RUNNER_TEMP/llvm-mingw" --strip-components=1
           echo "FLEDGE_LLVM=$RUNNER_TEMP/llvm-mingw/bin" >> "$GITHUB_ENV"
 
-      - name: Compare doc/licensing.md with the runtimes
+      - name: Compare docs/reference/licensing.md with the runtimes
         run: ruby tasks/licensing_page.rb --check "$RUNNER_TEMP/runtimes"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -3729,8 +3681,8 @@ jobs:
           retention-days: 14
 
   # Whoever receives a Linux app may replace lib/libcrypt.so.2 (LGPL-2.1,
-  # section 6(b)), as doc/licensing.md tells app developers. The built
-  # hello, with libxcrypt rebuilt with only its strong hashes from the
+  # section 6(b)), as docs/reference/licensing.md tells app developers. The
+  # built hello, with libxcrypt rebuilt with only its strong hashes from the
   # source the app carries in notices/sources/libxcrypt/, and with
   # musl's crypt in its place, must load each and behave as each does
   # (.github/scripts/replace-libcrypt.sh), which also measures what
@@ -3845,8 +3797,8 @@ jobs:
 
   # Whoever receives a Windows app may replace
   # ruby\bin\ruby_builtin_dlls\libgmp-10.dll (LGPL-3.0, section 4(d)(1)),
-  # as doc/licensing.md tells app developers: the built hello must load
-  # the replacement (Integer::GMP_VERSION changes) and compute the same
+  # as docs/reference/licensing.md tells app developers: the built hello must
+  # load the replacement (Integer::GMP_VERSION changes) and compute the same
   # big numbers (.github/scripts/replace-gmp.ps1).
   replace-gmp-x64-mingw-ucrt:
     name: Replace GMP (${{ matrix.platform }})

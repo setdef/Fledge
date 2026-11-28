@@ -9,7 +9,7 @@ require_relative "lib/mobile_app/version"
 
 # A gem-shaped app whose gems are all pure Ruby, laid out as bundle gem
 # lays one out, which Fledge ships to every desktop and, as an Xcode or
-# Gradle project, to iOS and Android (doc/contributors/design/phone-projects.md).
+# Gradle project, to iOS and Android.
 Gem::Specification.new do |spec|
   spec.name = "mobile_app"
   spec.version = MobileApp::VERSION

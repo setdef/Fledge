@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
 # SPDX-License-Identifier: MIT-0
 
-# native_phone is a lone script with a gem that has a C and C++
-# extension (doc/contributors/design/phone-projects.md, "Gems with
-# extensions"). It sits inside Fledge's own gem, so without this
-# file fledge build would take Fledge's Gemfile for its own.
-# The identifier is what iOS and Android know it by (doc/contributors/design/phone-projects.md).
+# native_phone is a lone script with a gem that has
+# a C and C++ extension. It sits inside Fledge's
+# own gem, so without this file fledge build would
+# take Fledge's Gemfile for its own. The identifier
+# is what iOS and Android know it by.
 identifier: com.setdef.fledge.NativePhone

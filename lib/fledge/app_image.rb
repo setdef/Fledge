@@ -22,11 +22,9 @@ module Fledge
   # extract the app and run that instead. Tauri's bundler and
   # Briefcase make one with appimagetool, which runs mksquashfs.
   #
-  # This module makes one as appimagetool does
-  # (doc/contributors/design/desktop-apps.md, "The AppImage"): it copies
+  # This module makes one as appimagetool does: it copies
   # the built app's folder, which already has the desktop entry at its
-  # top (doc/contributors/design/desktop-apps.md, "Identity on each
-  # system"), into an AppDir, adds +AppRun+, a symbolic link
+  # top, into an AppDir, adds +AppRun+, a symbolic link
   # to the app's program, the 256-pixel icon at the top (else the
   # largest the app has), named as the
   # desktop entry's +Icon+ names it, and <tt>.DirIcon</tt>, a link to it;

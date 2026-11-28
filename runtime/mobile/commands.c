@@ -5,8 +5,7 @@
 
 /*
  * The gems' commands of an Android app's Ruby (mobile.h,
- * fledge_ruby_read_commands; doc/contributors/design/phone-runtimes.md,
- * "Gem commands on Android"). Android lets an app run only the files its
+ * fledge_ruby_read_commands). Android lets an app run only the files its
  * package installer extracts, its native libraries, so each command,
  * ROOT/bin/NAME, is a link to the runtime's ruby program, which fledge
  * build lists in ROOT/fledge.links (fledge_link_libraries), and RubyGems'

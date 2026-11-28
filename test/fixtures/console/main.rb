@@ -10,7 +10,7 @@
 # Ctrl-C in a terminal, closing it, and the console's code page reach an
 # app through the operating system and Ruby, and Fledge's launcher must
 # stand in none of their way: a built app must end as ruby main.rb ends,
-# through Ruby's own handlers, with the same exit status (doc/contributors/design/parity.md, "Console checks").
+# through Ruby's own handlers, with the same exit status.
 # .github/scripts/deliver-console.sh and deliver-console.ps1 run this
 # app, built and as ruby main.rb, in a terminal or console of their own,
 # interrupt it, and compare what it recorded with what Ruby does.

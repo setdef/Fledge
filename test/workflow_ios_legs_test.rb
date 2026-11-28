@@ -9,8 +9,7 @@ require_relative "test_helper"
 require "yaml"
 
 # ci.yml runs the iOS integration tests in legs, so that no step runs
-# near its limit (doc/contributors/design/releases.md, "The iOS
-# integration tests' legs"). Together the legs must run every test file
+# near its limit. Together the legs must run every test file
 # that needs the iOS runtime, each once: a file that gets no leg would
 # never run in CI, and one in two would run twice.
 class WorkflowIOSLegsTest < Minitest::Test

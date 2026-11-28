@@ -31,18 +31,18 @@ module Fledge
     # The <tt>fledge build</tt> command.
     #
     # Shipping an app means copying it into a runtime for each platform
-    # you want it to run on, and archiving each result (Plan 001). Doing
+    # you want it to run on, and archiving each result. Doing
     # that by hand means knowing where each runtime lives, renaming its
     # launcher, and archiving without losing an executable bit.
     #
     # This command builds for the computer it runs on, as Tauri's and
     # Briefcase's builds do, since each platform's app is made with that
-    # platform's own tools (decisions, 2026-10-28), or, given a phone's name first
+    # platform's own tools, or, given a phone's name first
     # (<tt>fledge build ios</tt>), writes that phone's project, with
-    # Fledge::MobileProject, on a computer whose tools build it (doc/contributors/design/phone-projects.md). It reads <tt>--out</tt> and the
-    # program to ship from its arguments (Fledge::App), finds this
-    # platform's runtime through Fledge::Runtimes, adds the gems the app's
-    # Gemfile.lock locks for it (Fledge::Bundle and Fledge::AppGems),
+    # Fledge::MobileProject, on a computer whose tools build it. It reads
+    # <tt>--out</tt> and the program to ship from its arguments (Fledge::App),
+    # finds this platform's runtime through Fledge::Runtimes, adds the gems the
+    # app's Gemfile.lock locks for it (Fledge::Bundle and Fledge::AppGems),
     # compiling those that need it (Fledge::NativeBuild) in a work folder
     # it removes afterwards, builds the app with Fledge::Assembly, and
     # prints the path of its archive and of each installer
@@ -123,8 +123,7 @@ module Fledge
         phone = MobilePlatform.find(options.phone.to_s)
         signing = phone ? nil : signing(options, host)
         if from then build_from(from.adopt(app), from, host, options.out, signing)
-        # A phone's app runs one program: App#main
-        # (doc/contributors/design/desktop-apps.md, "Several programs").
+        # A phone's app runs one program: App#main.
         elsif phone then build_project(app.with(programs: [app.main]), phone, host, options.out)
         else build(app, host, options.out, signing)
         end
@@ -210,8 +209,7 @@ module Fledge
       # version of the Ruby running the build. Fledge has no default Ruby:
       # an app runs on the Ruby its developer runs it with, as Briefcase
       # and PyInstaller package the Python that runs them, at the patch
-      # level of Fledge's runtime (doc/contributors/design/releases.md,
-      # "Ruby minors and runtimes"). Raises Fledge::Error otherwise.
+      # level of Fledge's runtime. Raises Fledge::Error otherwise.
       private def same_ruby(contents, platform)
         return contents if minor(contents.ruby_version) == minor(@ruby)
 
@@ -225,10 +223,9 @@ module Fledge
         version.split(".").first(2).join(".")
       end
 
-      # The compiler of the app's gems' extensions for +phone+
-      # (doc/contributors/design/phone-projects.md, "Gems with
-      # extensions"), against the runtime whose RuntimeContents are
-      # +contents+, or +nil+ for an app with none.
+      # The compiler of the app's gems' extensions for +phone+, against the
+      # runtime whose RuntimeContents are +contents+, or +nil+ for an app with
+      # none.
       private def extensions(gems, phone, host, runtimes, work, contents)
         return nil unless gems
 
@@ -258,8 +255,7 @@ module Fledge
       # names each folder by its long name (Fledge::LongPath), whatever
       # +TMP+ says: a gem's build may escape it for a POSIX shell and run
       # that through cmd.exe, as mini_portile2 does, where an 8.3 name's
-      # escaped tilde names no file (<tt>doc/contributors/design/gems.md</tt>,
-      # "Compiling a gem").
+      # escaped tilde names no file.
       private def work_folder(&)
         Dir.mktmpdir("fledge-build", LongPath.of(Dir.tmpdir), &)
       end

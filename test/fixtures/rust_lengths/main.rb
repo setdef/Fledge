@@ -5,15 +5,15 @@
 # SPDX-License-Identifier: MIT-0
 #++
 
-# Whether a Rust extension's bindings declare rb_len_t, the type of
-# lengths and indices in Ruby 4.1's C API, as the runtime's Ruby has it
-# (doc/contributors/design/gems.md, "Rust gems on Windows and
-# rb_len_t"). On every platform Fledge builds for it is 8 bytes. Bound
-# as 4 where Ruby's is 8, rb_ary_entry reads the index -1 as 4294967295
-# and finds nil, and rb_range_beg_len writes 8 bytes into each 4-byte
-# slot, over the canary beside it. It exits with the status its
-# argument names, so that Delivery sees an exit status reach the person
-# who ran it.
+# Whether a Rust extension's bindings declare rb_len_t,
+# the type of lengths and indices in Ruby 4.1's C API,
+# as the runtime's Ruby has it. On every platform Fledge
+# builds for it is 8 bytes. Bound as 4 where Ruby's is
+# 8, rb_ary_entry reads the index -1 as 4294967295 and
+# finds nil, and rb_range_beg_len writes 8 bytes into
+# each 4-byte slot, over the canary beside it. It exits
+# with the status its argument names, so that Delivery
+# sees an exit status reach the person who ran it.
 require "lengths"
 
 beginning, length, whole = Lengths.span(2..4, 10)

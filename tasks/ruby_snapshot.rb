@@ -12,8 +12,7 @@ require "zlib"
 require_relative "download_cache"
 require_relative "../lib/fledge/download"
 
-# A day's snapshot of Ruby's master, as cache.ruby-lang.org publishes it
-# (doc/contributors/design/runtimes.md, "Testing against Ruby's master").
+# A day's snapshot of Ruby's master, as cache.ruby-lang.org publishes it.
 #
 # Fledge's releases pin one Ruby, and nothing a runtime builds would
 # meet a change in Ruby's master until the day the next Ruby is

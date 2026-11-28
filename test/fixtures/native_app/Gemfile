@@ -37,14 +37,14 @@ gem "libusb", "~> 0.8"
 # the version Gemfile.lock locks, so the app takes the runtime's own.
 gem "spreadsheet", "1.3.5"
 
-# A Rust extension (rb-sys and magnus) from a git tag, as Ferro's gems
-# are consumed, which fledge build fetches at the lockfile's revision and
-# compiles, and whose Rust crates it reads from the build's Cargo.lock.
-# Not on Windows: there Fledge's Ruby makes rb_len_t 64 bits, fledge build
-# tells rb-sys's bindgen so, and magnus 0.9.3, which passes lengths as a
-# 32-bit long, does not compile against the bindings that follow. A
-# release of ferro-idna with magnus patched brings it back
-# (doc/contributors/design/gems.md, "Rust gems on Windows and rb_len_t");
-# test/fixtures/rust_lengths covers a Rust gem on Windows meanwhile.
+# A Rust extension (rb-sys and magnus) from a git tag, as Ferro's
+# gems are consumed, which fledge build fetches at the lockfile's
+# revision and compiles, and whose Rust crates it reads from the
+# build's Cargo.lock. Not on Windows: there Fledge's Ruby makes
+# rb_len_t 64 bits, fledge build tells rb-sys's bindgen so, and
+# magnus 0.9.3, which passes lengths as a 32-bit long, does not
+# compile against the bindings that follow. A release of ferro-idna
+# with magnus patched brings it back; test/fixtures/rust_lengths
+# covers a Rust gem on Windows meanwhile.
 gem "ferro-idna", git: "https://github.com/setdef/Ferro", tag: "ferro-idna/v0.1.0.pre.1", glob: "gems/*/*.gemspec",
   platforms: :ruby

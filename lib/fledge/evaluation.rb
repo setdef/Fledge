@@ -10,13 +10,10 @@ module Fledge
   # output, which <tt>fledge build</tt> keeps for the paths it prints.
   #
   # A Gemfile and a gemspec are Ruby, and Fledge evaluates them in its
-  # own process, as <tt>bundle install</tt> does
-  # (doc/contributors/design/gems.md, "Reading the Gemfile and
-  # lockfile"). A +puts+ in one, or a program it starts with +system+,
-  # would write among the paths a wrapper reads from standard output
-  # (doc/contributors/design/public-interface.md, "The command's
-  # conventions"). So the evaluation runs with file descriptor 1 pointed
-  # at descriptor 2, which a child process inherits too.
+  # own process, as <tt>bundle install</tt> does. A +puts+ in one, or a program
+  # it starts with +system+, would write among the paths a wrapper reads from
+  # standard output. So the evaluation runs with file descriptor 1 pointed at
+  # descriptor 2, which a child process inherits too.
   #
   # Use it around each evaluation of the developer's code in
   # <tt>fledge build</tt>'s process.

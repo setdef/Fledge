@@ -11,8 +11,7 @@ require "yaml"
 # The one job that may publish Fledge on RubyGems.org, release.yml's
 # last, which runs only once the maintainer has set RubyGems.org to trust
 # the workflow, only from 1.0.0, and only after the release is installed
-# and delivered from on every platform (doc/contributors/design/releases.md,
-# "release.yml"; decisions.md, 2026-11-22).
+# and delivered from on every platform.
 class WorkflowRubygemsTest < Minitest::Test
   WORKFLOWS = File.expand_path("../.github/workflows", __dir__)
 

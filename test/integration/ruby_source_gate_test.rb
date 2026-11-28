@@ -10,8 +10,7 @@ require "rbconfig"
 require_relative "../test_helper"
 require_relative "../../tasks/runtime_builder"
 
-# The gate the phones' load.c edit adds (doc/contributors/design/phone-runtimes.md,
-# "Bundled gems' extensions"), compiled with this
+# The gate the phones' load.c edit adds, compiled with this
 # computer's mkmf and Ruby: it finds a gem's linked extension only
 # while the gem's extension folder is on $LOAD_PATH.
 class RubySourceGateTest < Minitest::Test

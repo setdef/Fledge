@@ -19,8 +19,7 @@
  * OpenSSL's CA certificates are openssl_certificates.c's, in Ruby's
  * openssl extension, where OpenSSL is linked in.
  *
- * And the runtime's ruby program, which RbConfig.ruby names
- * (doc/contributors/design/phone-runtimes.md, "The ruby program on Android"):
+ * And the runtime's ruby program, which RbConfig.ruby names:
  * fledge_ruby_link_program makes ROOT/bin/ruby a link to it before an
  * app's Ruby boots, and fledge_ruby_program_main is its main function.
  * With it, each link ROOT/fledge.links lists, from where the app's Ruby
@@ -277,8 +276,7 @@ program_root(char *root)
  * where the native libraries stay inside the APK, before Ruby boots in
  * the app or in the runtime's ruby program, so that its constructor
  * registers the extensions linked into it whether or not the app's host
- * loads it (doc/contributors/design/phone-projects.md, "Linking
- * extensions on Android").
+ * loads it.
  */
 int
 fledge_ruby_load_extensions(const char *caller)

@@ -4,10 +4,10 @@
 
 # cmake_phone is a lone script with a gem whose extconf.rb runs CMake to
 # build a C++ library, and then mkmf to build the C extension that links
-# it (doc/contributors/design/phone-projects.md, "CMake toolchain files").
+# it.
 # It sits inside Fledge's own gem, so without this file
 # fledge build would take Fledge's Gemfile for its own. The
-# identifier is what iOS and Android know it by (doc/contributors/design/phone-projects.md).
+# identifier is what iOS and Android know it by.
 name: CmakePhone
 identifier: com.setdef.fledge.CmakePhone
 

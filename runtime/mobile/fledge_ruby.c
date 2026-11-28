@@ -12,10 +12,8 @@
  *
  *   ruby --disable=rubyopt -- SCRIPT ARGS
  *
- * which is what ruby SCRIPT ARGS does with no RUBYOPT
- * (doc/contributors/design/launcher.md, "The program runs as ruby runs
- * it"): no -I, so the app loads its own files with require_relative,
- * and no --yjit.
+ * which is what ruby SCRIPT ARGS does with no RUBYOPT: no -I, so the app loads
+ * its own files with require_relative, and no --yjit.
  *
  * What differs from the desktop launcher is what a phone needs:
  *
@@ -56,8 +54,7 @@
  * Bundler 4.0.20).
  *
  * fledge_ruby_main is the main function of the Android runtime's ruby
- * program, which RbConfig.ruby names in an app (doc/contributors/design/phone-runtimes.md,
- * "The ruby program on Android"). It is what the
+ * program, which RbConfig.ruby names in an app. It is what the
  * desktop's bin/ruby is (runtime/launcher/ruby_main.c): Ruby's main.c,
  * with the launcher's locale, and with the app's own program handed to
  * the app's way of starting, as fledge_relaunch hands it to the launcher,
@@ -154,10 +151,9 @@ setup_bundler(void)
  * the desktop launcher's put_ruby_on_path does (the launcher's bundler.c,
  * fledge_ruby_on_path_code), before Bundler loads, so that
  * system("rake") and system("ruby") find the app's own, as a
- * developer's shell has the Ruby they run first
- * (doc/contributors/design/phone-runtimes.md, "Gem commands on
- * Android"). iOS lets no app run a program, so there it does nothing.
- * Returns 0, or prints why it could not and returns -1.
+ * developer's shell has the Ruby they run first. iOS lets no app run a program,
+ * so there it does nothing. Returns 0, or prints why it could not and returns
+ * -1.
  */
 static int
 put_ruby_on_path(void)

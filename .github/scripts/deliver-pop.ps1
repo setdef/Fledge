@@ -100,6 +100,11 @@ New-Item -ItemType Directory -Force $home_folder | Out-Null
 $env:HOME = $home_folder
 $env:USERPROFILE = $home_folder
 $env:POP_QUIT_AFTER = '12'
+# A runner has no audio device, and LOVE prints "Could not open device."
+# to standard output when OpenAL finds none, which is not the one line
+# Pop prints there. OpenAL Soft's null driver opens, plays nothing, and
+# prints nothing, as deliver-pop.sh sets it.
+$env:ALSOFT_DRIVERS = 'null'
 $out = Join-Path $Work 'pop.out'
 $err = Join-Path $Work 'pop.err'
 Remove-Item -LiteralPath $out, $err -ErrorAction SilentlyContinue

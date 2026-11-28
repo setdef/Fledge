@@ -42,12 +42,13 @@ class ExeTest < Minitest::Test
     assert_equal "fledge #{Fledge::VERSION}\n", out
   end
 
-  def test_a_bare_fledge_is_a_usage_error_with_status_two
+  def test_a_bare_fledge_prints_the_help_to_standard_error_with_status_two
     out, err, status = run_fledge
 
     assert_equal 2, status.exitstatus
     assert_empty out
-    assert_equal "Try 'fledge --help'.\n", err.lines.last
+    assert_includes err, "fledge - Ship a Ruby app to people who don't have Ruby"
+    assert_includes err, "EXIT STATUS"
   end
 
   def test_build_without_an_app_exits_with_status_one

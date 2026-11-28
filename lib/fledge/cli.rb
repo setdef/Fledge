@@ -58,6 +58,12 @@ module Fledge
     # arguments after the command's name and returns an exit status.
     COMMANDS = { "build" => Build, "test" => Test }.freeze
 
+    # The flags that ask for the help, anywhere before <tt>--</tt>.
+    HELP_FLAGS = %w[-h --help].freeze
+
+    # The flags that ask for the version, as the first argument.
+    VERSION_FLAGS = %w[-V --version].freeze
+
     # Creates a command line.
     #
     # [help_path] The executable whose comment header is the help text.
@@ -75,11 +81,14 @@ module Fledge
     # Runs +argv+ and returns the exit status: 0 for success, 1 when a
     # command fails, and 2 for a usage error. Leaves +argv+ unchanged.
     #
-    # <tt>-h</tt>, <tt>-?</tt>, and <tt>--help</tt> print the help, and
-    # <tt>-v</tt> and <tt>--version</tt> the version, to the output
-    # stream. With no arguments, or with arguments it cannot make sense
-    # of, it prints the usage and <tt>Try 'fledge --help'.</tt> to the
-    # error stream and returns 2, since a bare +fledge+ asked for nothing.
+    # <tt>-h</tt> and <tt>--help</tt> print the help to the output stream
+    # wherever they come before <tt>--</tt>, whatever else +argv+ holds,
+    # and <tt>-V</tt> and <tt>--version</tt> print the version there as
+    # the first argument. With no arguments it prints the help to the
+    # error stream and returns 2, since a bare +fledge+ asked for
+    # nothing, as clap's +arg_required_else_help+ does. With arguments it
+    # cannot make sense of, it prints the usage and <tt>Try 'fledge
+    # --help'.</tt> to the error stream and returns 2.
     #
     # === Example
     #
@@ -94,10 +103,11 @@ module Fledge
     #++
     def call(argv)
       name, *arguments = argv
+      return help_error if name.nil?
+      return succeed_with(help) if argv.take_while { |argument| argument != "--" }.intersect?(HELP_FLAGS)
+
       case name
-      when nil then usage_error(nil)
-      when "--help", "-h", "-?" then succeed_with(help)
-      when "--version", "-v" then succeed_with("fledge #{VERSION}")
+      when *VERSION_FLAGS then succeed_with("fledge #{VERSION}")
       when /\A-/ then usage_error("fledge: unrecognized option '#{name}'")
       else run(name, arguments)
       end
@@ -169,12 +179,17 @@ module Fledge
       0
     end
 
-    # Prints +message+, when there is one, the usage, and where to read
-    # more, and returns 2: the exit status GNU and BSD tools give a
-    # usage error.
+    # Prints +message+, the usage, and where to read more, and returns 2:
+    # the exit status GNU and BSD tools give a usage error.
     private def usage_error(message)
-      @err.puts message if message
-      @err.puts usage, "Try 'fledge --help'."
+      @err.puts message, usage, "Try 'fledge --help'."
+      2
+    end
+
+    # Prints the help to the error stream and returns 2, for a command
+    # line that asks for nothing.
+    private def help_error
+      @err.puts help
       2
     end
   end

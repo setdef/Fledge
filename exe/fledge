@@ -209,8 +209,9 @@
 #                        folder is notarized in a zip archive, and
 #                        Gatekeeper finds its ticket online. Waits for
 #                        Apple, usually minutes. macOS only.
-#     -h, -?, --help     Show this help
-#     -v, --version      Print Fledge's version
+#     -h, --help         Show this help, anywhere before --
+#     -V, --version      Print Fledge's version, as the first
+#                        argument
 #
 # FILES
 #     ROOT               The program's project: the nearest folder,
@@ -621,7 +622,9 @@
 #                        would not sign, an app Apple would not
 #                        notarize, a full disk)
 #     2                  Usage error (an unrecognized option, a
-#                        missing value)
+#                        missing value), or no arguments at all, for
+#                        which fledge prints this help to standard
+#                        error
 #
 # EXAMPLES
 #     Build the gem in the current directory for this computer:

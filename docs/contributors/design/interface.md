@@ -53,6 +53,8 @@ A new configuration entry goes the same way: its value class under `Config` and 
 
 Every command returns its status rather than exiting, so the CLI can be tested in-process with its streams passed in. The statuses are the ones both the help header and the Usage spec list: 0 for success; 1 for a `Fledge::Error`, whose message is printed one line at a time, each prefixed with the command (`fledge build: `, `fledge test: `); and 2 for a `UsageError`, printed with the usage. `fledge test` returns the program's status when it is between 0 and 255, and 1 otherwise.
 
+A bare `fledge` prints the whole help to standard error and returns 2, as clap's `arg_required_else_help` does (`clap_builder` 4.5.26, `src/error/mod.rs`, `stream` and `exit_code`), which the Usage spec declares: a person who types `fledge` alone learns what it does, and a script that runs it by mistake fails. `-h` and `--help` print the help to standard output wherever they come before `--`, since a person adds them to the end of a command line that went wrong (clig.dev, "Help"); `-V` and `--version` count only as the first argument, as Usage gives the version flags to the top-level command alone. `-v` stays free, since it means verbose to as many tools as version (clig.dev, "Arguments and flags").
+
 A message is the developer's only guide when a build fails, so each says what is wrong in the developer's terms and what to do: which file, which value, the command to run, or the line to write. Parts below the CLI raise `Fledge::Error` with such a message, never a Ruby exception for a condition a developer can cause.
 
 ## Reading fledge.yml

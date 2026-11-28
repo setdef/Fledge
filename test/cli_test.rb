@@ -33,17 +33,17 @@ class CLITest < Minitest::Test
     "Try 'fledge --help'.\n"
 
   # GNU Coding Standards, section 4.8: --help and --version print to
-  # standard output and succeed. -? is the Windows habit (dotnet, winget).
+  # standard output and succeed.
   def test_help_flags_print_the_executables_header_without_comment_markers
-    %w[--help -h -?].each do |flag|
+    %w[--help -h].each do |flag|
       out, err, status = fledge(flag)
 
       assert_equal 0, status
       assert_empty err
       assert_match(/\A=+\nfledge - Ship a Ruby app to people who don't have Ruby\n=+\n\n/, out)
       assert_includes out, "\nSYNOPSIS\n    fledge build [OPTIONS] [PATH]\n"
-      assert_includes out, "    -v, --version      Print Fledge's version\n"
-      assert_includes out, "    -h, -?, --help     Show this help\n"
+      assert_includes out, "    -V, --version      Print Fledge's version, as the first\n"
+      assert_includes out, "    -h, --help         Show this help, anywhere before --\n"
       refute_match(/^#/, out)
       refute_includes out, "SPDX"
       refute_includes out, "fledge/cli"
@@ -102,9 +102,10 @@ class CLITest < Minitest::Test
     assert_includes out, "\n\nDESCRIPTION\n    Put a Ruby app"
   end
 
-  # -v as ruby, gem, and bundle have it.
+  # -V, as Usage and clap give a command line, which leaves -v free for
+  # verbose (clig.dev, "Arguments and flags").
   def test_version_flags_print_the_version
-    %w[--version -v].each do |flag|
+    %w[--version -V].each do |flag|
       out, err, status = fledge(flag)
 
       assert_equal 0, status
@@ -119,14 +120,53 @@ class CLITest < Minitest::Test
       Fledge::CLI.new(help_path: EXE).usage
   end
 
-  # A bare fledge asked for nothing: a usage error, as for GNU tools,
-  # with exit status 2 rather than 1, which means an operation failed.
-  def test_no_arguments_print_the_usage_to_standard_error_with_status_two
+  # A bare fledge asked for nothing, so it shows the help, as clap's
+  # arg_required_else_help does for a Usage spec's: on standard error,
+  # with exit status 2, a usage error's, so that a script that runs a
+  # bare fledge by mistake fails.
+  def test_no_arguments_print_the_help_to_standard_error_with_status_two
     out, err, status = fledge
 
     assert_equal 2, status
     assert_empty out
-    assert_equal USAGE, err
+    assert_equal Fledge::CLI.new(help_path: EXE).help, err
+  end
+
+  # Help wins wherever it is asked for before --, whatever else the
+  # command line holds (clig.dev, "Help").
+  def test_help_after_a_command_prints_the_help
+    [%w[build --help], %w[build -o dist -h], %w[test ios --help], %w[frobnicate -h], %w[--frobnicate --help]].each do |argv|
+      out, err, status = fledge(*argv)
+
+      assert_equal 0, status, argv.inspect
+      assert_empty err
+      assert_equal Fledge::CLI.new(help_path: EXE).help, out
+    end
+  end
+
+  def test_help_after_two_dashes_is_the_commands_argument
+    received = nil
+    command = Class.new do
+      define_method(:initialize) { |out:, err:| nil }
+      define_method(:call) { |argv| (received = argv) && 0 }
+    end
+
+    status = Fledge::CLI.new(help_path: EXE, out: StringIO.new, err: StringIO.new, commands: { "go" => command }).call(%w[go -- --help -h])
+
+    assert_equal 0, status
+    assert_equal %w[-- --help -h], received
+  end
+
+  # The version is fledge's alone, so a command reads -V and --version as
+  # options it does not have, as Usage gives them to the top level alone.
+  def test_the_version_after_a_command_is_the_commands_usage_error
+    %w[-V --version].each do |flag|
+      out, err, status = fledge("build", flag)
+
+      assert_equal 2, status
+      assert_empty out
+      assert_equal "fledge build: unrecognized option '#{flag}'\n#{USAGE}", err
+    end
   end
 
   def test_an_unknown_command_is_a_usage_error
@@ -137,8 +177,10 @@ class CLITest < Minitest::Test
     assert_equal "fledge: 'frobnicate' is not a fledge command\n#{USAGE}", err
   end
 
+  # fledge reads neither -v nor -?: -V prints the version, and -h the
+  # help.
   def test_an_unknown_option_is_a_usage_error
-    %w[--frobnicate -x -V].each do |option|
+    %w[--frobnicate -x -v -?].each do |option|
       out, err, status = fledge(option)
 
       assert_equal 2, status

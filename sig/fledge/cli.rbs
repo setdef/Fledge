@@ -17,6 +17,10 @@ module Fledge
 
     COMMANDS: Hash[String, _CommandClass]
 
+    HELP_FLAGS: Array[String]
+
+    VERSION_FLAGS: Array[String]
+
     @help_path: String
     @out: _Output
     @err: _Output
@@ -36,6 +40,8 @@ module Fledge
 
     private def succeed_with: (String) -> Integer
 
-    private def usage_error: (String?) -> Integer
+    private def usage_error: (String) -> Integer
+
+    private def help_error: () -> Integer
   end
 end

@@ -27,9 +27,10 @@ long_about """
     presents itself: its name, icon, identifier, installers, and the files it
     opens.
 
-    Run with no arguments, fledge prints its usage to standard error and exits
-    with status 2. fledge reads -h, -?, and --help, and -v and --version, only
-    as the first argument.
+    Run with no arguments, fledge prints its help to standard error and exits
+    with status 2. -h and --help print the help wherever they come before --,
+    such as after a command, and -V and --version print the version only as
+    the first argument.
     """
 after_long_help """
     Guides and the fledge.yml reference:
@@ -39,15 +40,12 @@ after_long_help """
       https://forum.setdef.com/c/fledge
     """
 
+arg_required_else_help #true
+
 example "fledge build" header="Build the app in this folder" help="Writes the app's archive, and a windowed app's installers, into dist."
 example "fledge build bin/greet" header="Build one program of a project"
 example "fledge build ios" header="Write the iOS app's Xcode project"
 example "fledge test android test/phone.rb" header="Run a program on an Android emulator" help="Exits with the program's status, so a test suite can gate a release."
-
-flag "-h --help" help="Print the help, and exit with status 0" {
-    alias "-?"
-}
-flag "-v --version" help="Print fledge's version, such as fledge 0.17.0, and exit with status 0"
 
 exit_code 0 "Fledge finished what it was asked to do."
 exit_code 1 "Fledge could not finish. Standard error says why, and what to change."

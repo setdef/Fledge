@@ -152,7 +152,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/digest/blake3.so |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
-| libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
+| libffi, compiled into the fiddle gem's extension | 3.8.2 | `MIT` | compiled into the fiddle gem's extension |
 | libfuse's source code, as its authors released it | 3.15.0 | `LGPL-2.1-only` | notices/sources/libfuse/, in every app |
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
 | libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems | 0.2.7 | `MIT` | compiled into lib/ruby/4.1.0+5/x86_64-linux-musl/psych.so, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against |
@@ -190,7 +190,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/digest/blake3.so |
 | GCC's runtime library (libgcc), linked statically by Alpine's compiler into the AppImage runtime | 14.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | linked into tools/appimage-runtime |
 | GCC's runtime library (libgcc), linked statically into the launcher, bin/ruby, and Ruby's extensions (-static-libgcc) | 15.2.0 | `GPL-3.0-or-later WITH GCC-exception-3.1` | compiled into the launcher, bin/ruby, and the extensions in lib/ruby/ |
-| libffi, compiled into the fiddle gem's extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
+| libffi, compiled into the fiddle gem's extension | 3.8.2 | `MIT` | compiled into the fiddle gem's extension |
 | libfuse's source code, as its authors released it | 3.15.0 | `LGPL-2.1-only` | notices/sources/libfuse/, in every app |
 | libfuse, which mounts the AppImage's file system, linked into the AppImage runtime | 3.15.0 | `LGPL-2.1-only` | linked into tools/appimage-runtime, whose own source Fledge publishes with libfuse's, so it can be rebuilt with another libfuse |
 | libyaml, compiled into Ruby's psych extension, with its header and static library for compiling gems | 0.2.7 | `MIT` | compiled into lib/ruby/4.1.0+5/aarch64-linux-musl/psych.so, and as include/yaml.h and lib/libyaml.a for fledge build to compile gems against |
@@ -307,7 +307,7 @@ Its 82 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Fledge's embedding API, and the library and packages it is built into | 0.17.0 | `MIT` | FledgeRuby.framework in each slice of FledgeRuby.xcframework, with fledge.links beside it, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/4.1.0+5/arm64-darwin/openssl.so |
 | Fledge's RubyGems defaults | 0.17.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/arm64-darwin/digest/blake3.bundle |
-| libffi, compiled into the mobile runtimes' fiddle extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
+| libffi, compiled into the mobile runtimes' fiddle extension | 3.8.2 | `MIT` | compiled into the fiddle gem's extension |
 | libyaml, compiled into the mobile runtimes' psych extension | 0.2.7 | `MIT` | compiled into lib/ruby/4.1.0+5/arm64-darwin/psych.bundle |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |
 | OpenSSL, compiled into the mobile runtimes' openssl extension | 3.6.5 | `Apache-2.0` | compiled into lib/ruby/4.1.0+5/arm64-darwin/openssl.bundle, with, on iOS, its privacy manifest (os-dep/Apple/PrivacyInfo.xcprivacy in its source) in each slice's privacy folder |
@@ -333,7 +333,7 @@ Its 81 default and bundled gems, the ones every Ruby 4.1.0-preview1 installs, by
 | Fledge's embedding API, and the library and packages it is built into | 0.17.0 | `MIT` | FledgeRuby.framework in each slice of FledgeRuby.xcframework, with fledge.links beside it, and libfledgeruby.so, the ruby program libfledgerubyexe.so, and the Java class org.setdef.fledge.FledgeRuby in FledgeRuby.aar, with fledge.links beside it; and on Android compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/openssl.so |
 | Fledge's RubyGems defaults | 0.17.0 | `MIT` | lib/ruby/4.1.0+5/rubygems/defaults/operating_system.rb in the runtime's Ruby (in each slice of the XCFramework, on iOS), which RubyGems loads as the app's Ruby starts |
 | BLAKE3, compiled into Ruby's digest/blake3 extension | 1.8.5 | `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception` | compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/digest/blake3.so |
-| libffi, compiled into the mobile runtimes' fiddle extension | 3.5.2 | `MIT` | compiled into the fiddle gem's extension |
+| libffi, compiled into the mobile runtimes' fiddle extension | 3.8.2 | `MIT` | compiled into the fiddle gem's extension |
 | libyaml, compiled into the mobile runtimes' psych extension | 0.2.7 | `MIT` | compiled into lib/ruby/4.1.0+5/{aarch64,x86_64}-linux-android/psych.so |
 | LLVM's compiler-rt builtins and libunwind, linked into the Android runtime's libraries by the NDK | r30 | `Apache-2.0 WITH LLVM-exception` | compiled into libfledgeruby.so, the ruby program libfledgerubyexe.so, and each of Ruby's extensions |
 | Mozilla's CA certificates, as curl publishes them | cacert-2026-03-19 | `MPL-2.0` | libexec/cert.pem, unmodified |

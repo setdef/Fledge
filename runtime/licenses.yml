@@ -856,16 +856,16 @@ components:
 
   - id: libffi-musl
     name: libffi, compiled into the fiddle gem's extension
-    version: 3.5.2
+    version: 3.8.2
     license: MIT
     kind: program
-    download: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
+    download: https://github.com/libffi/libffi/releases/download/v3.8.2/libffi-3.8.2.tar.gz
     notice: libffi
     ships: compiled into the fiddle gem's extension
     platforms: [x86_64-linux-musl, aarch64-linux-musl]
     embedded:
       - files: ["{prefix}lib/ruby/gems/{abi}/extensions/{gem_arch}/*/fiddle-*/fiddle.so"]
-        evidence: "3.5.2\0"
+        evidence: "3.8.2\0"
 
   - id: libffi-jdx
     name: libffi, compiled into the fiddle gem's extension
@@ -887,16 +887,16 @@ components:
 
   - id: libffi-mobile
     name: libffi, compiled into the mobile runtimes' fiddle extension
-    version: 3.5.2
+    version: 3.8.2
     license: MIT
     kind: program
-    download: https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz
+    download: https://github.com/libffi/libffi/releases/download/v3.8.2/libffi-3.8.2.tar.gz
     notice: libffi
     ships: compiled into the fiddle gem's extension
     platforms: [ios, android]
     embedded:
       - files: ["{prefix}lib/ruby/gems/{abi}/{extensions/{gem_arch}/*/fiddle-*,gems/fiddle-*/lib}/fiddle.{so}"]
-        evidence: "3.5.2\0"
+        evidence: "3.8.2\0"
 
   # The NDK's clang links its own runtime into every library it links:
   # compiler-rt's builtins and LLVM's libunwind, under LLVM's exception,

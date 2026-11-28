@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Windows, `fledge build` counts a DLL of the runtime's as provided only where the app's Ruby looks for it, in `ruby_builtin_dlls`, Ruby's architecture folder, and Ruby's own DLL, and refuses a gem that needs one the runtime holds only elsewhere, such as beside another gem's extension, which before built an app that stopped at `require`.
 - libyaml 0.2.7, from 0.2.5.
 - A Windows setup program's finish page shows a plain white bitmap down its left side, where it showed NSIS's own.
+- libffi 3.8.2, from 3.5.2.
 
 ### Fixed
 

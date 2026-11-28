@@ -231,7 +231,7 @@ jobs:
       - name: Install mksquashfs
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
       # No FLEDGE_RUNTIME_DIR and an empty cache: the runtime must come
@@ -308,7 +308,7 @@ jobs:
       - name: Install desktop-file-validate
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq desktop-file-utils=0.27-2build1
 
       - name: Start Hello Window as the desktop would
@@ -737,7 +737,7 @@ jobs:
       - name: Install mksquashfs
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
       # hello through the gem's own executable, as after gem install, and
@@ -811,7 +811,7 @@ jobs:
       - name: Install desktop-file-validate
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq desktop-file-utils=0.27-2build1
 
       - name: Start Hello Window as the desktop would

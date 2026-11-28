@@ -122,7 +122,7 @@ jobs:
       # job of it installs them for.
       - name: Install mksquashfs
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
       - name: Prove the runtime

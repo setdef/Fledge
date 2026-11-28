@@ -11,8 +11,9 @@
 # beside Ubuntu's, and apt-get update exits 100 when that host answers
 # 403 or does not sign its index, as it did on 2026-11-27 (run
 # 45910670171), though no step installs a package from it. This script
-# fails on every error and warning but those that name that host, so a
-# failure to fetch Ubuntu's own archive still fails the step.
+# passes only when an error names that host and no error or warning
+# names another, so a failure to fetch Ubuntu's own archive, and a
+# failure that prints no error at all, still fail the step.
 #
 # This is POSIX sh on purpose: nothing here may need Ruby.
 
@@ -24,8 +25,14 @@ status=0
 cat "$log"
 [ "$status" -ne 0 ] || exit 0
 
-if grep -E '^[EW]: ' "$log" | grep -qv 'packages\.microsoft\.com'; then
-  echo "runner-apt-update.sh: apt-get update exited $status with an error from a host other than packages.microsoft.com" >&2
-  exit "$status"
+# A failure is tolerated only when apt printed an error naming that host
+# and no error or warning line names anything else. A failure with no such
+# line, as when sudo fails or apt dies silently, fetched nothing and fails
+# with apt's status.
+if grep -E '^E: ' "$log" | grep -q 'packages\.microsoft\.com' &&
+  ! grep -E '^[EW]: ' "$log" | grep -qv 'packages\.microsoft\.com'; then
+  echo "runner-apt-update.sh: apt-get update exited $status, with errors only from packages.microsoft.com, which no step installs from"
+  exit 0
 fi
-echo "runner-apt-update.sh: apt-get update exited $status, with errors only from packages.microsoft.com, which no step installs from"
+echo "runner-apt-update.sh: apt-get update exited $status, and the failure is not only packages.microsoft.com's" >&2
+exit "$status"

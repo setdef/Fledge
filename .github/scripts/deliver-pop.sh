@@ -138,9 +138,13 @@ openbox >"$work/openbox.log" 2>&1 &
 wm=$!
 sleep 1
 
-# Twelve seconds, which is more than the six this needs for its dots to
-# show and the sweep to run, and fewer than 90.
-(pop 12 DISPLAY="$DISPLAY" XDG_RUNTIME_DIR="$work/runtime" >"$work/out" 2>"$work/err") & app=$!
+# Forty seconds, fewer than 90. The dots need six seconds to show, and
+# the sweep of 130 clicks then takes about thirteen more on a runner of
+# either architecture (run 46102839557 on both, run 46108351720 on
+# aarch64), so a game that quit after twelve seconds ended four seconds
+# into the sweep, which then reached only the top rows: a run scored 0
+# when no dot fell there. Forty leaves the sweep twice the time it takes.
+(pop 40 DISPLAY="$DISPLAY" XDG_RUNTIME_DIR="$work/runtime" >"$work/out" 2>"$work/err") & app=$!
 tries=0
 window=
 while [ -z "$window" ]; do

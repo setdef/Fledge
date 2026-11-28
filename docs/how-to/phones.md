@@ -46,7 +46,7 @@ Each phone's project is written on a computer whose tools build it:
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ bundle exec fledge build ios
+$ bundle exec fledge ios project
 dist/Basket-ios
 ```
 <!-- SPDX-SnippetEnd -->
@@ -57,7 +57,7 @@ dist/Basket-ios
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ bundle exec fledge build android
+$ bundle exec fledge android project
 dist/Basket-android
 ```
 <!-- SPDX-SnippetEnd -->
@@ -74,7 +74,7 @@ For the icon, iOS takes one 1024-pixel PNG (`icons/basket-1024.png`) and Android
 
 ## Run a program on the Simulator or an emulator
 
-`test` writes the project, builds a debug app, installs it, launches it, and prints what the program prints. It exits with the program's exit status, so it can run a test suite in CI:
+`run` writes the project, builds a debug app, installs it, launches it, and prints what the program prints. It exits with the program's exit status, so it can run a test suite in CI:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -82,7 +82,7 @@ For the icon, iOS takes one 1024-pixel PNG (`icons/basket-1024.png`) and Android
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ bundle exec fledge test ios test/phone.rb
+$ bundle exec fledge ios run test/phone.rb
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -92,7 +92,7 @@ $ bundle exec fledge test ios test/phone.rb
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ bundle exec fledge test android test/phone.rb
+$ bundle exec fledge android run test/phone.rb
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -120,7 +120,7 @@ On a phone, the app's Ruby runs on the process's main thread, as `ruby main.rb` 
 - iOS ends an app that has not started its interface, by calling `UIApplicationMain`, within 20 seconds of launch. A program that runs long, such as a test suite on an iPhone, starts the interface first and does its work on a Ruby thread.
 - Android reports an app as not responding once an input event has waited 5 seconds.
 
-The Simulator ends no program that holds the main thread, so `fledge test ios` runs a test suite of any length there.
+The Simulator ends no program that holds the main thread, so `fledge ios run` runs a test suite of any length there.
 
 ## Draw the platform's widgets
 

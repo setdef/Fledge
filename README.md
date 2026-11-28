@@ -153,8 +153,8 @@ fledge prints the path of each file it wrote, in `dist`, and writes each one's S
      SPDX-License-Identifier: MIT-0
    -->
    ```console
-   $ bundle exec fledge build ios
-   $ bundle exec fledge build android
+   $ bundle exec fledge ios project
+   $ bundle exec fledge android project
    ```
    <!-- SPDX-SnippetEnd -->
 

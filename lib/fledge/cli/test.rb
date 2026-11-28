@@ -5,13 +5,9 @@
 # SPDX-License-Identifier: MIT
 #++
 
-require "stringio"
-require_relative "../app"
-require_relative "../command"
 require_relative "../error"
 require_relative "../mobile_platform"
-require_relative "../phone_run"
-require_relative "build"
+require_relative "phone/run"
 
 module Fledge
   class CLI
@@ -99,27 +95,23 @@ module Fledge
         end
       end
 
-      # Creates the command, which builds as Fledge::CLI::Build does with
-      # +env+, and runs the app with +run+, a Fledge::PhoneRun's +follow+
-      # by default.
+      # Creates the command, which runs the program as
+      # Fledge::CLI::Phone::Run does, with +env+, +build+, and +run+.
       #
       # [out] Where the program's standard output goes.
       # [err] Where its standard error, errors, and progress go.
       # [env] The environment Fledge::Runtimes and the Android SDK are
       #       found in (default: +ENV+).
-      # [build] Writes the project, given the arguments of
-      #         <tt>fledge build</tt> and where it prints (default: a
-      #         Fledge::CLI::Build's +call+).
-      # [run] Builds, installs, and follows the app, given the phone, the
-      #       Fledge::App, the project's folder, and the device
-      #       <tt>--device</tt> names or +nil+, and returns the program's
-      #       status (default: #run).
+      # [build] Writes the project, as Fledge::CLI::Phone::Run's does
+      #         (default: a Fledge::CLI::Build's +call+).
+      # [run] Builds, installs, and follows the app, as
+      #       Fledge::CLI::Phone::Run's does (default: its own).
       def initialize(out:, err:, env: ENV, build: nil, run: nil)
         @out = out
         @err = err
         @env = env
-        @build = build || -> (arguments, printed) { Build.new(out: printed, err:, env:).call(arguments) }
-        @run = run || method(:run)
+        @build = build
+        @run = run
       end
 
       # Runs the command with the arguments after +test+, and returns the
@@ -128,44 +120,9 @@ module Fledge
       # sense of.
       def call(argv)
         options = Options.parse(argv)
-        app = App.at(options.program)
-        printed = StringIO.new
-        built = @build.call([options.phone, "--out", options.out, "--", options.program], printed)
-        return built unless built.zero?
-
-        phone = MobilePlatform.find(options.phone) || raise(Error, "no phone #{options.phone}")
-        status = @run.call(phone, app, File.expand_path(printed.string.strip), options.device)
-        status.between?(0, 255) ? status : 1
-      rescue UsageError
-        raise
-      rescue Error => e
-        e.message.each_line { |line| @err.puts "fledge test: #{line.chomp}" }
-        1
-      end
-
-      # Builds the project at +project+ for +phone+ with the system's own
-      # tools, runs it on +device+, a Simulator's UDID or adb's serial, or
-      # else on the one booted Simulator or adb's device, and returns the
-      # status of +app+'s program.
-      private def run(phone, app, project, device)
-        name = app.name
-        identifier = app.identity.identifier.to_s
-        follower = PhoneRun.new(out: @out, err: @err)
-        if phone.name == "ios"
-          @err.puts "Building #{name} for the iOS Simulator with xcodebuild"
-          bundle = PhoneRun::IOS.build(project, name)
-          udid = device || PhoneRun::IOS.booted(Command.run("xcrun", "simctl", "list", "devices", "booted", "-j", install: PhoneRun::IOS::INSTALL))
-          launched = PhoneRun::IOS.new(name:, identifier:, udid:)
-          launched.launch(bundle)
-        else
-          @err.puts "Building #{name}'s debug APK with Gradle"
-          apk = PhoneRun::Android.build(project)
-          adb = PhoneRun::Android.adb(@env["ANDROID_HOME"] || @env["ANDROID_SDK_ROOT"])
-          launched = PhoneRun::Android.new(name:, identifier:, adb:, serial: device)
-          launched.launch(apk)
-        end
-        @err.puts "Running #{name} on the #{(phone.name == 'ios') ? 'Simulator' : 'device'}"
-        follower.follow(launched)
+        device = options.device ? ["--device", options.device] : [] # : Array[String]
+        Phone::Run.new(out: @out, err: @err, phone: MobilePlatform.new(name: options.phone), env: @env, name: "fledge test", build: @build, run: @run)
+          .call(["--out", options.out, *device, "--", options.program])
       end
     end
   end

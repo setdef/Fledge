@@ -27,14 +27,16 @@ module Fledge
         # (Fledge::MobilePlatform.names) is the phone; a folder of that
         # name is <tt>./ios</tt>, or follows <tt>--</tt>. A platform added
         # later takes its word here too, which the help reserves.
-        # Raises
+        # Given +phone+, the name of the phone whose project the command
+        # writes, as <tt>fledge ios project</tt> gives it, every operand
+        # is a PATH, and the options that only a desktop app takes are
+        # refused. Raises
         # Fledge::UsageError for an option it does not know, one without
         # its value, or more than one PATH, and for the <tt>--target</tt>
         # Fledge 0.0.1.pre.7 and earlier took, saying why it went.
-        def self.parse(argv)
+        def self.parse(argv, phone: nil)
           values = {} # : Hash[String, String]
           paths = [] # : Array[String]
-          phone = nil # : String?
           arguments = argv.dup
           while (argument = arguments.shift)
             case argument
@@ -75,7 +77,7 @@ module Fledge
 
           signing = %w[--sign --sign-command].find { |option| values.key?(option) }
           raise UsageError, "#{signing} signs desktop apps; sign a phone's app with Xcode or Gradle" if signing
-          raise UsageError, "--from builds for this computer; a phone's project is written with fledge build ios or android" if values["--from"]
+          raise UsageError, "--from builds this computer's app from one fledge built; a phone's project is written from its project alone" if values["--from"]
         end
 
         # The value after +option+ in +arguments+, which names a +name+.

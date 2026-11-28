@@ -313,7 +313,7 @@ class BuildFromTest < Minitest::Test
   def test_a_from_with_no_value_or_for_a_phone_is_a_usage_error
     from = built_player
     {
-      ["--from", from, "ios", "game"] => "--from builds for this computer; a phone's project is written with fledge build ios or android",
+      ["--from", from, "ios", "game"] => "--from builds this computer's app from one fledge built; a phone's project is written from its project alone",
       ["--from"] => "--from needs an APP",
       ["--from="] => "--from needs an APP",
     }.each do |argv, message|

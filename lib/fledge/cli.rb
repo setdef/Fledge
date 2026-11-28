@@ -7,7 +7,9 @@
 
 require_relative "version"
 require_relative "cli/build"
+require_relative "cli/phone"
 require_relative "cli/test"
+require_relative "mobile_platform"
 
 module Fledge
   # Runs the +fledge+ command line.
@@ -56,7 +58,13 @@ module Fledge
     # The commands +fledge+ runs, by name. Each is a class whose +new+
     # takes <tt>out:</tt> and <tt>err:</tt> and whose +call+ takes the
     # arguments after the command's name and returns an exit status.
-    COMMANDS = { "build" => Build, "test" => Test }.freeze
+    # A phone's command is named for it, as Fledge::MobilePlatform.names
+    # gives it.
+    COMMANDS = {
+      "build" => Build,
+      "test" => Test,
+      **MobilePlatform.names.to_h { |name| [name, Phone::Command.new(phone: MobilePlatform.new(name:))] },
+    }.freeze
 
     # The flags that ask for the help, anywhere before <tt>--</tt>.
     HELP_FLAGS = %w[-h --help].freeze
@@ -171,7 +179,7 @@ module Fledge
 
       command.new(out: @out, err: @err).call(arguments)
     rescue UsageError => e
-      usage_error("fledge #{name}: #{e.message}")
+      usage_error("#{e.command || "fledge #{name}"}: #{e.message}")
     end
 
     private def succeed_with(text)

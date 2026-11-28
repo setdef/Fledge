@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `fledge ios project [PATH]` and `fledge android project [PATH]` write a phone's project, as `fledge build ios` and `fledge build android` do, and `fledge ios run [PATH]` and `fledge android run [PATH]` run a program inside the phone's app, as `fledge test` does, running the app's own program when PATH is left out.
 - `fledge.yml`'s `windows: msix_allow_unsigned`, true by default: set it to false for an `.msix` that you sign after the build or that the Microsoft Store signs, so that its `Publisher` is `msix_publisher` as it stands, with no OID.
 - Each release attaches the example apps, built and delivered by CI: for a desktop platform, the archive and installers `fledge build` makes, for Android a debug-signed APK, and for iOS the Xcode project, archived, to sign with your team, all named `fledge-example-NAME-VERSION-PLATFORM`.
 - `fledge.yml`'s `windows: msix_dependencies`, the framework packages an app's `.msix` depends on, such as Microsoft's Windows App Runtime for an app that draws with WinUI 3: each entry gives the package's `name`, `publisher`, and `min_version`, and `fledge build` writes a `PackageDependency` for it into the package's manifest, so the Store or App Installer installs the framework with the app. The setup program, the `.zip`, and the other installers ignore it.

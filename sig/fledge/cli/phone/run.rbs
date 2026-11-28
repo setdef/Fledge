@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class CLI
+    class Phone
+      class Run
+        type build = ^(Array[String] arguments, StringIO printed) -> Integer
+        type run = ^(MobilePlatform phone, App app, String project, String? device) -> Integer
+
+        DEFAULT_OUT: String
+
+        class Options < Data
+          attr_reader path: String
+          attr_reader out: String
+          attr_reader device: String?
+
+          def self.new: (path: String, out: String, device: String?) -> instance
+
+          def self.parse: (Array[String] argv) -> Options
+
+          private def self.value: (String option, Array[String] arguments, String what) -> String
+        end
+
+        @out: CLI::_Output
+        @err: CLI::_Output
+        @phone: MobilePlatform
+        @env: Runtimes::_Env
+        @name: String
+        @build: build
+        @run: run
+
+        def initialize: (out: CLI::_Output, err: CLI::_Output, phone: MobilePlatform, ?env: Runtimes::_Env, ?name: String?, ?build: build?, ?run: run?) -> void
+
+        def call: (Array[String] argv) -> Integer
+
+        private def run: (MobilePlatform phone, App app, String project, String? device) -> Integer
+      end
+    end
+  end
+end

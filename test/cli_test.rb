@@ -26,8 +26,8 @@ class CLITest < Minitest::Test
 
   USAGE = "Usage: fledge build [OPTIONS] [PATH]\n" \
     "       fledge build --from APP [OPTIONS] [PATH]\n" \
-    "       fledge build ios|android [OPTIONS] [PATH]\n" \
-    "       fledge test ios|android [OPTIONS] PROGRAM\n" \
+    "       fledge ios|android project [OPTIONS] [PATH]\n" \
+    "       fledge ios|android run [OPTIONS] [PATH]\n" \
     "       fledge --help\n" \
     "       fledge --version\n" \
     "Try 'fledge --help'.\n"
@@ -50,15 +50,14 @@ class CLITest < Minitest::Test
     end
   end
 
-  # A bare word Fledge reads as a platform is read so by every later
-  # release, and the help says to write ./NAME for a folder of that name,
-  # naming each word the parser takes today.
-  def test_help_reserves_the_words_it_reads_as_platforms
+  # Each phone is a command named for it, and the help names each phone
+  # the command table has today.
+  def test_help_names_each_phones_command
     out, = fledge("--help")
     words = out.split.join(" ")
 
-    assert_includes words, "A PATH that is a bare word Fledge reads as a platform, today #{Fledge::MobilePlatform.names.join(' and ')}, " \
-      "is read as one, and so is each platform's word a later release adds; write ./NAME for a folder of that name."
+    assert_includes words, "Each phone's command is named for it, today #{Fledge::MobilePlatform.names.join(' and ')}, " \
+      "and so is each phone's a later release adds."
     assert_includes words, "Changing identifier makes a new app to each system"
   end
 
@@ -115,7 +114,7 @@ class CLITest < Minitest::Test
   end
 
   def test_the_short_usage_is_the_help_headers_synopsis
-    assert_equal "Usage: fledge build [OPTIONS] [PATH]\n       fledge build --from APP [OPTIONS] [PATH]\n       fledge build ios|android [OPTIONS] [PATH]\n       fledge test ios|android [OPTIONS] PROGRAM\n       fledge --help\n" \
+    assert_equal "Usage: fledge build [OPTIONS] [PATH]\n       fledge build --from APP [OPTIONS] [PATH]\n       fledge ios|android project [OPTIONS] [PATH]\n       fledge ios|android run [OPTIONS] [PATH]\n       fledge --help\n" \
       "       fledge --version\n",
       Fledge::CLI.new(help_path: EXE).usage
   end
@@ -230,7 +229,7 @@ class CLITest < Minitest::Test
   end
 
   def test_the_command_table_names_every_command
-    assert_equal %w[build test], Fledge::CLI::COMMANDS.keys
+    assert_equal %w[build test ios android], Fledge::CLI::COMMANDS.keys
     assert_predicate Fledge::CLI::COMMANDS, :frozen?
   end
 

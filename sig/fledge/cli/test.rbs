@@ -4,9 +4,6 @@
 module Fledge
   class CLI
     class Test
-      type build = ^(Array[String] arguments, StringIO printed) -> Integer
-      type run = ^(MobilePlatform phone, App app, String project, String? device) -> Integer
-
       DEFAULT_OUT: String
 
       class Options < Data
@@ -25,14 +22,12 @@ module Fledge
       @out: CLI::_Output
       @err: CLI::_Output
       @env: Runtimes::_Env
-      @build: build
-      @run: run
+      @build: Phone::Run::build?
+      @run: Phone::Run::run?
 
-      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?build: build?, ?run: run?) -> void
+      def initialize: (out: CLI::_Output, err: CLI::_Output, ?env: Runtimes::_Env, ?build: Phone::Run::build?, ?run: Phone::Run::run?) -> void
 
       def call: (Array[String] argv) -> Integer
-
-      private def run: (MobilePlatform phone, App app, String project, String? device) -> Integer
     end
   end
 end

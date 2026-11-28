@@ -1,6 +1,6 @@
 # Phone projects
 
-This part writes a phone's app as a project its platform's tools build: an Xcode project for iOS, through XcodeGen, and a Gradle project for Android. It compiles each gem's extension for the phone's targets, links the results into the project, and, for `fledge test`, builds the project, installs it on a Simulator or device, and follows its log. [Phone runtimes](phone-runtimes.md) maps the runtimes it places in the project; [Ruby on a phone](../../explanation/phones.md) explains the shape to users.
+This part writes a phone's app as a project its platform's tools build: an Xcode project for iOS, through XcodeGen, and a Gradle project for Android. It compiles each gem's extension for the phone's targets, links the results into the project, and, for the phones' `run` commands, builds the project, installs it on a Simulator or device, and follows its log. [Phone runtimes](phone-runtimes.md) maps the runtimes it places in the project; [Ruby on a phone](../../explanation/phones.md) explains the shape to users.
 
 ## The pieces
 
@@ -43,7 +43,7 @@ Both build the same extensions for every target, and `MobileExtensions` refuses 
 
 ## Running a program
 
-`fledge test` builds the project with the developer's program as its entry, then hands it to `PhoneRun`. iOS builds for the Simulator with `xcodebuild` (unsigned), installs and launches it with `simctl` on the one booted Simulator, and reads the unified log for the app's subsystem; Android builds the debug APK with the project's Gradle wrapper, installs and starts it with `adb`, and reads logcat for the app's tag. Each prints the program's lines as they come, and returns the status from the host's last line, `NAME exited with status N`. A process that ends without that line is a failure, not status 0.
+The phones' `run` command builds the project with the developer's program as its entry, then hands it to `PhoneRun`. iOS builds for the Simulator with `xcodebuild` (unsigned), installs and launches it with `simctl` on the one booted Simulator, and reads the unified log for the app's subsystem; Android builds the debug APK with the project's Gradle wrapper, installs and starts it with `adb`, and reads logcat for the app's tag. Each prints the program's lines as they come, and returns the status from the host's last line, `NAME exited with status N`. A process that ends without that line is a failure, not status 0.
 
 ## Traps
 

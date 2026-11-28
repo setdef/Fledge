@@ -14,8 +14,8 @@
 # SYNOPSIS
 #     fledge build [OPTIONS] [PATH]
 #     fledge build --from APP [OPTIONS] [PATH]
-#     fledge build ios|android [OPTIONS] [PATH]
-#     fledge test ios|android [OPTIONS] PROGRAM
+#     fledge ios|android project [OPTIONS] [PATH]
+#     fledge ios|android run [OPTIONS] [PATH]
 #     fledge --help
 #     fledge --version
 #
@@ -74,7 +74,8 @@
 #     Fledge's runtime, which must then be on the computer; on Linux
 #     an AppImage needs the runtime's AppImage runtime the same way.
 #
-#     For a phone, fledge build writes the project that builds the
+#     For a phone, fledge ios project or fledge android project writes
+#     the project that builds the
 #     app, which you build, sign, and submit with that system's tools:
 #     an Xcode project for iPhone and iPad on a Mac, and a Gradle project
 #     for Android on a Mac, Linux, or Windows. Ruby runs there as a
@@ -139,47 +140,43 @@
 #                        Fledge did not build, another Fledge release
 #                        built, or built for another system fails the
 #                        build.
-#     build ios          Write an Xcode project for the app, for iPhone
+#     ios project        Write an Xcode project for the app, for iPhone
 #                        and iPad (iOS 15 and later, arm64), which
 #                        builds for devices and the Simulator, and print
 #                        its path. Run it on a Mac, with Xcode and
 #                        XcodeGen (brew install xcodegen), which writes
 #                        the project.
-#     build android      Write a Gradle project for the app, for Android
+#     android project    Write a Gradle project for the app, for Android
 #                        8.0 (API 26) and later, targeting API 36, with
 #                        Gradle's wrapper (./gradlew assembleDebug), and
 #                        print its path. Run it on a Mac, x86-64 Linux,
 #                        or Windows; building the project needs a JDK and
 #                        the Android SDK.
-#                        A phone's name comes first. A PATH that is a
-#                        bare word Fledge reads as a platform, today
-#                        ios and android, is read as one, and so is
-#                        each platform's word a later release adds;
-#                        write ./NAME for a folder of that name.
-#     test ios PROGRAM   Run the test program PROGRAM, such as
-#     test android PROGRAM
-#                        test/phone.rb, inside the phone's app, where
-#                        the phone's own widgets are: write the app's
-#                        project as build ios or build android does,
-#                        with PROGRAM in place of the app's program,
-#                        build it for the Simulator with xcodebuild, or
-#                        its debug APK with Gradle, install it on the
-#                        one booted Simulator, or the emulator or phone
-#                        adb answers for, or on --device, and run it.
-#                        Prints what PROGRAM prints, from the system
-#                        log, and exits with
-#                        its exit status once the app logs it, as
-#                        ruby PROGRAM would; 1 when the app could not
-#                        be built or run. PROGRAM is yours, such as
-#                        Minitest's or RSpec's runner, and runs as
+#                        Each phone's command is named for it, today
+#                        ios and android, and so is each phone's a later
+#                        release adds.
+#     ios run [PATH]     Run the program PATH (default: the app's own),
+#     android run [PATH] such as test/phone.rb, inside the phone's app,
+#                        where the phone's own widgets are: write the
+#                        app's project as project does, with PATH in
+#                        place of the app's program, build it for the
+#                        Simulator with xcodebuild, or its debug APK
+#                        with Gradle, install it on the one booted
+#                        Simulator, or the emulator or phone adb answers
+#                        for, or on --device, and run it. Prints what
+#                        the program prints, from the system log, and
+#                        exits with its exit status once the app logs
+#                        it, as ruby PATH would; 1 when the app could
+#                        not be built or run. The program is yours, such
+#                        as Minitest's or RSpec's runner, and runs as
 #                        the app's program does.
 #
 # OPTIONS
 #     -o, --out DIR      Write builds to DIR (default: dist, and
-#                        dist/test for test)
+#                        dist/test for run)
 #     -d, --device ID    The Simulator, by its UDID, or the Android
 #                        emulator or phone, by its adb serial number,
-#                        that test runs on; test only
+#                        that run runs on; run only
 #     --from APP         Build from the app in the folder APP (see
 #                        build --from); not for a phone
 #     --sign IDENTITY    Sign the app with your own identity: on
@@ -307,8 +304,8 @@
 #                          programs, kind, identifier, and icon belong
 #                          to each program.
 #                        ios, android: a mapping of host, a folder in
-#                          ROOT, such as host/ios, whose files build ios
-#                          or build android copies over the project it
+#                          ROOT, such as host/ios, whose files ios project
+#                          or android project copies over the project it
 #                          writes, before XcodeGen runs: each replaces
 #                          Fledge's file at its path, or joins them, and
 #                          the build says which it replaced. android may
@@ -635,8 +632,8 @@
 #     fledge build exe/my_cool_app
 #
 #     Write the app's Xcode project on a Mac, and its Gradle project:
-#     fledge build ios
-#     fledge build android
+#     fledge ios project
+#     fledge android project
 #
 #     Build and sign with your Developer ID, and notarize, on a Mac:
 #     fledge build --sign "Developer ID Application: Example (ABCDE12345)" \

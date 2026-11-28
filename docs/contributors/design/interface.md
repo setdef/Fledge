@@ -9,10 +9,10 @@ The command line is described twice. The code runs it, and `fledge --help` print
 | To | Run |
 | - | - |
 | build a desktop app | `fledge build [PATH]` |
-| write a phone's project | `fledge build ios [PATH]`, `fledge build android [PATH]` |
-| run a program on a Simulator or device | `fledge test ios PROGRAM`, `fledge test android PROGRAM` |
+| write a phone's project | `fledge ios project [PATH]`, `fledge android project [PATH]` |
+| run a program on a Simulator or device | `fledge ios run [PATH]`, `fledge android run [PATH]` |
 
-A build takes `-o`/`--out`, `--sign`, `--sign-command`, `--notarize`, and `--from`, and a test `-o`/`--out` and `-d`/`--device`.
+A build takes `-o`/`--out`, `--sign`, `--sign-command`, `--notarize`, and `--from`, a phone's `project` takes `-o`/`--out`, and its `run` `-o`/`--out` and `-d`/`--device`.
 
 The configuration file is described the same way. `Config` reads `fledge.yml` (`Config::FILE`), which `lib/fledge/config.schema.json` describes, and [`docs/reference/fledge-yml.md`](../../reference/fledge-yml.md) documents for developers. In this document, the file and its entries go by that reference's names: `fledge.yml`, and its keys.
 
@@ -40,9 +40,10 @@ A new configuration entry goes the same way: its value class under `Config` and 
 | Piece | Role |
 | - | - |
 | `exe/fledge` | the executable: it runs `Fledge::CLI` on `ARGV`, and its header comment, between the `####` and `###` lines, is the help text `--help` prints |
-| `CLI` | dispatches the first word to a command class (`build` or `test`), prints help and the version, and turns a `UsageError` into status 2 with the usage |
-| `CLI::Build` | the desktop build, and, given `ios` or `android` before the path, the phone's project: parses its options into an `Options` value, then drives the build ([architecture.md](architecture.md), "How a desktop build flows") |
-| `CLI::Test` | runs a program on a phone: writes the project through `CLI::Build`, into `dist/test` or the folder given with `--out`, then hands it to `PhoneRun` ([phone-projects.md](phone-projects.md)) |
+| `CLI` | dispatches the first word to a command (`build`, or a phone's name), prints help and the version, and turns a `UsageError` into status 2 with the usage, naming the command its `command` names, or the one it ran |
+| `CLI::Build` | the desktop build, and, given a phone (`fledge ios project`), the phone's project: parses its options into an `Options` value, then drives the build ([architecture.md](architecture.md), "How a desktop build flows") |
+| `CLI::Phone` | a phone's command, one for each `MobilePlatform` in `CLI::COMMANDS`: dispatches its first word, `project` to `CLI::Build` with the phone, and `run` to `CLI::Phone::Run`, and names that command in a `UsageError` |
+| `CLI::Phone::Run` | runs a program on a phone: writes the project through `CLI::Build`, into `dist/test` or the folder given with `--out`, then hands it to `PhoneRun` ([phone-projects.md](phone-projects.md)) |
 | `Config` | `fledge.yml`, read and validated into values: `Config` itself, and `Config::Program`, `FileAssociation`, `Linux`, `Macos`, `Windows`, and `Phone` for its nested mappings |
 | `App` | a project: its root, its name, its Gemfile, its `Config`, and its programs, each an `App::Program` with an entry and an `Identity` |
 | `Identity` | how one program presents itself: name, kind, identifier, version, publisher, copyright, icon, descriptions, homepage, and file associations, with the gemspec's values as defaults |
@@ -51,7 +52,7 @@ A new configuration entry goes the same way: its value class under `Config` and 
 
 ## Exit statuses and messages
 
-Every command returns its status rather than exiting, so the CLI can be tested in-process with its streams passed in. The statuses are the ones both the help header and the Usage spec list: 0 for success; 1 for a `Fledge::Error`, whose message is printed one line at a time, each prefixed with the command (`fledge build: `, `fledge test: `); and 2 for a `UsageError`, printed with the usage. `fledge test` returns the program's status when it is between 0 and 255, and 1 otherwise.
+Every command returns its status rather than exiting, so the CLI can be tested in-process with its streams passed in. The statuses are the ones both the help header and the Usage spec list: 0 for success; 1 for a `Fledge::Error`, whose message is printed one line at a time, each prefixed with the command (`fledge build: `, `fledge ios project: `, `fledge android run: `); and 2 for a `UsageError`, printed with the usage. A phone's `run` returns the program's status when it is between 0 and 255, and 1 otherwise.
 
 A bare `fledge` prints the whole help to standard error and returns 2, as clap's `arg_required_else_help` does (`clap_builder` 4.5.26, `src/error/mod.rs`, `stream` and `exit_code`), which the Usage spec declares: a person who types `fledge` alone learns what it does, and a script that runs it by mistake fails. `-h` and `--help` print the help to standard output wherever they come before `--`, since a person adds them to the end of a command line that went wrong (clig.dev, "Help"); `-V` and `--version` count only as the first argument, as Usage gives the version flags to the top-level command alone. `-v` stays free, since it means verbose to as many tools as version (clig.dev, "Arguments and flags").
 

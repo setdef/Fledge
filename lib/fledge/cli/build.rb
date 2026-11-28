@@ -90,7 +90,14 @@ module Fledge
       #                 project's gemspec loads (default:
       #                 Fledge::Bundle::GemspecLoads, which starts a Ruby
       #                 to see).
-      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION, pins: Runtimes::PINS, gemspec_loads: Bundle::GemspecLoads.new)
+      # [phone] The Fledge::MobilePlatform whose project to write in
+      #         place of this computer's app, as <tt>fledge ios
+      #         project</tt> does (default: +nil+, the desktop app).
+      # [name] The command each line of an error begins with (default:
+      #        <tt>fledge build</tt>, or <tt>fledge PHONE project</tt>).
+      def initialize(out:, err:, env: ENV, host: Gem::Platform.local, ruby: RUBY_VERSION, pins: Runtimes::PINS, gemspec_loads: Bundle::GemspecLoads.new,
+        phone: nil, name: nil
+      )
         @out = out
         @err = err
         @env = env
@@ -98,6 +105,8 @@ module Fledge
         @ruby = ruby
         @pins = pins
         @gemspec_loads = gemspec_loads
+        @phone = phone
+        @name = name || (phone ? "fledge #{phone.name} project" : "fledge build")
       end
 
       # Runs the command with the arguments after +build+, and returns
@@ -116,11 +125,11 @@ module Fledge
       # SPDX-SnippetEnd
       #++
       def call(argv)
-        options = Options.parse(argv)
+        options = Options.parse(argv, phone: @phone&.name)
         host = Platform.local(@host)
         from = options.from&.then { |path| BuiltApp.at(path, platform: host, runtimes: Runtimes.new(env: @env, log: @err, pins: @pins)) }
         app = App.at(options.path)
-        phone = MobilePlatform.find(options.phone.to_s)
+        phone = @phone || MobilePlatform.find(options.phone.to_s)
         signing = phone ? nil : signing(options, host)
         if from then build_from(from.adopt(app), from, host, options.out, signing)
         # A phone's app runs one program: App#main.
@@ -131,7 +140,7 @@ module Fledge
       rescue UsageError
         raise
       rescue Error => e
-        e.message.each_line { |line| @err.puts "fledge build: #{line.chomp}" }
+        e.message.each_line { |line| @err.puts "#{@name}: #{line.chomp}" }
         1
       end
 
@@ -154,7 +163,7 @@ module Fledge
           contents = same_ruby(RuntimeContents.read(runtime), platform)
           files = gems ? gems.for(platform, runtime: contents) : [] # : Array[Entry]
           gems&.carried_libraries&.each { |name, source| @err.puts "Carrying #{name} from #{source}" }
-          gems&.warnings&.each { |warning| @err.puts "fledge build: warning: #{warning}" }
+          gems&.warnings&.each { |warning| @err.puts "#{@name}: warning: #{warning}" }
           app_files = gems ? gems.app_files : {} # : Hash[String, String]
           written(Assembly.new(app:, platform:, runtime:, out: out_dir, app_files:, files:, signing:, bundler: gems&.bundler,
             visual_c_runtime: gems&.visual_c_runtime || [], log: @err), out)

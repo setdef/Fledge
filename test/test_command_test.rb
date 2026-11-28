@@ -81,7 +81,7 @@ class TestCommandTest < Minitest::Test
 
     assert_equal 0, status
     assert_equal [
-      [:build, ["ios", "--out", File.join(@dir, "dist", "test"), "--", @program]],
+      [:build, ["--out", File.join(@dir, "dist", "test"), "--", @program]],
       [:run, "ios", "Basket", "com.example.Basket", File.join(@dir, "dist", "test", "Basket-ios"), "U1"],
     ], calls
   end

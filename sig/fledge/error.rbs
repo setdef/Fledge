@@ -6,5 +6,8 @@ module Fledge
   end
 
   class UsageError < Error
+    attr_reader command: String?
+
+    def initialize: (?String? message, ?command: String?) -> void
   end
 end

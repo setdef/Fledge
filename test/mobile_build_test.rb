@@ -60,6 +60,25 @@ class MobileBuildTest < Minitest::Test
     refute_path_exists File.join(@dir, "dist/Hello-android")
   end
 
+  # fledge android project writes the project as the build for the phone
+  # does, with the phone given, and its errors name that command.
+  def test_a_phones_project_command_writes_its_project_and_names_itself_in_errors
+    root = script_app("identifier: com.example.Hello\n")
+    env = { "FLEDGE_RUNTIME_DIR" => @runtimes, "XDG_CACHE_HOME" => File.join(@dir, "cache") }
+    project = lambda do |ruby|
+      out = StringIO.new
+      err = StringIO.new
+      command = Fledge::CLI::Build.new(out:, err:, env:, host: Gem::Platform.new("x86_64-linux"), ruby:, pins: FakeRuntime.pins(@runtimes),
+        gemspec_loads: NO_GEMSPEC_LOADS, phone: Fledge::MobilePlatform.new(name: "android"))
+      [Dir.chdir(@dir) { command.call([root]) }, out.string, err.string]
+    end
+
+    assert_equal [0, "dist/Hello-android\n", ""], project.call(RUBY_VERSION)
+    status, _, err = project.call("4.2.0")
+    assert_equal 1, status
+    assert_includes err, "fledge android project: You are running Ruby 4.2.0"
+  end
+
   # A lone script with the fledge.yml +config+ and, when +icons+ names
   # sizes, an icon's PNG of each, as icons/app-SIZE.png.
   def script_app(config, icons: [])

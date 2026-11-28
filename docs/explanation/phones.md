@@ -35,4 +35,4 @@ Where an extension is linked in, and a gem's Ruby code requires it by a path, fl
 
 ## Output goes to the log
 
-A phone app has no terminal. The host sends each line your program prints to the system's log: to the unified log on iOS, under the app's identifier, and to logcat on Android, tagged with the identifier. `fledge test ios` and `fledge test android` read it back from there and print it, and so can Console on a Mac, or `adb logcat`.
+A phone app has no terminal. The host sends each line your program prints to the system's log: to the unified log on iOS, under the app's identifier, and to logcat on Android, tagged with the identifier. `fledge ios run` and `fledge android run` read it back from there and print it, and so can Console on a Mac, or `adb logcat`.

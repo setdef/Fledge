@@ -65,5 +65,15 @@ module Fledge
   # SPDX-SnippetEnd
   #++
   class UsageError < Error
+    # The command whose arguments are wrong, such as <tt>fledge ios
+    # project</tt>, or +nil+ for the command Fledge::CLI ran.
+    attr_reader :command
+
+    # Creates the error with +message+, about +command+, when a command
+    # with commands of its own names one of them.
+    def initialize(message = nil, command: nil)
+      super(message)
+      @command = command
+    end
   end
 end

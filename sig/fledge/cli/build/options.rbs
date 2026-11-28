@@ -17,7 +17,7 @@ module Fledge
 
         def self.new: (out: String, path: String, phone: String?, sign: String?, from: String?, sign_command: String?, notarize: String?) -> instance
 
-        def self.parse: (Array[String] argv) -> Options
+        def self.parse: (Array[String] argv, ?phone: String?) -> Options
 
         private def self.check: (Hash[String, String] values, String? phone) -> void
 

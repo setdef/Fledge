@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
+# SPDX-License-Identifier: MIT
+
+module Fledge
+  class CLI
+    class Phone
+      class Command < Data
+        attr_reader phone: MobilePlatform
+
+        def self.new: (phone: MobilePlatform) -> instance
+
+        def new: (out: CLI::_Output, err: CLI::_Output) -> Phone
+      end
+
+      COMMANDS: Array[String]
+
+      @out: CLI::_Output
+      @err: CLI::_Output
+      @phone: MobilePlatform
+      @env: Runtimes::_Env
+
+      def initialize: (out: CLI::_Output, err: CLI::_Output, phone: MobilePlatform, ?env: Runtimes::_Env) -> void
+
+      def call: (Array[String] argv) -> Integer
+
+      private def command: (String? name) -> (Build | Run)
+    end
+  end
+end

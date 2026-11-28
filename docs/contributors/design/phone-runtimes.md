@@ -40,7 +40,7 @@ Output goes to the system log line by line, split between characters into entrie
 
 ## A program that runs long
 
-Every phone program's Ruby holds the main thread (ADR 105), so a program that runs long holds the screen. iOS's launch watchdog ends a program that has not called `UIApplicationMain` within 20 seconds on a device; Android reports one as not responding when an input event waits 5 seconds. The runtime does nothing about it, by design: a program that runs long starts its interface first and does its work on a Ruby thread, as a native app does its work off the main thread. The Simulator ends no program that holds the main thread, which is why `fledge test ios` can run a test suite of any length there.
+Every phone program's Ruby holds the main thread (ADR 105), so a program that runs long holds the screen. iOS's launch watchdog ends a program that has not called `UIApplicationMain` within 20 seconds on a device; Android reports one as not responding when an input event waits 5 seconds. The runtime does nothing about it, by design: a program that runs long starts its interface first and does its work on a Ruby thread, as a native app does its work off the main thread. The Simulator ends no program that holds the main thread, which is why `fledge ios run` can run a test suite of any length there.
 
 ## Ruby's source, edited
 

@@ -1333,7 +1333,7 @@ jobs:
       - name: Install mksquashfs and gio
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1 "libglib2.0-bin=$(dpkg-query -W -f '${Version}' libglib2.0-0t64)"
           echo "FLEDGE_REQUIRE_MKSQUASHFS=1" >> "$GITHUB_ENV"
           echo "FLEDGE_REQUIRE_DPKG_DEB=1" >> "$GITHUB_ENV"
@@ -1732,7 +1732,7 @@ jobs:
       - name: Install mksquashfs
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
       - name: Build hello, the parity, console, and HTTPS probes, my_cool_app, windowed_app, programs, Drop, markdown_to_html, lectern, and native_app for ${{ matrix.platform }}
@@ -2591,7 +2591,7 @@ jobs:
       - name: Install desktop-file-validate
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq desktop-file-utils=0.27-2build1
 
       - name: Start Hello Window as the desktop would
@@ -3469,7 +3469,7 @@ jobs:
       - name: Install mksquashfs
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq
+          .github/scripts/runner-apt-update.sh
           sudo apt-get install -y -qq squashfs-tools=1:4.6.1-1build1
 
       - name: Build a windowed app with the builder's own fledge build --from, with no Ruby, and run it

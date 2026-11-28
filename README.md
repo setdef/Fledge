@@ -14,7 +14,7 @@ You write your app in Ruby, with whatever front end your framework uses, on ever
 
 Your code runs as it does when you type `ruby main.rb` or [`bundle exec`](https://bundler.io/), with the same requires, globals, and standard library, and the gem versions in your `Gemfile.lock`, compiled gems included. If your users happen to have Ruby, your app ignores it, and its settings.
 
-**Quick links:** [Guides](#documentation) • [Examples](examples) • [Changelog](CHANGELOG.md) • [Releases](https://github.com/setdef/Fledge/releases) • [Issues](https://github.com/setdef/Fledge/issues)
+**Quick links:** [Guides](#documentation) • [Examples](examples) • [Changelog](CHANGELOG.md) • [Releases](https://github.com/setdef/Fledge/releases) • [Forum](https://forum.setdef.com/c/fledge)
 
 ## Your first app
 
@@ -250,7 +250,11 @@ Change the tag in your `Gemfile` and run `bundle update fledge`. A new Fledge ma
 
 ## Reporting problems
 
-Open an [issue](https://github.com/setdef/Fledge/issues). Say which platform you built on, which platform you ran the app on, and what `bundle exec fledge --version` prints.
+Ask questions and report problems on the [Fledge forum](https://forum.setdef.com/c/fledge). Say which platform you built on, which platform you ran the app on, and what `bundle exec fledge --version` prints. GitHub Issues are open to the project's collaborators only.
+
+Report a security problem privately, as [SECURITY.md](SECURITY.md) says, never on the forum.
+
+To send a patch, post it on the forum, or email it with `git send-email` to `replies+fledge@forum.setdef.com`. [git-send-email.io](https://git-send-email.io) shows how to set that up.
 
 ## Contributing
 

@@ -166,7 +166,7 @@ before you update.
   {Changelog}[https://github.com/setdef/Fledge/blob/trunk/CHANGELOG.md],
   {Releases}[https://github.com/setdef/Fledge/releases]
 [Community]
-  {Issues}[https://github.com/setdef/Fledge/issues],
+  {Forum}[https://forum.setdef.com/c/fledge],
   {Contributing}[https://github.com/setdef/Fledge/blob/trunk/CONTRIBUTING.md]
 
 

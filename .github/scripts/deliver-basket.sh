@@ -132,9 +132,23 @@ xdotool key Return
 wait_for "Basket added Milk"
 shot 2-added
 
-# The button at the end of Milk's row, the first of the list.
-xdotool mousemove $((X + WIDTH - 40)) $((Y + 128)) click 1
-wait_for "Basket removed Milk"
+# The button at the end of Milk's row, the first of the list. Basket logs
+# "Basket added Milk" in the handler that adds the row, before the window
+# draws the row, so a click sent at once can reach a pointer position that
+# has no button yet: GTK sends a click to the widget that the pointer's
+# last motion found (the comment at Undo, below). The script moves the
+# pointer onto the button and clicks, and moves and clicks again until
+# Basket logs that it removed Milk, as a person does whose first click
+# did nothing.
+tries=0
+until grep -qx "Basket removed Milk" "$log" 2>/dev/null; do
+  tries=$((tries + 1))
+  [ "$tries" -le 80 ] || fail "Basket did not log \"Basket removed Milk\" after $((tries - 1)) clicks on the button"
+  kill -0 "$app" 2>/dev/null || fail "Basket ended before it logged \"Basket removed Milk\""
+  xdotool mousemove $((X + WIDTH - 60)) $((Y + 128)) mousemove $((X + WIDTH - 40)) $((Y + 128)) click 1
+  sleep 0.25
+done
+echo "ok: Basket logged \"Basket removed Milk\" after $tries click(s) on the button"
 shot 3-removed
 
 [ "$(cat "$list")" = "[]" ] || fail "the list is $(cat "$list"), not []"

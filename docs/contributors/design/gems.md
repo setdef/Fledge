@@ -45,11 +45,11 @@ After the build, `BuiltFiles` keeps what the build left in the gem's folder that
 
 ## Judging compiled files
 
-Every compiled file the app's gems carry passes `Linkage` for the platform. A file for another processor or another system's loader is never judged, since it is never loaded. A needed library passes when the system provides it (a fixed list for each OS, and every DLL in `linkage/windows.yml`), the runtime ships it, the gem itself carries it, or `fledge.kdl` lists it (`system-libraries`, `carried-libraries`, `host-libraries`, `visual-c-runtime`). Everything else is a refusal, grouped one per file, with the `fledge.kdl` line that would allow it where one could. On macOS, `Linkage::Dyld` follows `@rpath` and `@loader_path` through the run paths of each file and of the files that load it, as dyld does, so a library the gem carries but no run path reaches is refused too.
+Every compiled file the app's gems carry passes `Linkage` for the platform. A file for another processor or another system's loader is never judged, since it is never loaded. A needed library passes when the system provides it (a fixed list for each OS, and every DLL in `linkage/windows.yml`), the runtime ships it, the gem itself carries it, or `fledge.yml` lists it (`system_libraries`, `carried_libraries`, `host_libraries`, `visual_c_runtime`). Everything else is a refusal, grouped one per file, with the `fledge.yml` line that would allow it where one could. On macOS, `Linkage::Dyld` follows `@rpath` and `@loader_path` through the run paths of each file and of the files that load it, as dyld does, so a library the gem carries but no run path reaches is refused too.
 
 `Floors` reads each file's oldest macOS (a refusal above the platform's) and newest glibc symbol (a warning above 2.28, and the figure `fledge.cfg` and a `.deb` record).
 
-`Linkage#unused` refuses a listed library nothing needs, so `fledge.kdl` can't carry stale entries.
+`Linkage#unused` refuses a listed library nothing needs, so `fledge.yml` can't carry stale entries.
 
 ## Reading compiled files
 

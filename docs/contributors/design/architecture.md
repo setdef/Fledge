@@ -18,7 +18,7 @@ When two parts of the design pull apart, these settle it:
 
 | Part | What it does | Where | Design |
 | - | - | - | - |
-| Interface | the `fledge` command, `fledge.kdl`, and the model of a project, its programs, and their identity | `exe/fledge`, `lib/fledge/cli*`, `config*`, `app*`, `identity.rb`, `platform.rb`, `mobile_platform.rb`, `icon.rb` | [interface.md](interface.md) |
+| Interface | the `fledge` command, `fledge.yml`, and the model of a project, its programs, and their identity | `exe/fledge`, `lib/fledge/cli*`, `config*`, `app*`, `identity.rb`, `platform.rb`, `mobile_platform.rb`, `icon.rb` | [interface.md](interface.md) |
 | Gems | turns `Gemfile.lock` into the files an app's gems are, compiled for the runtime, and judges whether each compiled file can load | `bundle*`, `app_gems.rb`, `gem_*`, `git_*`, `path_*`, `locked_gem.rb`, `compiled_gem.rb`, `native_build*`, `linkage*`, `binary*`, `carried_libraries*`, `visual_c_runtime.rb` | [gems.md](gems.md) |
 | Desktop apps | lays a runtime, a project, and gems out as an app folder, then its bundle, installers, and archive | `assembly*`, `mac_bundle.rb`, `desktop_entry.rb`, `shared_mime_info.rb`, `windows_resources.rb`, `installers.rb`, `dmg.rb`, `nsis*`, `app_image.rb`, `deb.rb`, `msix.rb`, `built_app.rb`, `archive.rb`, `checksum.rb`, `cache_tag.rb`, `entry.rb` | [desktop-apps.md](desktop-apps.md) |
 | Signing | signs a desktop app's code, and has Apple notarize it | `signing.rb`, `mac_signing.rb`, `windows_signing.rb`, `sign_command.rb`, `notary.rb`, `windows_sdk.rb` | [signing.md](signing.md) |
@@ -56,11 +56,11 @@ flowchart LR
 <!-- SPDX-SnippetEnd -->
 
 1. **CLI** parses the command line and picks the platform: always this computer's, `Platform.local`.
-2. **`App.at`** finds the project's root from the path given, reads `fledge.kdl` into a `Config`, and resolves the programs to build and each one's `Identity`.
+2. **`App.at`** finds the project's root from the path given, reads `fledge.yml` into a `Config`, and resolves the programs to build and each one's `Identity`.
 3. **`Runtimes`** finds the runtime archive for the platform, downloading and checking it when needed, and `RuntimeContents` reads what it holds (its Ruby version, gem folder, libraries) without unpacking it.
 4. **`Bundle`** reads the `Gemfile` and lockfile as Bundler does, frozen, and **`AppGems`** turns the locked gems for this platform into packages: `.gem` files fetched and checked, git checkouts, and folders.
 5. **`NativeBuild`** compiles the packages with extensions by running the runtime's Ruby and RubyGems, and writes the gems' executables.
-6. **`Linkage`** and **`NativeBuild::Floors`** read every compiled file and refuse those that couldn't load on another computer of the platform, or warn when one raises the glibc floor. **`CarriedLibraries`** and **`VisualCRuntime`** add what `fledge.kdl` says the app carries.
+6. **`Linkage`** and **`NativeBuild::Floors`** read every compiled file and refuse those that couldn't load on another computer of the platform, or warn when one raises the glibc floor. **`CarriedLibraries`** and **`VisualCRuntime`** add what `fledge.yml` says the app carries.
 7. **`Assembly`** unpacks the runtime, lays the runtime, the project, and the gems out as the app folder (inside a macOS bundle for a windowed Mac app), writes `fledge.cfg`, places a launcher per program, and signs.
 8. **`Installers`** writes each installer the app gets, then **`Archive`** packs the folder and **`Checksum`** writes a `.sha256` beside each file. The CLI prints each path.
 
@@ -75,7 +75,7 @@ The same steps 1 to 4, for a `MobilePlatform` instead of a `Platform`, with ever
 - **Platform:** where an app runs, named as RubyGems names it (`x86_64-linux`, `arm64-darwin`, `x64-mingw-ucrt`), or `ios` or `android`. `Platform` and `MobilePlatform` answer each part's questions about it: its archive format, its executables' names, its oldest macOS or glibc, its lockfile names.
 - **Runtime:** an archive of a relocatable CRuby, Fledge's launchers, the tools a build needs on that platform, and notices, built by Fledge's CI and pinned by SHA-256 in the gem.
 - **Project:** the folder an app's files come from, found from the path the developer gives. It is copied whole into the app's `app` folder, less `.git`, Bundler's folders, and folders a `CACHEDIR.TAG` marks.
-- **Program:** one file of the project that a launcher runs, with its **identity**: name, kind, identifier, version, icon, and what the systems show. A project has one program, or the several `fledge.kdl` lists.
+- **Program:** one file of the project that a launcher runs, with its **identity**: name, kind, identifier, version, icon, and what the systems show. A project has one program, or the several `fledge.yml` lists.
 - **App:** the folder a build writes, in which every program shares one runtime, one project, and one set of gems.
 - **`fledge.cfg`:** the file Assembly writes and the launcher reads: each program's entry, the Gemfile, and what the launcher checks before Ruby starts. It is the contract between `lib/` and `runtime/launcher` (and `runtime/mobile`), so a change to its keys changes both sides.
 - **Entry:** `Entry`, a file, folder, or link to write into an app at a relative path, refusing any path that could leave the app. Every part that adds files to an app produces entries.

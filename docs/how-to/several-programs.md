@@ -4,20 +4,24 @@ A project can ship more than one program in one app folder, such as a game and i
 
 ## List the programs
 
-Name each program in `fledge.kdl` with a `program` node, by its file in the project:
+Name each program in `fledge.yml` under `programs`, by its file in the project:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-name "Rocket Run"
-version "0.4.0"
-publisher "Example, Inc."
+```yaml
+name: Rocket Run
+version: "0.4.0"
+publisher: Example, Inc.
 
-program "game/main.rb" kind=windowed identifier="com.example.RocketRun" icon="art/icon"
-program "bin/rocket-run-server"
+programs:
+  - path: game/main.rb
+    kind: windowed
+    identifier: com.example.RocketRun
+    icon: art/icon
+  - path: bin/rocket-run-server
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -35,24 +39,26 @@ $ bundle exec fledge build
 
 The app folder now holds a program for each: `Rocket Run`, named for the project because it is windowed, and `rocket-run-server`, named for its file. Each is Fledge's launcher, so each starts its own Ruby, with the gems set up from the one `Gemfile`.
 
-Give a program another name with `name=`:
+Give a program another name with `name`:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-program "bin/rocket-run-server" name="rr-server"
+```yaml
+programs:
+  - path: bin/rocket-run-server
+    name: rr-server
 ```
 <!-- SPDX-SnippetEnd -->
 
 ## The rules
 
 - **One windowed program.** A project has at most one windowed program, and it is the app's main program: its installers install the whole folder and start that program, and on macOS its bundle holds the others. Build a second windowed app as a project of its own.
-- **Identity per program.** `kind`, `identifier`, and `icon` are set on each `program`, and fledge refuses them at the top level of `fledge.kdl` once there are `program` nodes. The rest, `name`, `version`, `publisher`, `installers` and so on, stay the project's.
+- **Identity per program.** `kind`, `identifier`, and `icon` are set on each program, and fledge refuses them at the top level of `fledge.yml` once it has `programs`. The rest, `name`, `version`, `publisher`, `installers` and so on, stay the project's.
 - **Names and identifiers are unique.** No two programs may share a name or an identifier, ignoring case, since some systems ignore case in file names.
-- **Files must exist.** fledge refuses a `program` whose file is not in the project.
+- **Files must exist.** fledge refuses a program whose file is not in the project.
 
 ## On macOS
 
@@ -72,4 +78,4 @@ $ bundle exec fledge build bin/rocket-run-server
 ```
 <!-- SPDX-SnippetEnd -->
 
-That program alone goes in the app, with its own `kind`, `identifier`, and `icon`, and a file that `fledge.kdl` does not list is refused. A folder means every program.
+That program alone goes in the app, with its own `kind`, `identifier`, and `icon`, and a file that `fledge.yml` does not list is refused. A folder means every program.

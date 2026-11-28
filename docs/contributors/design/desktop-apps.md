@@ -8,7 +8,7 @@ This part lays a runtime, a project, and its gems out as an app folder, gives ea
 | - | - |
 | `Assembly` | builds one app: the folder, `fledge.cfg`, the launchers, signing, installers, notarizing, and the archive, removing everything it wrote if any step fails |
 | `Assembly::RuntimeFolder` | an unpacked runtime: its launchers, its tools folder, and the files that move into the app, less what the runtime holds only for compiling gems |
-| `Assembly::BuildTools` | copies the runtime's build tools into the app, for `build-tools` |
+| `Assembly::BuildTools` | copies the runtime's build tools into the app, for `build_tools` |
 | `BuiltApp`, `BuiltApp::Tree` | an app fledge built, read for `--from`: its `fledge.cfg`, kept gems and lockfile, and launchers, standing in for a runtime folder |
 | `MacBundle` | a windowed Mac app's bundle: `Info.plist`, links in `Contents/MacOS`, the icon, and the signature |
 | `DesktopEntry`, `SharedMimeInfo` | a windowed Linux app's desktop entry and icons, and the definitions of the file types it defines |
@@ -48,13 +48,13 @@ The launcher is the same program in every app: each app's details live in `fledg
 
 ## Installers
 
-`Installers.formats` picks, from `fledge.kdl`'s list or the default, those whose system is the platform's (a `.deb` also needs a glibc platform with a Debian architecture). Each installer takes the finished app folder and writes one file beside it, named `BASE` plus its suffix:
+`Installers.formats` picks, from `fledge.yml`'s list or the default, those whose system is the platform's (a `.deb` also needs a glibc platform with a Debian architecture). Each installer takes the finished app folder and writes one file beside it, named `BASE` plus its suffix:
 
 - **`Dmg`** stages the bundle and a link to `/Applications`, and runs `hdiutil create`, retrying while the volume is busy.
 - **`Nsis`** writes a script for NSIS's Modern UI and compiles it with the `makensis` in the runtime's tools: a per-user install under `%LOCALAPPDATA%\Programs`, with no elevation, an uninstaller registered under `HKCU`, shortcuts carrying the AppUserModelID, Open with registrations that take no default, and, for a `central` Visual C++ runtime, a section that downloads and runs Microsoft's Redistributable when a DLL is missing. A new version runs the old uninstaller first.
 - **`AppImage`** copies the folder to an AppDir with `AppRun` and the icon, runs `mksquashfs` with the runtime's AppImage runtime as the image's head, and honors `SOURCE_DATE_EPOCH`.
-- **`Deb`** lays the app out under `/usr/lib/IDENTIFIER`, moves its `share` into `/usr/share`, writes its documents and control file, and builds with `dpkg-deb`. Its `Depends` is the glibc the build recorded, what `dpkg-shlibdeps` finds for the listed system libraries, the typelibs' `gir1.2-` packages, and `deb-depends`.
-- **`Msix`** writes the package manifest and a mapping of the folder, and packs with the Windows SDK's `makeappx`. An unsigned package gets the OID Windows requires of one, unless `fledge.kdl` turns it off.
+- **`Deb`** lays the app out under `/usr/lib/IDENTIFIER`, moves its `share` into `/usr/share`, writes its documents and control file, and builds with `dpkg-deb`. Its `Depends` is the glibc the build recorded, what `dpkg-shlibdeps` finds for the listed system libraries, the typelibs' `gir1.2-` packages, and `deb_depends`.
+- **`Msix`** writes the package manifest and a mapping of the folder, and packs with the Windows SDK's `makeappx`. An unsigned package gets the OID Windows requires of one, unless `fledge.yml` turns it off.
 
 ## Building from a built app
 

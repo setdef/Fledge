@@ -57,7 +57,7 @@ Xcode's command line tools (`xcode-select --install`): `objdump` reads the gems'
 
 - `objdump`, from binutils, to read the gems' compiled files.
 - `mksquashfs` 4.4 or later, from squashfs-tools, for an AppImage.
-- `dpkg-deb`, from dpkg, for a `.deb`, and `dpkg-shlibdeps`, from dpkg-dev, when `system-libraries` lists libraries the package depends on.
+- `dpkg-deb`, from dpkg, for a `.deb`, and `dpkg-shlibdeps`, from dpkg-dev, when `system_libraries` lists libraries the package depends on.
 - To build an app that runs on old distributions, an old Linux, such as AlmaLinux 8, whose glibc is 2.28.
 - For a musl app, a musl Linux, such as an Alpine container.
 
@@ -81,6 +81,6 @@ The Android SDK, a JDK 17 or later, and the project's Gradle wrapper, which down
 
 Nothing of Ruby. The app needs only what its system has, plus:
 
-- on Linux, the libraries listed in `fledge.kdl`'s `system-libraries` and `system-typelibs`, which the app checks for when it starts;
+- on Linux, the libraries listed in `fledge.yml`'s `system_libraries` and `system_typelibs`, which the app checks for when it starts;
 - on Linux, FUSE, to start the app from its AppImage, since the AppImage runtime at the front of that file mounts the app's file system with FUSE; the app's folder, unpacked from its `.tar.gz`, needs no FUSE;
-- on Windows, Microsoft's Visual C++ Redistributable, when `visual-c-runtime` is `central`, which the app checks for when it starts, and the setup program installs.
+- on Windows, Microsoft's Visual C++ Redistributable, when `visual_c_runtime` is `central`, which the app checks for when it starts, and the setup program installs.

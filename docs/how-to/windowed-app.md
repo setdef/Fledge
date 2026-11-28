@@ -4,27 +4,27 @@ A windowed app opens windows, through a gem that draws them, such as a GUI toolk
 
 ## Say that it's windowed
 
-In `fledge.kdl`, set `kind`, and give the app an identifier:
+In `fledge.yml`, set `kind`, and give the app an identifier:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-name "Cool App"
-version "1.2.3"
-kind windowed
-identifier "com.example.CoolApp"
-publisher "Example, Inc."
-copyright "© 2026 Example, Inc."
-description "Keeps your notes"
+```yaml
+name: Cool App
+version: "1.2.3"
+kind: windowed
+identifier: com.example.CoolApp
+publisher: Example, Inc.
+copyright: "© 2026 Example, Inc."
+description: Keeps your notes
 ```
 <!-- SPDX-SnippetEnd -->
 
 The identifier is how each system tells your app from every other: macOS's bundle identifier, the ID Windows groups the app's windows and shortcuts by, and the name of its Linux desktop entry. Make it a domain you control, reversed, and keep it once people have installed the app. fledge refuses a windowed app without one, and suggests one.
 
-`publisher`, `copyright`, and `description` are optional; [the fledge.kdl reference](../reference/fledge-kdl.md#identity) lists where each system shows them. The version is the one each system shows; quote it.
+`publisher`, `copyright`, and `description` are optional; [the fledge.yml reference](../reference/fledge-yml.md#identity) lists where each system shows them. The version is the one each system shows; quote it.
 
 ## Add an icon
 
@@ -35,12 +35,12 @@ Name the icon's files without an extension:
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-icon "icons/app"
+```yaml
+icon: icons/app
 ```
 <!-- SPDX-SnippetEnd -->
 
-and put each system's file beside it: `icons/app.icns` for macOS, `icons/app.ico` for Windows, and PNGs named for their size, such as `icons/app-256.png`, for Linux. A build reads only the file for its system, and fails, naming it, when it's missing. [Icon files](../reference/fledge-kdl.md#icon-files) lists every size.
+and put each system's file beside it: `icons/app.icns` for macOS, `icons/app.ico` for Windows, and PNGs named for their size, such as `icons/app-256.png`, for Linux. A build reads only the file for its system, and fails, naming it, when it's missing. [Icon files](../reference/fledge-yml.md#icon-files) lists every size.
 
 ## Build on each desktop
 
@@ -119,23 +119,23 @@ Each start unpacks the whole app again. For people whose computers lack FUSE, th
 
 ## Choose the installers
 
-A windowed app gets `dmg`, `nsis`, and `appimage` unless `fledge.kdl` says otherwise. Each build makes only those for its system, so one list serves every platform:
+A windowed app gets `dmg`, `nsis`, and `appimage` unless `fledge.yml` says otherwise. Each build makes only those for its system, so one list serves every platform:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-installers dmg nsis appimage deb
+```yaml
+installers: [dmg, nsis, appimage, deb]
 ```
 <!-- SPDX-SnippetEnd -->
 
 - `deb` adds a Debian package for Debian, Ubuntu, and their relatives, on x86-64 or ARM64 with glibc. It installs the app under `/usr/lib/com.example.coolapp`, with its desktop entry where desktops find it, and depends on the glibc the app needs.
-- `msix` adds an MSIX package, for the Microsoft Store or App Installer. It needs a `windows` node with the package's publisher; see [msix](../reference/fledge-kdl.md#msix).
-- `installers` with no values gives none: only the archive.
+- `msix` adds an MSIX package, for the Microsoft Store or App Installer. It needs a `windows` mapping with the package's publisher, `msix_publisher`; see [msix](../reference/fledge-yml.md#msix).
+- `installers: []` gives none: only the archive.
 
-A `license-file` adds a page to the Windows setup program that shows the license before it installs, and goes in a `.deb` as its copyright file. A `homepage` adds links to the setup program's entry in Windows' installed apps, and a `Homepage` to a `.deb`.
+A `license_file` adds a page to the Windows setup program that shows the license before it installs, and goes in a `.deb` as its copyright file. A `homepage` adds links to the setup program's entry in Windows' installed apps, and a `Homepage` to a `.deb`.
 
 ## Open files
 

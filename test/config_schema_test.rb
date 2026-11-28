@@ -323,7 +323,7 @@ class ConfigSchemaTest < Minitest::Test
   def test_is_a_draft_07_schema
     assert_equal "http://json-schema.org/draft-07/schema#", schema.fetch("$schema")
     assert_equal URL, schema.fetch("$id")
-    %w[lib/fledge/config.rb].each do |file|
+    %w[lib/fledge/config.rb docs/reference/fledge-yml.md].each do |file|
       assert_includes File.read(File.join(ROOT, file)), "$schema=#{URL}", "#{file} gives developers a modeline of another release"
     end
     assert_empty JSONSchemer.draft7.validate(schema).to_a

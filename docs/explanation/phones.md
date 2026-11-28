@@ -12,7 +12,7 @@ Your project and its gems travel inside the app: in the bundle's resources on iO
 
 ## Ruby runs on the main thread
 
-A desktop runs your program on the thread the process started on, and Ruby calls it `Thread.main`. A phone's host does the same, for every program, whatever `fledge.kdl`'s `kind` says. That matters because both phones call an app's interface code back on that thread alone: UIKit's views, and Android's, may be touched only from the main thread, and CRuby can answer a callback only on a thread where Ruby runs. Running Ruby anywhere else would leave your program unable to draw a widget or answer a tap.
+A desktop runs your program on the thread the process started on, and Ruby calls it `Thread.main`. A phone's host does the same, for every program, whatever `fledge.yml`'s `kind` says. That matters because both phones call an app's interface code back on that thread alone: UIKit's views, and Android's, may be touched only from the main thread, and CRuby can answer a callback only on a thread where Ruby runs. Running Ruby anywhere else would leave your program unable to draw a widget or answer a tap.
 
 The cost is the one every native app pays: while your Ruby holds the main thread, the screen doesn't change. A program that works for long does its work on a Ruby thread, and lets the main thread run the interface.
 
@@ -35,4 +35,4 @@ Where an extension is linked in, and a gem's Ruby code requires it by a path, fl
 
 ## Output goes to the log
 
-A phone app has no terminal. The host sends each line your program prints to the system's log: to the unified log on iOS, under the app's identifier, and to logcat on Android, tagged with the identifier. `fledge ios run` and `fledge android run` read it back from there and print it, and so can Console on a Mac, or `adb logcat`.
+A phone app has no terminal. The host sends each line your program prints to the system's log: to the unified log on iOS, under the app's identifier, and to logcat on Android, tagged with the identifier. `fledge test ios` and `fledge test android` read it back from there and print it, and so can Console on a Mac, or `adb logcat`.

@@ -23,24 +23,31 @@ long_about """
     is an Xcode or Gradle project that fledge writes, which you build, sign,
     and ship with Xcode or Gradle.
 
-    fledge reads the project's fledge.kdl, when it has one, for how the app
+    fledge reads the project's fledge.yml, when it has one, for how the app
     presents itself: its name, icon, identifier, installers, and the files it
     opens.
+
+    Run with no arguments, fledge prints its usage to standard error and exits
+    with status 2. fledge reads -h, -?, and --help, and -v and --version, only
+    as the first argument.
     """
 after_long_help """
-    Guides and the fledge.kdl reference:
+    Guides and the fledge.yml reference:
       https://github.com/setdef/Fledge/tree/trunk/docs
 
     Questions and bug reports:
       https://forum.setdef.com/c/fledge
     """
 
-arg_required_else_help #true
-
 example "fledge build" header="Build the app in this folder" help="Writes the app's archive, and a windowed app's installers, into dist."
 example "fledge build bin/greet" header="Build one program of a project"
-example "fledge ios project" header="Write the iOS app's Xcode project"
-example "fledge android run test/phone.rb" header="Run a program on an Android emulator" help="Exits with the program's status, so a test suite can gate a release."
+example "fledge build ios" header="Write the iOS app's Xcode project"
+example "fledge test android test/phone.rb" header="Run a program on an Android emulator" help="Exits with the program's status, so a test suite can gate a release."
+
+flag "-h --help" help="Print the help, and exit with status 0" {
+    alias "-?"
+}
+flag "-v --version" help="Print fledge's version, such as fledge 0.17.0, and exit with status 0"
 
 exit_code 0 "Fledge finished what it was asked to do."
 exit_code 1 "Fledge could not finish. Standard error says why, and what to change."
@@ -123,7 +130,8 @@ cmd "build" effect="write" help="Build the app for this computer" {
         folder packed as an archive (a .zip on Windows, a .tar.gz elsewhere), and, for a
         windowed app, its installers. It prints the path of each archive and installer,
         one per line, and writes each one's SHA-256 beside it, in a file named for it with
-        .sha256 added.
+        .sha256 added. Given ios or android first, it writes that phone's project
+        instead (see build ios and build android).
 
         Run fledge with the Ruby the runtime has, Ruby 4.1. A project with a Gemfile
         needs its Gemfile.lock, locked for this computer's platform or for ruby, with a
@@ -132,20 +140,23 @@ cmd "build" effect="write" help="Build the app for this computer" {
 
     arg "[path]" default="." help="The program to ship, or its project's folder" {
         long_help """
-            A file is the program the app runs. When the project's fledge.kdl lists
+            A file is the program the app runs. When the project's fledge.yml lists
             programs, the file must be one of them, and the app holds that program alone.
 
             For a folder, fledge takes the first of these that the project has: every
-            program its fledge.kdl lists; the executable its gemspec lists, when the
+            program its fledge.yml lists; the executable its gemspec lists, when the
             gemspec lists exactly one and the file exists; the folder's main.rb. A folder
             with none of them fails the build.
 
             The project is the nearest folder at or above PATH that holds a Gemfile, a
-            gems.rb, a fledge.kdl, or a gemspec, without passing a folder that holds .git,
+            gems.rb, a fledge.yml, or a gemspec, without passing a folder that holds .git,
             or else PATH itself when it is a folder, or the folder that holds it when it is
             a file. The app carries the whole project but .git, .bundle, vendor/bundle,
             vendor/cache, and any folder a CACHEDIR.TAG marks, which is how earlier builds
             stay out.
+
+            fledge reads a first PATH of ios or android as a phone. Write ./ios for a
+            folder of that name.
             """
         warning "fledge refuses a project at your home folder: it would ship everything in it."
     }
@@ -206,8 +217,8 @@ cmd "build" effect="write" help="Build the app for this computer" {
             Fledge as a gem can build a new app from itself on a computer with no Ruby.
 
             The project at PATH may hold no Gemfile, gemspec, or file that APP takes, and its
-            fledge.kdl may not name programs or change the runtime or gems. On Windows, APP
-            must have been built with build-tools in its fledge.kdl, or this computer must
+            fledge.yml may not list programs or change the runtime or gems. On Windows, APP
+            must have been built with build_tools in its fledge.yml, or this computer must
             have this Fledge's Windows runtime in its cache.
             """
     }
@@ -218,21 +229,17 @@ cmd "build" effect="write" help="Build the app for this computer" {
     example "fledge build --out build bin/greet" header="Build one program into another folder"
     example "fledge build --sign \"Developer ID Application: Example, Inc. (ABCDE12345)\" --notarize notary" header="Sign and notarize a Mac app"
     example "fledge build --sign-command \"signtool sign /fd sha256 /a %1\"" header="Sign a Windows app with a command you give"
-}
 
-cmd "ios" subcommand_required=#true help="Write or run the app for iPhone and iPad" {
-    long_help """
-        An iOS app's project is written on a Mac with Apple silicon, and built with
-        Xcode. fledge writes it with XcodeGen, which must be on PATH.
-        """
-
-    cmd "project" effect="write" help="Write the app's Xcode project" {
+    cmd "ios" effect="write" help="Write the app's Xcode project, for iPhone and iPad" {
         long_help """
+            An iOS app's project is written on a Mac with Apple silicon, and built with
+            Xcode. fledge writes it with XcodeGen, which must be on PATH.
+
             Writes an Xcode project that holds the iOS runtime, the app's project, its gems,
             and their extensions compiled for iPhone and the Simulator, and prints its folder.
             Open it in Xcode to run, sign, and archive the app.
 
-            The app needs an identifier in fledge.kdl, its bundle identifier, and runs every
+            The app needs an identifier in fledge.yml, its bundle identifier, and runs every
             program's Ruby on the main thread. The gems are the lockfile's builds for the
             ruby platform, so the lockfile must lock ruby.
             """
@@ -240,12 +247,41 @@ cmd "ios" subcommand_required=#true help="Write or run the app for iPhone and iP
         flag "-o --out <dir>" default="dist" help="Where to write the project" {
             warning "fledge replaces a project of the same name in this folder, with any change you made to it."
         }
-        example "fledge ios project" header="Write the project for the app in this folder"
+        example "fledge build ios" header="Write the project for the app in this folder"
     }
 
-    cmd "run" effect="write" help="Run a program in the iOS Simulator, and exit with its status" {
+    cmd "android" effect="write" help="Write the app's Gradle project, for Android" {
         long_help """
-            Writes the app's project for PATH, builds it with xcodebuild for the Simulator,
+            An Android app's project is written on a Mac with Apple silicon, on x86-64
+            Linux, or on x64 Windows, and built with Gradle. A gem with an extension compiles
+            for Android only on the Mac or Linux, with the Android NDK.
+
+            Writes a Gradle project that holds the Android runtime, the app's project, its
+            gems, and their extensions compiled for arm64-v8a and x86_64, and prints its
+            folder. Build, sign, and bundle the app with its Gradle wrapper, or open it in
+            Android Studio.
+
+            The app needs an identifier in fledge.yml, its applicationId, and runs every
+            program's Ruby on the main thread. The gems are the lockfile's builds for the
+            ruby platform, so the lockfile must lock ruby.
+            """
+        arg "[path]" default="." help="The program to ship, or its project's folder"
+        flag "-o --out <dir>" default="dist" help="Where to write the project" {
+            warning "fledge replaces a project of the same name in this folder, with any change you made to it."
+        }
+        example "fledge build android" header="Write the project for the app in this folder"
+    }
+}
+
+cmd "test" subcommand_required=#true help="Run a program inside a phone's app, and exit with its status" {
+    long_help """
+        Writes the phone's project as build ios or build android does, with PROGRAM in
+        place of the app's program, builds it, runs it, and prints what PROGRAM prints.
+        """
+
+    cmd "ios" effect="write" help="Run a program in the iOS Simulator, and exit with its status" {
+        long_help """
+            Writes the app's project for PROGRAM, builds it with xcodebuild for the Simulator,
             installs it on the booted Simulator, launches it, and prints what the program
             prints as it prints it. fledge exits with the program's exit status, or 1 when
             fledge itself fails or the status is outside 0 to 255.
@@ -253,43 +289,17 @@ cmd "ios" subcommand_required=#true help="Write or run the app for iPhone and iP
             Boot one Simulator first, such as with open -a Simulator; with more than one
             booted, name it with --device.
             """
-        arg "[path]" default="." help="The program to run in the app, such as test/phone.rb"
+        arg "<program>" help="The program to run in the app, such as test/phone.rb"
         flag "-o --out <dir>" default="dist/test" help="Where to write the project"
         flag "-d --device <udid>" help="The booted Simulator to run on, by its UDID"
         exit_code 0 "The program exited with status 0."
         exit_code 1 "Fledge could not build or run the app, or the program exited with status 1."
-        example "fledge ios run test/phone.rb" header="Run a test program in the Simulator"
-    }
-}
-
-cmd "android" subcommand_required=#true help="Write or run the app for Android" {
-    long_help """
-        An Android app's project is written on a Mac with Apple silicon, on x86-64
-        Linux, or on x64 Windows, and built with Gradle. A gem with an extension compiles
-        for Android only on the Mac or Linux, with the Android NDK.
-        """
-
-    cmd "project" effect="write" help="Write the app's Gradle project" {
-        long_help """
-            Writes a Gradle project that holds the Android runtime, the app's project, its
-            gems, and their extensions compiled for arm64-v8a and x86_64, and prints its
-            folder. Build, sign, and bundle the app with its Gradle wrapper, or open it in
-            Android Studio.
-
-            The app needs an identifier in fledge.kdl, its applicationId, and runs every
-            program's Ruby on the main thread. The gems are the lockfile's builds for the
-            ruby platform, so the lockfile must lock ruby.
-            """
-        arg "[path]" default="." help="The program to ship, or its project's folder"
-        flag "-o --out <dir>" default="dist" help="Where to write the project" {
-            warning "fledge replaces a project of the same name in this folder, with any change you made to it."
-        }
-        example "fledge android project" header="Write the project for the app in this folder"
+        example "fledge test ios test/phone.rb" header="Run a test program in the Simulator"
     }
 
-    cmd "run" effect="write" help="Run a program on an Android device or emulator, and exit with its status" {
+    cmd "android" effect="write" help="Run a program on an Android device or emulator, and exit with its status" {
         long_help """
-            Writes the app's project for PATH, builds its debug APK with Gradle, installs it
+            Writes the app's project for PROGRAM, builds its debug APK with Gradle, installs it
             with adb, launches it, and prints what the program prints as it prints it.
             fledge exits with the program's exit status, or 1 when fledge itself fails or
             the status is outside 0 to 255.
@@ -297,12 +307,12 @@ cmd "android" subcommand_required=#true help="Write or run the app for Android" 
             fledge runs the adb in the SDK at ANDROID_HOME or ANDROID_SDK_ROOT, or
             else the adb on PATH, on the one device adb sees, or the one you give --device.
             """
-        arg "[path]" default="." help="The program to run in the app, such as test/phone.rb"
+        arg "<program>" help="The program to run in the app, such as test/phone.rb"
         flag "-o --out <dir>" default="dist/test" help="Where to write the project"
         flag "-d --device <serial>" help="The device or emulator to run on, by the serial adb devices prints"
         exit_code 0 "The program exited with status 0."
         exit_code 1 "Fledge could not build or run the app, or the program exited with status 1."
-        example "fledge android run test/phone.rb" header="Run a test program on the one device adb sees"
-        example "fledge android run --device emulator-5554 test/phone.rb" header="Run it on one emulator of several"
+        example "fledge test android test/phone.rb" header="Run a test program on the one device adb sees"
+        example "fledge test android --device emulator-5554 test/phone.rb" header="Run it on one emulator of several"
     }
 }

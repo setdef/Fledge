@@ -46,9 +46,9 @@ Fledge builds its runtimes to a license policy: no GPL code, and LGPL libraries 
 A build fails, with a message that says what to change, when the app would fail on someone else's computer:
 
 - when `Gemfile.lock` doesn't match the `Gemfile`, lacks the checksum of a gem from a gem server, or locks no build of a gem for the platform;
-- when a gem's compiled file needs a library that neither every computer of the platform, nor the runtime, nor the gem itself provides, unless `fledge.kdl` says where it comes from;
+- when a gem's compiled file needs a library that neither every computer of the platform, nor the runtime, nor the gem itself provides, unless `fledge.yml` says where it comes from;
 - when a compiled file needs a newer macOS than the app's minimum;
-- when the project's `fledge.kdl` holds a typo, or a value no system can take.
+- when the project's `fledge.yml` holds a typo, or a value no system can take.
 
 It warns when a gem's compiled file needs a newer glibc than the runtime's, since the app then runs only on newer Linux distributions.
 

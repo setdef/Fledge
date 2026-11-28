@@ -46,6 +46,7 @@ class ReleaseCommit
     docs/reference/built-app.md
     docs/reference/platforms.md
     docs/reference/fledge.usage.kdl
+    docs/reference/fledge-yml.md
     lib/fledge/config.rb
     lib/fledge/config.schema.json
   ].freeze

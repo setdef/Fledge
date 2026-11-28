@@ -34,7 +34,7 @@ Apple's timestamp service and `hdiutil` fail now and then for reasons outside th
 - **Credentials never reach a command line.** `--notarize` takes a keychain profile's name; the credentials stay in the keychain. A Windows identity is a certificate's thumbprint in the store. Anything else would show in the process list.
 - **An ad hoc signature takes no timestamp,** and Apple notarizes no ad hoc signature, so `Signing.for` refuses `--notarize` with `--sign -`.
 - **NSIS must quote the signing command.** `Nsis::Script` picks a quote character the command doesn't contain, and refuses a command that contains all three.
-- **The Microsoft Store signs Store packages.** An MSIX signed by Fledge never carries the unsigned OID; one left unsigned does unless `fledge.kdl` says not to, since its publisher must then match Partner Center's exactly.
+- **The Microsoft Store signs Store packages.** An MSIX signed by Fledge never carries the unsigned OID; one left unsigned does unless `fledge.yml` says not to, since its publisher must then match Partner Center's exactly.
 
 ## What this part doesn't do
 

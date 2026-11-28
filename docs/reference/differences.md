@@ -211,7 +211,7 @@ What to do: carry in the app every DLL your program loads, and load one with Fid
 
 ### The AppUserModelID
 
-When `fledge.kdl` has an `identifier`, the launcher gives the process that identifier as its explicit AppUserModelID before your program runs, so that the taskbar groups the app's windows with its shortcut. `ruby.exe` sets none.
+When `fledge.yml` has an `identifier`, the launcher gives the process that identifier as its explicit AppUserModelID before your program runs, so that the taskbar groups the app's windows with its shortcut. `ruby.exe` sets none.
 
 What to do: nothing.
 

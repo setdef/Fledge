@@ -53,30 +53,28 @@ fledge refuses a gem whose compiled file needs a library that neither every Linu
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-linux {
-    system-libraries "libgtk-3.so.0"
-}
+```yaml
+linux:
+  system_libraries: [libgtk-3.so.0]
 ```
 <!-- SPDX-SnippetEnd -->
 
 Write each library's name as it appears in the gem's compiled file, which the refusal shows. The app then checks for each listed library when it starts, before Ruby does, and when a computer lacks one, says which one to install from the distribution's packages, and exits with status 72. A `.deb` depends on the package that provides each.
 
-Libraries a program opens itself, with Fiddle or FFI, appear in no compiled file, so fledge cannot find them. Name the packages that provide them in `deb-depends`, so that a `.deb` installs them:
+Libraries a program opens itself, with Fiddle or FFI, appear in no compiled file, so fledge cannot find them. Name the packages that provide them in `deb_depends`, so that a `.deb` installs them:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-linux {
-    deb-depends "libadwaita-1-0 (>= 1.4)"
-}
+```yaml
+linux:
+  deb_depends: ["libadwaita-1-0 (>= 1.4)"]
 ```
 <!-- SPDX-SnippetEnd -->
 
-The same goes for GObject introspection data that a gem such as `gtk4` reads while the app runs: list it in `system-typelibs`, and the app checks for it at start.
+The same goes for GObject introspection data that a gem such as `gtk4` reads while the app runs: list it in `system_typelibs`, and the app checks for it at start.
 
 ## Linux with musl
 
@@ -95,10 +93,9 @@ A gem compiled on your Mac may link a library you installed, such as one from Ho
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-macos {
-    carried-libraries "libSDL3.0.dylib"
-}
+```yaml
+macos:
+  carried_libraries: [libSDL3.0.dylib]
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -109,17 +106,16 @@ fledge copies each listed library into the app's `lib/carried`, and points every
 
 ## Windows: Microsoft's Visual C++ runtime
 
-A gem's DLL built with Microsoft's compiler may need the Visual C++ runtime (`vcruntime140.dll`, `msvcp140.dll`), which Windows does not include. fledge refuses such a gem until `fledge.kdl` says how the app comes by the runtime:
+A gem's DLL built with Microsoft's compiler may need the Visual C++ runtime (`vcruntime140.dll`, `msvcp140.dll`), which Windows does not include. fledge refuses such a gem until `fledge.yml` says how the app comes by the runtime:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-windows {
-    visual-c-runtime central
-}
+```yaml
+windows:
+  visual_c_runtime: central
 ```
 <!-- SPDX-SnippetEnd -->
 

@@ -131,5 +131,5 @@ On macOS, fledge signs the code inside the bundle, then any console programs the
 
 ## What signing doesn't do
 
-- An MSIX package for the Microsoft Store is signed by the Store; build it unsigned, with `allow-unsigned=#false` in `fledge.kdl`'s `msix` node, so that its publisher stays the one Partner Center gave you.
+- An MSIX package for the Microsoft Store is signed by the Store; build it unsigned, with `msix_allow_unsigned: false` under `windows` in `fledge.yml`, so that its publisher stays the one Partner Center gave you.
 - A phone's app is signed by Xcode or Gradle, when you build its project.

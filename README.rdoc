@@ -27,24 +27,24 @@ In the project's folder, build the app for the computer you're on:
   Writing the gems' executables for x86_64-linux
   dist/Greet-x86_64-linux.tar.gz
 
-Each platform's app is built on a computer of that platform. A +fledge.kdl+
+Each platform's app is built on a computer of that platform. A +fledge.yml+
 file beside the +Gemfile+ says how the app presents itself: its name, icon,
 identifier, installers, and the files it opens.
 
-  name "Cool App"
-  version "1.2.3"
-  kind windowed
-  identifier "com.example.CoolApp"
-  icon "icons/app"
+  name: Cool App
+  version: "1.2.3"
+  kind: windowed
+  identifier: com.example.CoolApp
+  icon: icons/app
 
-<tt>fledge ios project</tt> and <tt>fledge android project</tt> write the
+<tt>fledge build ios</tt> and <tt>fledge build android</tt> write the
 phone apps' projects.
 
 == Documentation
 
 - {The tutorial}[https://github.com/setdef/Fledge/blob/trunk/docs/tutorial.md]: build a command-line tool into an app.
 - {How-to guides}[https://github.com/setdef/Fledge/tree/trunk/docs/how-to]: windowed apps, native gems, signing, phones, and more.
-- {The fledge command}[https://github.com/setdef/Fledge/blob/trunk/docs/reference/fledge.usage.kdl] and {fledge.kdl}[https://github.com/setdef/Fledge/blob/trunk/docs/reference/fledge-kdl.md]: every command, flag, and node.
+- {The fledge command}[https://github.com/setdef/Fledge/blob/trunk/docs/reference/fledge.usage.kdl] and {fledge.yml}[https://github.com/setdef/Fledge/blob/trunk/docs/reference/fledge-yml.md]: every command, flag, and key.
 - {Platforms}[https://github.com/setdef/Fledge/blob/trunk/docs/reference/platforms.md]: where apps run, and what each build needs.
 - {The changelog}[https://github.com/setdef/Fledge/blob/trunk/CHANGELOG.md].
 

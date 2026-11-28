@@ -108,24 +108,24 @@ $ bundle exec fledge build
 
 fledge prints the path of each file it wrote, in `dist`, and writes each one's SHA-256 beside it. From there:
 
-1. **Say how the app presents itself** in a `fledge.kdl` beside the `Gemfile`: its name, version, icon, and, for a desktop app, that it opens windows. Every line is optional.
+1. **Say how the app presents itself** in a `fledge.yml` beside the `Gemfile`: its name, version, icon, and, for a desktop app, that it opens windows. Every line is optional.
 
    <!-- SPDX-SnippetBegin -->
    <!--
      SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
      SPDX-License-Identifier: MIT-0
    -->
-   ```kdl
-   name "Cool App"
-   version "1.2.3"
-   kind windowed
-   identifier "com.example.CoolApp"
-   icon "icons/app"
-   installers dmg nsis appimage
+   ```yaml
+   name: Cool App
+   version: "1.2.3"
+   kind: windowed
+   identifier: com.example.CoolApp
+   icon: icons/app
+   installers: [dmg, nsis, appimage]
    ```
    <!-- SPDX-SnippetEnd -->
 
-   A windowed app gets a macOS bundle and disk image, a Windows setup program, and a Linux desktop entry and AppImage. See [Make a windowed app](docs/how-to/windowed-app.md), and [the fledge.kdl reference](docs/reference/fledge-kdl.md) for every node.
+   A windowed app gets a macOS bundle and disk image, a Windows setup program, and a Linux desktop entry and AppImage. See [Make a windowed app](docs/how-to/windowed-app.md), and [the fledge.yml reference](docs/reference/fledge-yml.md) for every key.
 
 2. **Ship gems with C extensions.** fledge compiles them for the app's Ruby, and refuses one whose compiled file couldn't load on another computer, saying what to change. See [Ship gems with C extensions](docs/how-to/native-gems.md).
 
@@ -153,8 +153,8 @@ fledge prints the path of each file it wrote, in `dist`, and writes each one's S
      SPDX-License-Identifier: MIT-0
    -->
    ```console
-   $ bundle exec fledge ios project
-   $ bundle exec fledge android project
+   $ bundle exec fledge build ios
+   $ bundle exec fledge build android
    ```
    <!-- SPDX-SnippetEnd -->
 
@@ -165,14 +165,14 @@ fledge prints the path of each file it wrote, in `dist`, and writes each one's S
 - [The tutorial](docs/tutorial.md): build a command-line tool into an app, from nothing.
 - [How-to guides](docs/how-to/README.md): windowed apps, file associations, several programs, native gems, private gem servers, signing, phones, and building offline.
 - [The `fledge` command](docs/reference/fledge.usage.kdl): every command, flag, environment variable, and exit status, as a [Usage](https://usage.jdx.dev) spec.
-- [fledge.kdl](docs/reference/fledge-kdl.md): every node of the file that says how an app presents itself.
+- [fledge.yml](docs/reference/fledge-yml.md): every key of the file that says how an app presents itself.
 - [Platforms](docs/reference/platforms.md) and [what a built app holds](docs/reference/built-app.md).
 - [How Fledge works](docs/explanation/how-fledge-works.md) and [Ruby on a phone](docs/explanation/phones.md): why an app is shaped as it is.
 - [The changelog](CHANGELOG.md): what changed in each release.
 
 ## Questions and problems
 
-Ask questions, and report bugs, on [the Fledge forum](https://forum.setdef.com/c/fledge). Include the Fledge version (`bundle exec fledge --version`), the systems you built on and ran on, the project's `fledge.kdl`, the command you ran, and everything it printed. Report a vulnerability privately, as [the security policy](SECURITY.md) says.
+Ask questions, and report bugs, on [the Fledge forum](https://forum.setdef.com/c/fledge). Include the Fledge version (`bundle exec fledge --version`), the systems you built on and ran on, the project's `fledge.yml`, the command you ran, and everything it printed. Report a vulnerability privately, as [the security policy](SECURITY.md) says.
 
 ## Contributing
 

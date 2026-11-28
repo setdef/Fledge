@@ -4,27 +4,29 @@ A windowed app can tell each system which files and folders it opens, so that pe
 
 ## Say what the app opens
 
-Add a `file-association` node to `fledge.kdl` for each kind of document:
+Add an entry to `file_associations` in `fledge.yml` for each kind of document:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-name "Cool App"
-kind windowed
-identifier "com.example.CoolApp"
+```yaml
+name: Cool App
+kind: windowed
+identifier: com.example.CoolApp
 
-file-association "Markdown note" role=editor {
-    extensions md markdown
-    mime-types "text/markdown"
-}
-file-association "Notes folder" folders=#true
+file_associations:
+  - name: Markdown note
+    role: editor
+    extensions: [md, markdown]
+    mime_types: [text/markdown]
+  - name: Notes folder
+    folders: true
 ```
 <!-- SPDX-SnippetEnd -->
 
-Name each kind as people would, since each system shows the name. Give each by its extensions (for macOS and Windows) and MIME types (for Linux desktops). `role=editor` says the app writes these files too; the default, `viewer`, says it only reads them.
+Name each kind as people would, since each system shows the name. Give each by its extensions (for macOS and Windows) and MIME types (for Linux desktops). `role: editor` says the app writes these files too; the default, `viewer`, says it only reads them.
 
 ## Read the paths
 
@@ -65,11 +67,12 @@ When the app's files are of a type no other program uses, such as a game's save 
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-file-association "Rocket Run save" defines-type=#true {
-    extensions rrsave
-    mime-types "application/x-rocket-run-save"
-}
+```yaml
+file_associations:
+  - name: Rocket Run save
+    defines_type: true
+    extensions: [rrsave]
+    mime_types: [application/x-rocket-run-save]
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -84,15 +87,15 @@ macOS identifies many types by a uniform type identifier, and goes by it before 
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-file-association "Plain text" {
-    extensions txt
-    mime-types "text/plain"
-    content-types "public.plain-text"
-}
+```yaml
+file_associations:
+  - name: Plain text
+    extensions: [txt]
+    mime_types: [text/plain]
+    content_types: [public.plain-text]
 ```
 <!-- SPDX-SnippetEnd -->
 
-With `content-types`, macOS goes by them and ignores the extensions and MIME types.
+With `content_types`, macOS goes by them and ignores the extensions and MIME types.
 
-The full list of what a `file-association` takes is in [the fledge.kdl reference](../reference/fledge-kdl.md#file-association).
+The full list of what an entry of `file_associations` takes is in [the fledge.yml reference](../reference/fledge-yml.md#file_associations).

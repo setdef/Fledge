@@ -4,19 +4,19 @@
 
 ## Build from a built app
 
-Say `dist/Engine-x86_64-linux` is an app fledge built, with a game engine's gems. A folder, `../rocket-run`, holds a new game: its `main.rb`, the rest of its Ruby files, and a `fledge.kdl`, with no `Gemfile`:
+Say `dist/Engine-x86_64-linux` is an app fledge built, with a game engine's gems. A folder, `../rocket-run`, holds a new game: its `main.rb`, the rest of its Ruby files, and a `fledge.yml`, with no `Gemfile`:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-name "Rocket Run"
-version "1.0.0"
-kind windowed
-identifier "com.example.RocketRun"
-icon "art/icon"
+```yaml
+name: Rocket Run
+version: "1.0.0"
+kind: windowed
+identifier: com.example.RocketRun
+icon: art/icon
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -32,7 +32,7 @@ $ bundle exec fledge build --from dist/Engine-x86_64-linux ../rocket-run
 ```
 <!-- SPDX-SnippetEnd -->
 
-The new app has the engine's runtime, gems, `Gemfile`, and lockfile, the new project's files, and its own identity, icon, and installers. None of the engine's identity comes along. What the engine's gems need from the system, such as the libraries its `fledge.kdl` lists in `system-libraries`, comes along, so the new app checks for them at start, and a `.deb` depends on them.
+The new app has the engine's runtime, gems, `Gemfile`, and lockfile, the new project's files, and its own identity, icon, and installers. None of the engine's identity comes along. What the engine's gems need from the system, such as the libraries its `fledge.yml` lists in `system_libraries`, comes along, so the new app checks for them at start, and a `.deb` depends on them.
 
 ## What the new project may hold
 
@@ -40,7 +40,7 @@ The new app has the engine's runtime, gems, `Gemfile`, and lockfile, the new pro
 
 - no `Gemfile`, `gems.rb`, or gemspec;
 - no file at a path the old app takes from its project, such as its `Gemfile.lock` or a gem it carries from a folder;
-- no `program` nodes, and no `system-libraries`, `carried-libraries`, `visual-c-runtime`, `ios`, or `android` in its `fledge.kdl`, since each changes the runtime or the gems.
+- no `programs`, and no `system_libraries`, `carried_libraries`, `visual_c_runtime`, `ios`, or `android` in its `fledge.yml`, since each changes the runtime or the gems.
 
 The old app must have been built by this same version of Fledge, for this platform. fledge refuses one built by another version, or for another platform, and says so.
 
@@ -53,14 +53,14 @@ An app that carries Fledge as one of its gems can run `fledge build --from` itse
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-build-tools #true
+```yaml
+build_tools: true
 ```
 <!-- SPDX-SnippetEnd -->
 
-The app then holds them in its `tools` folder, and `fledge build --from` uses them in place of the runtime it would otherwise look for. macOS has its tools already. A Windows app built without `build-tools` can still be built from, when this computer has this Fledge's Windows runtime in its cache or in `FLEDGE_RUNTIME_DIR`.
+The app then holds them in its `tools` folder, and `fledge build --from` uses them in place of the runtime it would otherwise look for. macOS has its tools already. A Windows app built without `build_tools` can still be built from, when this computer has this Fledge's Windows runtime in its cache or in `FLEDGE_RUNTIME_DIR`.
 
-An app built with `--from` carries the tools only when its own `fledge.kdl` sets `build-tools` too.
+An app built with `--from` carries the tools only when its own `fledge.yml` sets `build_tools` too.
 
 ## On macOS
 

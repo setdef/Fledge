@@ -147,16 +147,16 @@ That is the whole app. It works from any folder, on any computer of the same pla
 
 There is a problem: the program is called `Greet`. Fledge named the app for the project's folder, camelized, as Bundler names a gem's module. That suits a windowed app, but people type a command-line tool's name, and they expect `greet`.
 
-How an app presents itself is what `fledge.kdl` is for. Save this in the project's folder, beside the `Gemfile`:
+How an app presents itself is what `fledge.yml` is for. Save this in the project's folder, beside the `Gemfile`:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-name "greet"
-version "1.0.0"
+```yaml
+name: greet
+version: "1.0.0"
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -306,4 +306,4 @@ To ship the same tool for macOS and Windows, run `bundle exec fledge build` on a
 
 ## What's next
 
-You can now build a Ruby program into an app, rename it with `fledge.kdl`, ship its gems, and check the result on a computer with no Ruby. Next, [make a windowed app](how-to/windowed-app.md) with an icon and installers, or browse [the guides](how-to/README.md).
+You can now build a Ruby program into an app, rename it with `fledge.yml`, ship its gems, and check the result on a computer with no Ruby. Next, [make a windowed app](how-to/windowed-app.md) with an icon and installers, or browse [the guides](how-to/README.md).

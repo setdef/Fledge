@@ -4,18 +4,18 @@ A phone runs no program but the app its store installed, so a phone's app can't 
 
 ## Before you start
 
-The app needs an `identifier` in `fledge.kdl`: iOS's bundle identifier and Android's `applicationId`. For Android, each part of it begins with a letter and holds only letters, digits, and underscores.
+The app needs an `identifier` in `fledge.yml`: iOS's bundle identifier and Android's `applicationId`. For Android, each part of it begins with a letter and holds only letters, digits, and underscores.
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-name "Basket"
-version "1.0.0"
-identifier "com.example.Basket"
-icon "icons/basket"
+```yaml
+name: Basket
+version: "1.0.0"
+identifier: com.example.Basket
+icon: icons/basket
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -46,7 +46,7 @@ Each phone's project is written on a computer whose tools build it:
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ bundle exec fledge ios project
+$ bundle exec fledge build ios
 dist/Basket-ios
 ```
 <!-- SPDX-SnippetEnd -->
@@ -57,7 +57,7 @@ dist/Basket-ios
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ bundle exec fledge android project
+$ bundle exec fledge build android
 dist/Basket-android
 ```
 <!-- SPDX-SnippetEnd -->
@@ -70,11 +70,11 @@ Each prints the project's folder. From there, it's the platform's workflow:
 > [!WARNING]
 > fledge replaces the project folder each time it writes it. Don't edit the project in `dist`: put your changes in a host folder (see [Change the host](#change-the-host)), so that each build carries them.
 
-For the icon, iOS takes one 1024-pixel PNG (`icons/basket-1024.png`) and Android five (`-48`, `-72`, `-96`, `-144`, and `-192`); see [Icon files](../reference/fledge-kdl.md#icon-files).
+For the icon, iOS takes one 1024-pixel PNG (`icons/basket-1024.png`) and Android five (`-48`, `-72`, `-96`, `-144`, and `-192`); see [Icon files](../reference/fledge-yml.md#icon-files).
 
 ## Run a program on the Simulator or an emulator
 
-`run` writes the project, builds a debug app, installs it, launches it, and prints what the program prints. It exits with the program's exit status, so it can run a test suite in CI:
+`test` writes the project, builds a debug app, installs it, launches it, and prints what the program prints. It exits with the program's exit status, so it can run a test suite in CI:
 
 <!-- SPDX-SnippetBegin -->
 <!--
@@ -82,7 +82,7 @@ For the icon, iOS takes one 1024-pixel PNG (`icons/basket-1024.png`) and Android
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ bundle exec fledge ios run test/phone.rb
+$ bundle exec fledge test ios test/phone.rb
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -92,7 +92,7 @@ $ bundle exec fledge ios run test/phone.rb
   SPDX-License-Identifier: MIT-0
 -->
 ```console
-$ bundle exec fledge android run test/phone.rb
+$ bundle exec fledge test android test/phone.rb
 ```
 <!-- SPDX-SnippetEnd -->
 
@@ -120,7 +120,7 @@ On a phone, the app's Ruby runs on the process's main thread, as `ruby main.rb` 
 - iOS ends an app that has not started its interface, by calling `UIApplicationMain`, within 20 seconds of launch. A program that runs long, such as a test suite on an iPhone, starts the interface first and does its work on a Ruby thread.
 - Android reports an app as not responding once an input event has waited 5 seconds.
 
-The Simulator ends no program that holds the main thread, so `fledge ios run` runs a test suite of any length there.
+The Simulator ends no program that holds the main thread, so `fledge test ios` runs a test suite of any length there.
 
 ## Draw the platform's widgets
 
@@ -138,26 +138,24 @@ gem "fiddle"
 
 ## Change the host
 
-The host is the native program in each project that starts Ruby: `Host/main.m` for iOS, and `MainActivity.java` for Android. To change it, or anything else in the project, such as `Info.plist`, the Android manifest, or a Gradle file, put your version in a folder of the project and name it in `fledge.kdl`:
+The host is the native program in each project that starts Ruby: `Host/main.m` for iOS, and `MainActivity.java` for Android. To change it, or anything else in the project, such as `Info.plist`, the Android manifest, or a Gradle file, put your version in a folder of the project and name it in `fledge.yml`:
 
 <!-- SPDX-SnippetBegin -->
 <!--
   SPDX-FileCopyrightText: 2026 setdef <kerrick@setdef.com>
   SPDX-License-Identifier: MIT-0
 -->
-```kdl
-ios {
-    host "host/ios"
-}
-android {
-    host "host/android"
-}
+```yaml
+ios:
+  host: host/ios
+android:
+  host: host/android
 ```
 <!-- SPDX-SnippetEnd -->
 
 fledge copies the folder's files over the project it writes: each replaces fledge's file at the same path, or joins the project, and fledge prints which of its files each replaced. It fills its `@@NAME@@` marks in your copies of the files it fills in its template. The host folder stays out of the app's files.
 
-When a host adds native libraries through its Gradle dependencies, list them in `host-libraries`, so that fledge accepts a gem's library that needs one; see [android](../reference/fledge-kdl.md#android).
+When a host adds native libraries through its Gradle dependencies, list them in `host_libraries`, so that fledge accepts a gem's library that needs one; see [android](../reference/fledge-yml.md#android).
 
 > [!WARNING]
 > An Android host's `build.gradle` must keep `useLegacyPackaging = true` in its `packaging { jniLibs { } }` block, as fledge's does. Without it, Android installs none of the app's native libraries as files, and Ruby can't load its extensions. fledge refuses a host `build.gradle` that drops it.

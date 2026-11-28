@@ -70,4 +70,4 @@ The phone runtimes use 66 and 70 with the same meanings.
 
 - Unpack anything, or mount a file system: it runs from the folder as it is.
 - Choose a Ruby: it runs the runtime beside it, never one on `PATH`.
-- Read `fledge.kdl`, or anything of the project but the entry in `fledge.cfg`.
+- Read `fledge.yml`, or anything of the project but the entry in `fledge.cfg`.
